@@ -19,3 +19,10 @@ library
   -- other-modules:       
   build-depends:     base ==4.6.*
                    , bindings-gsl >= 0.2
+
+executable main
+  main-is:           main.hs
+  hs-source-dirs:    exe-src/
+  build-depends:     base ==4.6.*
+                   , bindings-gsl >= 0.2
+  ghc-options:       -Wall -O2

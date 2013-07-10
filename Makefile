@@ -1,3 +1,3 @@
-include common.mk
-
 all: build
+
+include common.mk
