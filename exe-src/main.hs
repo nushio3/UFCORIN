@@ -7,6 +7,7 @@ import Control.Monad
 import qualified Data.ByteString as BS
 import Data.Monoid ((<>))
 import Data.Word(Word32)
+import Data.Int(Int32)
 import qualified Data.Text as Text
 import qualified Data.Text.IO as Text
 import Foreign.Marshal.Alloc (mallocBytes)
@@ -49,20 +50,21 @@ analyze origDataStr = do
       nBig = 4096
       sizeOfHeader :: Int
       sizeOfHeader = 8640
-      pOrigData :: Ptr Word32
+      pOrigData :: Ptr Int32
       pOrigData = castPtr $ origDataStr `plusPtr` sizeOfHeader
 
   forM_ [0..(nBig-1)] $ \iy -> do
     forM_ [0..(nBig-1)] $ \ix -> do
       val'' <- peekElemOff pOrigData (iy*nBig + ix)
       let
-        val' :: CFloat
-        val' = unsafeCoerce . toBE32 . unsafeCoerce $ val''
-
+--         val' :: Int32
+-- --        val' = unsafeCoerce . toBE32 . unsafeCoerce $ val''
+--         val' = unsafeCoerce . toBE32 .unsafeCoerce $ val''
+--
 
         val :: CDouble
         val
-          | abs(val') < 1e30 = fromRational $ toRational $ val'
+          | abs(val'') < 1000000 = read . show $ val''
           | otherwise   = 0
         ix' = ix `div` (nBig `div`n)
         iy' = iy `div` (nBig `div`n)
