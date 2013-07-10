@@ -26,4 +26,5 @@ executable main
   build-depends:     base ==4.6.*
                    , bindings-gsl >= 0.2
                    , bytestring >= 0.10.0.2
+                   , cpu >= 0.1.1
   ghc-options:       -Wall -O2
