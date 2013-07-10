@@ -25,4 +25,5 @@ executable main
   hs-source-dirs:    exe-src/
   build-depends:     base ==4.6.*
                    , bindings-gsl >= 0.2
+                   , bytestring >= 0.10.0.2
   ghc-options:       -Wall -O2
