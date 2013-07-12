@@ -5,6 +5,9 @@ import Bindings.Gsl.WaveletTransforms
 import Control.Applicative
 import Control.Monad
 import qualified Data.ByteString as BS
+import qualified Data.ByteString.Lazy as BSL
+import Data.Binary (get)
+import Data.Binary.Get (runGet)
 import Data.Monoid ((<>))
 import Data.Word(Word32)
 import Data.Int(Int32)
@@ -16,7 +19,7 @@ import Foreign.Ptr (plusPtr, castPtr, Ptr(..))
 import Foreign.Storable (peek, poke, sizeOf, peekElemOff, pokeElemOff)
 import Foreign.C.String (peekCString)
 import Foreign.C.Types (CDouble, CFloat, CChar)
-import System.Endian (toBE32, toLE32)
+import System.Endian (fromBE32, fromLE32)
 import Text.Printf
 import Unsafe.Coerce (unsafeCoerce)
 
@@ -24,13 +27,9 @@ main :: IO ()
 main = do
   putStrLn "hi"
   origData <- BS.readFile "resource/sample.fits"
-  BS.useAsCString origData analyze
-
-analyze origDataStr = do
-
 
   let n :: Int
-      n = 512
+      n = 1024
   pData <- mallocBytes (sizeOf (0::CDouble) * n * n)
   pAbsCoeff <- mallocBytes (sizeOf (0::CDouble) * n * n)
   pWavDau <- peek p'gsl_wavelet_haar
@@ -50,22 +49,32 @@ analyze origDataStr = do
       nBig = 4096
       sizeOfHeader :: Int
       sizeOfHeader = 8640
-      pOrigData :: Ptr Int32
-      pOrigData = castPtr $ origDataStr `plusPtr` sizeOfHeader
 
   forM_ [0..(nBig-1)] $ \iy -> do
     forM_ [0..(nBig-1)] $ \ix -> do
-      val'' <- peekElemOff pOrigData (iy*nBig + ix)
       let
---         val' :: Int32
--- --        val' = unsafeCoerce . toBE32 . unsafeCoerce $ val''
---         val' = unsafeCoerce . toBE32 .unsafeCoerce $ val''
---
+        addr0 :: Int
+        addr0 = sizeOfHeader + 4* (iy*nBig + ix)
+        binVal :: BSL.ByteString
+        binVal = BSL.pack
+          [ BS.index origData (fromIntegral $ addr0+di) | di <- [0,1,2,3]]
 
-        val :: CDouble
+        
+        val' :: Int32
+        val' = runGet get binVal
+
+
+        tobas = 1000000
+
+        val3, val :: CDouble
+        val3 =  fromIntegral $ val'
+
         val
-          | abs(val'') < 1000000 = read . show $ val''
-          | otherwise   = 0
+          | abs(val3) > tobas = -tobas
+          | otherwise         = val3
+                                
+                                
+
         ix' = ix `div` (nBig `div`n)
         iy' = iy `div` (nBig `div`n)
       pokeElemOff pData (iy'*n+ix') val

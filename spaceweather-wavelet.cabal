@@ -24,6 +24,7 @@ executable main
   main-is:           main.hs
   hs-source-dirs:    exe-src/
   build-depends:     base ==4.6.*
+                   , binary 
                    , bindings-gsl >= 0.2
                    , bytestring >= 0.10.0.2
                    , cpu >= 0.1.1
