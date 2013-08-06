@@ -45,10 +45,10 @@ wavelets =
 
 
 main :: IO ()
-main = sequence_ $ testWavelet <$> wavelets <*> [True,False]
+main = sequence_ $ testWavelet <$> [True,False] <*> wavelets 
 
-testWavelet :: (String, Wavelet, Int)   -> Bool -> IO ()
-testWavelet    (wlabel, wptr   , waveletK) isStd = do
+testWavelet :: Bool -> (String, Wavelet, Int)   -> IO ()
+testWavelet    isStd   (wlabel, wptr   , waveletK) = do
   let fnBase :: String
       fnBase = printf "%s-%s-%d" 
                (if isStd then "S" else "N" :: String) wlabel waveletK
