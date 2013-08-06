@@ -20,14 +20,46 @@ import Foreign.Storable (peek, poke, sizeOf, peekElemOff, pokeElemOff)
 import Foreign.C.String (peekCString)
 import Foreign.C.Types (CDouble, CFloat, CChar)
 import System.Endian (fromBE32, fromLE32)
+import System.Process
 import Text.Printf
 import Unsafe.Coerce (unsafeCoerce)
 
 sq x = x*x
 
+gnuplot :: [String] -> IO ()
+gnuplot cmds = do
+  writeFile "tmp.gnuplot" $ unlines cmds
+  system "gnuplot tmp.gnuplot"
+  return ()
+
+type Wavelet = Ptr (Ptr C'gsl_wavelet_type)
+
+wavelets :: [(String, Wavelet, Int)]
+wavelets = 
+  [ ("haar0", p'gsl_wavelet_haar , 2)
+  , ("haarC", p'gsl_wavelet_haar_centered , 2)
+  , ("bspl0", p'gsl_wavelet_bspline , 4)
+  , ("bsplC", p'gsl_wavelet_bspline_centered ,4 ) 
+  , ("daub0", p'gsl_wavelet_daubechies , 103)
+  , ("daubC", p'gsl_wavelet_daubechies_centered , 103)]
+
+
 main :: IO ()
-main = do
-  putStrLn "hi"
+main = sequence_ $ testWavelet <$> wavelets <*> [True,False]
+
+testWavelet :: (String, Wavelet, Int)   -> Bool -> IO ()
+testWavelet    (wlabel, wptr   , waveletK) isStd = do
+  let fnBase :: String
+      fnBase = printf "%s-%s-%d" 
+               (if isStd then "S" else "N" :: String) wlabel waveletK
+      
+      fnFwdTxt, fnBwdTxt, fnFwdPng, fnBwdPng :: String
+      fnFwdTxt = printf "dist/fwd-%s.txt" fnBase 
+      fnBwdTxt = printf "dist/bwd-%s.txt" fnBase 
+      fnFwdPng = printf "dist/fwd-%s.png" fnBase 
+      fnBwdPng = printf "dist/bwd-%s.png" fnBase 
+  printf "%s, " fnBase       
+  
   origData <- BS.readFile "resource/sample.fits"
 
   -- prepare wavelet transformation
@@ -35,14 +67,14 @@ main = do
       n = 1024
   pData <- mallocBytes (sizeOf (0::CDouble) * n * n)
   pAbsCoeff <- mallocBytes (sizeOf (0::CDouble) * n * n)
-  pWavDau <- peek p'gsl_wavelet_haar
+  pWavDau <- peek wptr
 
   pWork <- c'gsl_wavelet_workspace_alloc (fromIntegral $ n*n)
 
-  pWavelet <- c'gsl_wavelet_alloc pWavDau 2
+  pWavelet <- c'gsl_wavelet_alloc pWavDau (fromIntegral waveletK)
 
   nam <- peekCString =<< c'gsl_wavelet_name pWavelet
-  print nam
+  printf "%s\n" nam
 
   -- zero initialize the data
   forM_ [0..n*n-1] $ \i ->
@@ -86,8 +118,12 @@ main = do
       pokeElemOff pData (iy'*n+ix') val
 
 
+  let wavelet2d 
+       | isStd     = c'gsl_wavelet2d_transform
+       | otherwise = c'gsl_wavelet2d_nstransform
+
   -- perform wavelet transformation.
-  ret <- c'gsl_wavelet2d_nstransform pWavelet pData
+  ret <- wavelet2d pWavelet pData
          (fromIntegral n) (fromIntegral n) (fromIntegral n)
          (fromIntegral 1)
          pWork
@@ -100,11 +136,11 @@ main = do
       return $ Text.pack $ printf "%i %i %s\n" ix iy (show (val :: CDouble))
     return $ lineText <> "\n"
 
-  Text.writeFile "test-wavelet.txt" bitmapText
+  Text.writeFile fnFwdTxt bitmapText
 
 
   -- perform inverse transformation.
-  ret <- c'gsl_wavelet2d_nstransform pWavelet pData
+  ret <- wavelet2d pWavelet pData
          (fromIntegral n) (fromIntegral n) (fromIntegral n)
          (fromIntegral (-1))
          pWork
@@ -119,4 +155,19 @@ main = do
       return $ Text.pack $ printf "%i %i %s\n" ix iy (show (val :: CDouble))
     return $ lineText <> "\n"
 
-  Text.writeFile "test-back.txt" bitmapText
+  Text.writeFile fnBwdTxt bitmapText
+
+  gnuplot
+    [ "set term png size 1800,1600"
+    , printf "set out '%s'" fnFwdPng
+    , "set pm3d"
+    , "set pm3d map"
+    , "set xrange [0:256]"
+    , "set yrange [0:256]"
+    , "set cbrange [-5000:5000]"
+    , "set palette define (-5000 'blue', 0 'white', 5000 'red')"
+    , "set size ratio -1"
+    , printf "splot '%s'" fnFwdTxt ]
+
+
+
