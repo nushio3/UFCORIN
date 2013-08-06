@@ -187,7 +187,7 @@ testWavelet    isStd   (wlabel, wptr   , waveletK) targetFn = do
     , "set pm3d map"
     , "set xrange [0:256]"
     , "set yrange [0:256]"
-    , "set cbrange [-1000:1000]"
-    , "set palette define (-10000 '#0000ff', -1000 '#0000b0', -100 '#000080', -10 '#000040', 0 'white', 10 '#400000', 100 '#800000', 1000 '#b00000', 10000 '#ff0000')"
+    , "set cbrange [-10000:10000]"
+    , "set palette define  (-10000 '#0000ff', -1000 '#8080ff', 0 'white',1000 '#ff8080', 10000 '#ff0000')"
     , "set size ratio -1"
     , printf "splot '%s'" fnFwdTxt ]
