@@ -13,6 +13,7 @@ import Data.Word(Word32)
 import Data.Int(Int32)
 import qualified Data.Text as Text
 import qualified Data.Text.IO as Text
+import Data.String.Utils (replace)
 import Foreign.Marshal.Alloc (mallocBytes)
 import Foreign.Marshal.Utils (new)
 import Foreign.Ptr (plusPtr, castPtr, Ptr(..))
@@ -35,42 +36,54 @@ gnuplot cmds = do
 type Wavelet = Ptr (Ptr C'gsl_wavelet_type)
 
 wavelets :: [(String, Wavelet, Int)]
-wavelets = 
-  [ 
+wavelets =
+  [
     ("haar0", p'gsl_wavelet_haar , 2)
-  , ("haarC", p'gsl_wavelet_haar_centered , 2) 
+  , ("haarC", p'gsl_wavelet_haar_centered , 2)
   , ("daub0", p'gsl_wavelet_daubechies , 4)
   , ("daubC", p'gsl_wavelet_daubechies_centered , 4)
   , ("bspl0", p'gsl_wavelet_bspline , 103)
-  , ("bsplC", p'gsl_wavelet_bspline_centered ,103 ) 
+  , ("bsplC", p'gsl_wavelet_bspline_centered ,103 )
   , ("daub0", p'gsl_wavelet_daubechies , 20)
   , ("daubC", p'gsl_wavelet_daubechies_centered , 20)
   , ("bspl0", p'gsl_wavelet_bspline , 309)
-  , ("bsplC", p'gsl_wavelet_bspline_centered , 309 ) 
+  , ("bsplC", p'gsl_wavelet_bspline_centered , 309 )
   ]
 
 
-main :: IO ()
-main = sequence_ $ testWavelet <$> [True,False] <*> wavelets <*> [1,2]
+targetFns :: [FilePath]
+targetFns =
+  [ "hmi_20100609.fits"
+  , "hmi_20101013.fits"
+  , "hmi_20101109.fits"
+  , "hmi_20110511.fits"
+  , "hmi_20120306.fits"
+  , "hmi_20120309.fits"
+  , "hmi_20120509.fits"
+  , "hmi_20120701.fits"
+  ]
 
-testWavelet :: Bool -> (String, Wavelet, Int)   -> Int   -> IO ()
-testWavelet    isStd   (wlabel, wptr   , waveletK) dataId = do
+main :: IO ()
+main = sequence_ $ testWavelet <$> [True,False] <*> wavelets <*> targetFns
+
+testWavelet :: Bool -> (String, Wavelet, Int)   -> FilePath   -> IO ()
+testWavelet    isStd   (wlabel, wptr   , waveletK) targetFn = do
   let fnBase :: String
-      fnBase = printf "%s-%s-%d-test%d" 
+      fnBase = printf "%s-%s-%d-%s"
                (if isStd then "S" else "N" :: String) wlabel waveletK
-               dataId 
-               
+               fnFitsBody
+
       fnFitsBody :: String
-      fnFitsBody = printf "test%d" dataId
-      
+      fnFitsBody = replace "hmi_" "" $ replace ".fits" "" $ targetFn
+
       fnFwdTxt, fnBwdTxt, fnFwdPng, fnBwdPng :: String
-      fnFwdTxt = printf "dist/fwd-%s.txt" fnBase 
-      fnBwdTxt = printf "dist/bwd-%s.txt" fnBase 
-      fnFwdPng = printf "dist/fwd-%s.png" fnBase 
-      fnBwdPng = printf "dist/bwd-%s.png" fnBase 
-  printf "%s, " fnBase       
-  
-  origData <- BS.readFile $ printf "resource/%s.fits" fnFitsBody
+      fnFwdTxt = printf "dist/fwd-%s.txt" fnBase
+      fnBwdTxt = printf "dist/bwd-%s.txt" fnBase
+      fnFwdPng = printf "dist/fwd-%s.png" fnBase
+      fnBwdPng = printf "dist/bwd-%s.png" fnBase
+  printf "%s, " fnBase
+
+  origData <- BS.readFile $ printf "resource/%s" targetFn
 
   -- prepare wavelet transformation
   let n :: Int
@@ -128,7 +141,7 @@ testWavelet    isStd   (wlabel, wptr   , waveletK) dataId = do
       pokeElemOff pData (iy'*n+ix') val
 
 
-  let wavelet2d 
+  let wavelet2d
        | isStd     = c'gsl_wavelet2d_transform
        | otherwise = c'gsl_wavelet2d_nstransform
 
@@ -174,10 +187,7 @@ testWavelet    isStd   (wlabel, wptr   , waveletK) dataId = do
     , "set pm3d map"
     , "set xrange [0:256]"
     , "set yrange [0:256]"
-    , "set cbrange [-5000:5000]"
-    , "set palette define (-5000 'blue', 0 'white', 5000 'red')"
+    , "set cbrange [-1000:1000]"
+    , "set palette define (-10000 '#0000ff', -1000 '#0000b0', -100 '#000080', -10 '#000040', 0 'white', 10 '#400000', 100 '#800000', 1000 '#b00000', 10000 '#ff0000')"
     , "set size ratio -1"
     , printf "splot '%s'" fnFwdTxt ]
-
-
-
