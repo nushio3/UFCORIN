@@ -23,11 +23,14 @@ import System.Endian (fromBE32, fromLE32)
 import Text.Printf
 import Unsafe.Coerce (unsafeCoerce)
 
+sq x = x*x
+
 main :: IO ()
 main = do
   putStrLn "hi"
   origData <- BS.readFile "resource/sample.fits"
 
+  -- prepare wavelet transformation
   let n :: Int
       n = 1024
   pData <- mallocBytes (sizeOf (0::CDouble) * n * n)
@@ -43,23 +46,26 @@ main = do
 
   -- zero initialize the data
   forM_ [0..n*n-1] $ \i ->
-    pokeElemOff pData i (42e99 :: CDouble)
+    pokeElemOff pData i (0 :: CDouble)
 
-  let nBig :: Int
-      nBig = 4096
+  -- read the fits file and shrink it
+  let nOfInput :: Int
+      nOfInput = 4096
+
+      rOfInput = nOfInput `div` 2
       sizeOfHeader :: Int
       sizeOfHeader = 8640
 
-  forM_ [0..(nBig-1)] $ \iy -> do
-    forM_ [0..(nBig-1)] $ \ix -> do
+  forM_ [0..(nOfInput-1)] $ \iy -> do
+    forM_ [0..(nOfInput-1)] $ \ix -> do
       let
         addr0 :: Int
-        addr0 = sizeOfHeader + 4* (iy*nBig + ix)
+        addr0 = sizeOfHeader + 4* (iy*nOfInput + ix)
         binVal :: BSL.ByteString
         binVal = BSL.pack
           [ BS.index origData (fromIntegral $ addr0+di) | di <- [0,1,2,3]]
 
-        
+
         val' :: Int32
         val' = runGet get binVal
 
@@ -70,25 +76,47 @@ main = do
         val3 =  fromIntegral $ val'
 
         val
-          | abs(val3) > tobas = -tobas
-          | otherwise         = val3
-                                
-                                
+          | sq(ix-rOfInput) + sq(iy-rOfInput) > sq 1792 = 0
+          | otherwise         =  val3
 
-        ix' = ix `div` (nBig `div`n)
-        iy' = iy `div` (nBig `div`n)
+
+
+        ix' = ix `div` (nOfInput `div`n)
+        iy' = iy `div` (nOfInput `div`n)
       pokeElemOff pData (iy'*n+ix') val
 
+
+  -- perform wavelet transformation.
+  ret <- c'gsl_wavelet2d_nstransform pWavelet pData
+         (fromIntegral n) (fromIntegral n) (fromIntegral n)
+         (fromIntegral 1)
+         pWork
+  print ret
+
+  -- write out the text for use in gnuplot.
   bitmapText <- fmap Text.concat $ forM [0..(n-1)] $ \iy -> do
     lineText <- fmap Text.concat $ forM [0..(n-1)] $ \ix -> do
       val <- peekElemOff pData (iy*n + ix)
       return $ Text.pack $ printf "%i %i %s\n" ix iy (show (val :: CDouble))
     return $ lineText <> "\n"
 
-  Text.writeFile "test.txt" bitmapText
-
-  flag <- c'gsl_wavelet_transform_forward pWavelet pData
-          1 (fromIntegral $ n*n) pWork
+  Text.writeFile "test-wavelet.txt" bitmapText
 
 
-  print flag
+  -- perform inverse transformation.
+  ret <- c'gsl_wavelet2d_nstransform pWavelet pData
+         (fromIntegral n) (fromIntegral n) (fromIntegral n)
+         (fromIntegral (-1))
+         pWork
+  print ret
+
+
+
+  -- write out the text for use in gnuplot.
+  bitmapText <- fmap Text.concat $ forM [0..(n-1)] $ \iy -> do
+    lineText <- fmap Text.concat $ forM [0..(n-1)] $ \ix -> do
+      val <- peekElemOff pData (iy*n + ix)
+      return $ Text.pack $ printf "%i %i %s\n" ix iy (show (val :: CDouble))
+    return $ lineText <> "\n"
+
+  Text.writeFile "test-back.txt" bitmapText

@@ -1,4 +1,4 @@
-set term png size 2560,1600
+set term png size 1800,1600
 set out "test.png"
 set pm3d
 set pm3d map
