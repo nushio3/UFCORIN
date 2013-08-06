@@ -36,30 +36,32 @@ type Wavelet = Ptr (Ptr C'gsl_wavelet_type)
 
 wavelets :: [(String, Wavelet, Int)]
 wavelets = 
-  [ ("bspl0", p'gsl_wavelet_bspline , 309)
-  , ("bsplC", p'gsl_wavelet_bspline_centered , 309 ) 
-  , ("daub0", p'gsl_wavelet_daubechies , 20)
-  , ("daubC", p'gsl_wavelet_daubechies_centered , 20)
-  , ("bspl0", p'gsl_wavelet_bspline , 103)
-  , ("bsplC", p'gsl_wavelet_bspline_centered ,103 ) 
+  [ 
+    ("haar0", p'gsl_wavelet_haar , 2)
+  , ("haarC", p'gsl_wavelet_haar_centered , 2) 
   , ("daub0", p'gsl_wavelet_daubechies , 4)
   , ("daubC", p'gsl_wavelet_daubechies_centered , 4)
-  , ("haar0", p'gsl_wavelet_haar , 2)
-  , ("haarC", p'gsl_wavelet_haar_centered , 2) ]
+  , ("bspl0", p'gsl_wavelet_bspline , 103)
+  , ("bsplC", p'gsl_wavelet_bspline_centered ,103 ) 
+  , ("daub0", p'gsl_wavelet_daubechies , 20)
+  , ("daubC", p'gsl_wavelet_daubechies_centered , 20)
+  , ("bspl0", p'gsl_wavelet_bspline , 309)
+  , ("bsplC", p'gsl_wavelet_bspline_centered , 309 ) 
+  ]
 
 
 main :: IO ()
-main = sequence_ $ testWavelet <$> [True,False] <*> wavelets <*> [2] -- ,1,2]
+main = sequence_ $ testWavelet <$> [True,False] <*> wavelets <*> [1,2]
 
 testWavelet :: Bool -> (String, Wavelet, Int)   -> Int   -> IO ()
 testWavelet    isStd   (wlabel, wptr   , waveletK) dataId = do
   let fnBase :: String
-      fnBase = printf "%s-%s-%d-DS%d" 
+      fnBase = printf "%s-%s-%d-test%d" 
                (if isStd then "S" else "N" :: String) wlabel waveletK
                dataId 
                
       fnFitsBody :: String
-      fnFitsBody = printf "dummyspot%d" dataId
+      fnFitsBody = printf "test%d" dataId
       
       fnFwdTxt, fnBwdTxt, fnFwdPng, fnBwdPng :: String
       fnFwdTxt = printf "dist/fwd-%s.txt" fnBase 
