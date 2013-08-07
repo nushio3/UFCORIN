@@ -32,3 +32,9 @@ executable main
                    , MissingH 
                    , process
   ghc-options:       -Wall -O2
+
+executable make-pdf
+  main-is:           make-pdf.hs
+  hs-source-dirs:    exe-src/
+  build-depends:     base ==4.6.*
+  ghc-options:       -Wall -O2

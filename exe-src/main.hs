@@ -14,7 +14,7 @@ import Data.Int(Int32)
 import qualified Data.Text as Text
 import qualified Data.Text.IO as Text
 import Data.String.Utils (replace)
-import Foreign.Marshal.Alloc (mallocBytes)
+import Foreign.Marshal.Alloc (mallocBytes, free)
 import Foreign.Marshal.Utils (new)
 import Foreign.Ptr (plusPtr, castPtr, Ptr(..))
 import Foreign.Storable (peek, poke, sizeOf, peekElemOff, pokeElemOff)
@@ -64,7 +64,7 @@ targetFns =
   ]
 
 main :: IO ()
-main = sequence_ $ testWavelet <$> [True,False] <*> wavelets <*> targetFns
+main = sequence_ $ reverse $ testWavelet <$> [True,False] <*> wavelets <*> targetFns
 
 testWavelet :: Bool -> (String, Wavelet, Int)   -> FilePath   -> IO ()
 testWavelet    isStd   (wlabel, wptr   , waveletK) targetFn = do
@@ -88,13 +88,18 @@ testWavelet    isStd   (wlabel, wptr   , waveletK) targetFn = do
   -- prepare wavelet transformation
   let n :: Int
       n = 1024
-  pData <- mallocBytes (sizeOf (0::CDouble) * n * n)
-  pAbsCoeff <- mallocBytes (sizeOf (0::CDouble) * n * n)
+
   pWavDau <- peek wptr
 
+  pData <- mallocBytes (sizeOf (0::CDouble) * n * n)
+  pWavelet <- c'gsl_wavelet_alloc pWavDau (fromIntegral waveletK)
   pWork <- c'gsl_wavelet_workspace_alloc (fromIntegral $ n*n)
 
-  pWavelet <- c'gsl_wavelet_alloc pWavDau (fromIntegral waveletK)
+  let finalizer = do
+        c'gsl_wavelet_free pWavelet
+        c'gsl_wavelet_workspace_free pWork
+        free pData
+
 
   nam <- peekCString =<< c'gsl_wavelet_name pWavelet
   printf "%s\n" nam
@@ -191,3 +196,5 @@ testWavelet    isStd   (wlabel, wptr   , waveletK) targetFn = do
     , "set palette define  (-10000 '#0000ff', -1000 '#8080ff', 0 'white',1000 '#ff8080', 10000 '#ff0000')"
     , "set size ratio -1"
     , printf "splot '%s'" fnFwdTxt ]
+
+  finalizer
