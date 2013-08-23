@@ -6,7 +6,7 @@ import Text.Printf
 main :: IO ()
 main = do
   str <- getContents
-  mapM_ putStrLn $ map parse $ groupBy ((==) `on` fst) $ map (span (=='\t')) $ lines str
+  mapM_ putStrLn $ map parse $ groupBy ((==) `on` fst) $ map (span (not . flip elem "\t ")) $ lines str
   where
     parse :: [(String, String)] -> String
     parse xs = printf "%s %d" (fst $ head xs)
