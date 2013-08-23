@@ -79,8 +79,8 @@ testWavelet    isStd   (wlabel, wptr   , waveletK) targetFn = do
       fnFwdTxt, fnBwdTxt, fnFwdPng, fnBwdPng :: String
       fnFwdTxt = printf "dist/fwd-%s.txt" fnBase
       fnBwdTxt = printf "dist/bwd-%s.txt" fnBase
-      fnFwdPng = printf "dist/fwd-%s.png" fnBase
-      fnBwdPng = printf "dist/bwd-%s.png" fnBase
+      fnFwdPng = printf "dist/fwd-%s.eps" fnBase
+      fnBwdPng = printf "dist/bwd-%s.eps" fnBase
   printf "%s, " fnBase
 
   origData <- BS.readFile $ printf "resource/%s" targetFn
@@ -186,7 +186,7 @@ testWavelet    isStd   (wlabel, wptr   , waveletK) targetFn = do
   Text.writeFile fnBwdTxt bitmapText
 
   gnuplot
-    [ "set term png size 1800,1600"
+    [ "set term postscript enhanced color solid"
     , printf "set out '%s'" fnFwdPng
     , "set pm3d"
     , "set pm3d map"
