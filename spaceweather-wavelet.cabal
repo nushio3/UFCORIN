@@ -38,3 +38,16 @@ executable make-pdf
   hs-source-dirs:    exe-src/
   build-depends:     base ==4.6.*
   ghc-options:       -Wall -O2
+
+executable test-mapper
+  main-is:           test-mapper.hs
+  hs-source-dirs:    exe-src/
+  build-depends:     base ==4.6.*
+  ghc-options:       -Wall -O2
+
+executable test-reducer
+  main-is:           test-reducer.hs
+  hs-source-dirs:    exe-src/
+  build-depends:     
+    base ==4.6.*
+  ghc-options:       -Wall -O2
