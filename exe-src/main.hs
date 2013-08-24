@@ -4,23 +4,30 @@ module Main where
 import Bindings.Gsl.WaveletTransforms
 import Control.Applicative
 import Control.Monad
+import qualified Data.Array.Repa as R
+import qualified Data.Array.Repa.Repr.ForeignPtr as R
+import qualified Data.Array.Repa.IO.BMP as R
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy as BSL
 import Data.Binary (get)
 import Data.Binary.Get (runGet)
-import Data.Monoid ((<>))
-import Data.Word(Word32)
 import Data.Int(Int32)
+import Data.List(isSuffixOf)
+import Data.Monoid ((<>))
+import Data.Word(Word8,Word32)
 import qualified Data.Text as Text
 import qualified Data.Text.IO as Text
 import Data.String.Utils (replace)
 import Foreign.Marshal.Alloc (mallocBytes, free)
 import Foreign.Marshal.Utils (new)
 import Foreign.Ptr (plusPtr, castPtr, Ptr(..))
+import Foreign.ForeignPtr.Safe (newForeignPtr_)
 import Foreign.Storable (peek, poke, sizeOf, peekElemOff, pokeElemOff)
 import Foreign.C.String (peekCString)
 import Foreign.C.Types (CDouble, CFloat, CChar)
 import System.Endian (fromBE32, fromLE32)
+import System.FilePath
+import System.Posix.Process (getProcessID)
 import System.Process
 import Text.Printf
 import Unsafe.Coerce (unsafeCoerce)
@@ -37,53 +44,57 @@ type Wavelet = Ptr (Ptr C'gsl_wavelet_type)
 
 wavelets :: [(String, Wavelet, Int)]
 wavelets =
-  [
-    ("haar0", p'gsl_wavelet_haar , 2)
-  , ("haarC", p'gsl_wavelet_haar_centered , 2)
-  , ("daub0", p'gsl_wavelet_daubechies , 4)
-  , ("daubC", p'gsl_wavelet_daubechies_centered , 4)
-  , ("bspl0", p'gsl_wavelet_bspline , 103)
-  , ("bsplC", p'gsl_wavelet_bspline_centered ,103 )
-  , ("daub0", p'gsl_wavelet_daubechies , 20)
-  , ("daubC", p'gsl_wavelet_daubechies_centered , 20)
-  , ("bspl0", p'gsl_wavelet_bspline , 309)
-  , ("bsplC", p'gsl_wavelet_bspline_centered , 309 )
-  ]
+  [("haarC", p'gsl_wavelet_haar_centered , 2)]
+  -- [
+  --   ("haar0", p'gsl_wavelet_haar , 2)
+  -- , ("haarC", p'gsl_wavelet_haar_centered , 2)
+  -- , ("daub0", p'gsl_wavelet_daubechies , 4)
+  -- , ("daubC", p'gsl_wavelet_daubechies_centered , 4)
+  -- , ("bspl0", p'gsl_wavelet_bspline , 103)
+  -- , ("bsplC", p'gsl_wavelet_bspline_centered ,103 )
+  -- , ("daub0", p'gsl_wavelet_daubechies , 20)
+  -- , ("daubC", p'gsl_wavelet_daubechies_centered , 20)
+  -- , ("bspl0", p'gsl_wavelet_bspline , 309)
+  -- , ("bsplC", p'gsl_wavelet_bspline_centered , 309 )
+  -- ]
 
 
-targetFns :: [FilePath]
-targetFns =
-  [ "hmi_20100609.fits"
-  , "hmi_20101013.fits"
-  , "hmi_20101109.fits"
-  , "hmi_20110511.fits"
-  , "hmi_20120306.fits"
-  , "hmi_20120309.fits"
-  , "hmi_20120509.fits"
-  , "hmi_20120701.fits"
-  ]
+-- sourceFns :: [FilePath]
+-- sourceFns = ["/user/shibayama/sdo/hmi/2011/02/28/20.fits", "/user/shibayama/sdo/hmi/2011/01/31/10.fits"]
 
 main :: IO ()
-main = sequence_ $ reverse $ testWavelet <$> [True,False] <*> wavelets <*> targetFns
+main = do
+  input <- getContents
+  let sourceFns = filter (isSuffixOf ".fits") $ words input
+  sequence_ $ testWavelet <$> [False,True] <*> wavelets <*> sourceFns
+
 
 testWavelet :: Bool -> (String, Wavelet, Int)   -> FilePath   -> IO ()
-testWavelet    isStd   (wlabel, wptr   , waveletK) targetFn = do
+testWavelet    isStd   (wlabel, wptr   , waveletK) sourcePath = do
+
+  myUnixPid <- getProcessID
+
   let fnBase :: String
-      fnBase = printf "%s-%s-%d-%s"
+      fnBase = printf "%s-%s-%s-%d"
+               sourceFnBody
                (if isStd then "S" else "N" :: String) wlabel waveletK
-               fnFitsBody
+               
+      (sourceDir, sourceFn) = splitFileName sourcePath
+      (sourceFnBody, _) = splitExtension sourceFn
+      
+      localFitsFn :: String
+      localBmpFn :: String
+      localFitsFn = printf "/tmp/%s.fits" (show myUnixPid)
+      localBmpFn = printf "/tmp/%s.bmp" (show myUnixPid)
+      
+      destinationFn = (replace "/shibayama/" "/nushio/" sourceDir) </> (fnBase++".bmp")
+                      
+      (destinationDir,_) = splitFileName destinationFn
 
-      fnFitsBody :: String
-      fnFitsBody = replace "hmi_" "" $ replace ".fits" "" $ targetFn
+  system $ printf "rm -f %s" localFitsFn
+  system $ printf "hadoop fs -get %s %s" sourcePath localFitsFn
 
-      fnFwdTxt, fnBwdTxt, fnFwdPng, fnBwdPng :: String
-      fnFwdTxt = printf "dist/fwd-%s.txt" fnBase
-      fnBwdTxt = printf "dist/bwd-%s.txt" fnBase
-      fnFwdPng = printf "dist/fwd-%s.eps" fnBase
-      fnBwdPng = printf "dist/bwd-%s.eps" fnBase
-  printf "%s, " fnBase
-
-  origData <- BS.readFile $ printf "resource/%s" targetFn
+  origData <- BS.readFile localFitsFn
 
   -- prepare wavelet transformation
   let n :: Int
@@ -95,6 +106,8 @@ testWavelet    isStd   (wlabel, wptr   , waveletK) targetFn = do
   pWavelet <- c'gsl_wavelet_alloc pWavDau (fromIntegral waveletK)
   pWork <- c'gsl_wavelet_workspace_alloc (fromIntegral $ n*n)
 
+  fgnPData <- newForeignPtr_ pData
+
   let finalizer = do
         c'gsl_wavelet_free pWavelet
         c'gsl_wavelet_workspace_free pWork
@@ -102,7 +115,6 @@ testWavelet    isStd   (wlabel, wptr   , waveletK) targetFn = do
 
 
   nam <- peekCString =<< c'gsl_wavelet_name pWavelet
-  printf "%s\n" nam
 
   -- zero initialize the data
   forM_ [0..n*n-1] $ \i ->
@@ -129,9 +141,6 @@ testWavelet    isStd   (wlabel, wptr   , waveletK) targetFn = do
         val' :: Int32
         val' = runGet get binVal
 
-
-        tobas = 1000000
-
         val3, val :: CDouble
         val3 = fromIntegral $ val'
 
@@ -153,48 +162,28 @@ testWavelet    isStd   (wlabel, wptr   , waveletK) targetFn = do
   -- perform wavelet transformation.
   ret <- wavelet2d pWavelet pData
          (fromIntegral n) (fromIntegral n) (fromIntegral n)
-         (fromIntegral 1)
+         1
          pWork
-  print ret
 
-  -- write out the text for use in gnuplot.
-  bitmapText <- fmap Text.concat $ forM [0..(n-1)] $ \iy -> do
-    lineText <- fmap Text.concat $ forM [0..(n-1)] $ \ix -> do
-      val <- peekElemOff pData (iy*n + ix)
-      return $ Text.pack $ printf "%i %i %s\n" ix iy (show (val :: CDouble))
-    return $ lineText <> "\n"
+  let bmpShape = R.ix2 n n
 
-  Text.writeFile fnFwdTxt bitmapText
+  let toRGB :: Double -> (Word8,Word8,Word8)
+      toRGB x = 
+        let red   = rb (x/10)
+            green = min red blue
+            blue  = rb (negate $ x/10)
+        in (red,green,blue)
 
+      rb :: Double -> Word8
+      rb = round . min 255 . max 0 . (255-)
 
-  -- perform inverse transformation.
-  ret <- wavelet2d pWavelet pData
-         (fromIntegral n) (fromIntegral n) (fromIntegral n)
-         (fromIntegral (-1))
-         pWork
-  print ret
+  bmpData <- R.computeUnboxedP $ R.map (toRGB . realToFrac) $ R.fromForeignPtr bmpShape fgnPData
 
-
-
-  -- write out the text for use in gnuplot.
-  bitmapText <- fmap Text.concat $ forM [0..(n-1)] $ \iy -> do
-    lineText <- fmap Text.concat $ forM [0..(n-1)] $ \ix -> do
-      val <- peekElemOff pData (iy*n + ix)
-      return $ Text.pack $ printf "%i %i %s\n" ix iy (show (val :: CDouble))
-    return $ lineText <> "\n"
-
-  Text.writeFile fnBwdTxt bitmapText
-
-  gnuplot
-    [ "set term postscript enhanced color solid"
-    , printf "set out '%s'" fnFwdPng
-    , "set pm3d"
-    , "set pm3d map"
-    , "set xrange [0:256]"
-    , "set yrange [0:256]"
-    , "set cbrange [-10000:10000]"
-    , "set palette define  (-10000 '#0000ff', -1000 '#8080ff', 0 'white',1000 '#ff8080', 10000 '#ff0000')"
-    , "set size ratio -1"
-    , printf "splot '%s'" fnFwdTxt ]
+  R.writeImageToBMP localBmpFn  bmpData
+  system $ printf "hadoop fs -mkdir -p %s" destinationDir
+  system $ printf "hadoop fs -rm -f %s" destinationFn
+  system $ printf "hadoop fs -put %s %s" localBmpFn destinationFn
 
   finalizer
+
+  printf "%s:%s\t%s\n" sourcePath nam (show ret)
