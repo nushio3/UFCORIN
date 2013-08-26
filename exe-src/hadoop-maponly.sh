@@ -3,8 +3,10 @@ hadoop fs -rm -f -r hadoop-result
 cp dist/build/main/main main-mapper
 
 hadoop jar  /opt/cloudera/parcels/CDH/lib/hadoop-mapreduce/hadoop-streaming.jar \
-    -input /user/nushio/filelist/ \
+    -input resource/hdfs-hmi-2011-01.txt \
     -output hadoop-result \
-    -mapper main-mapper
+    -mapper main-mapper \
     -reducer "cat" \
-    -files main-mapper
+    -file main-mapper
+
+#    -input /user/nushio/filelist/ \
