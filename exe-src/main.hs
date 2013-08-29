@@ -62,6 +62,7 @@ wavelets =
 -- sourceFns :: [FilePath]
 -- sourceFns = ["/user/shibayama/sdo/hmi/2011/02/28/20.fits", "/user/shibayama/sdo/hmi/2011/01/31/10.fits"]
 
+
 main :: IO ()
 main = do
   input <- getContents
