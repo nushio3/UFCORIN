@@ -1,0 +1,19 @@
+A Lens s t a b is a purely functional reference
+
+While a Traversal could be used for Getting like a valid Fold it wasn't a valid Getter as Applicative wasn't a superclass of Gettable
+
+Functor however is the superclass of both
+
+Every Lens is a valid Setter
+
+Every Lens can be used for Getting like a Fold that doesn't use the Applicative or Gettable
+
+Every Lens is a valid Traversal that only uses the Functor part of the Applicative it is supplied
+
+Every Lens can be used for Getting like a valid Getter since Functor is a superclass of Gettable
+
+Since every Lens can be used for Getting like a valid Getter it follows that it must view exactly one element in the structure
+
+The Lens laws follow from this property and the desire for it to act like a Traversable when used as a Traversal
+
+In the examples below getter and setter are supplied as example getters and setters and are not actual functions supplied by this package 
