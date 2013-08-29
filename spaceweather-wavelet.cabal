@@ -49,7 +49,8 @@ executable make-pdf
 executable hs-wordcount-mapper
   main-is:           hs-wordcount-mapper.hs
   hs-source-dirs:    exe-src/
-  build-depends:     base ==4.6.*
+  build-depends:    
+     base ==4.6.*
   ghc-options:       -Wall -O2
 
 executable hs-wordcount-reducer

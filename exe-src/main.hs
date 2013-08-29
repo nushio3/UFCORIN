@@ -182,7 +182,7 @@ testWavelet    isStd   (wlabel, wptr   , waveletK) sourcePath = do
 
   R.writeImageToBMP localBmpFn  bmpData
   system $ printf "hadoop fs -mkdir -p %s" destinationDir
-  system $ printf "hadoop fs -rm -f -skipTrash %s" destinationFn
+  system $ printf "hadoop fs -rm -f -skipTrash %s > /dev/null" destinationFn
   system $ printf "hadoop fs -put %s %s" localBmpFn destinationFn
 
   finalizer
