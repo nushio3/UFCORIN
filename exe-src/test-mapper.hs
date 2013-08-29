@@ -2,8 +2,9 @@ import Control.Monad
 import Data.Char
 import Text.Printf
 
+-- | count the number of alphabets
+
 main :: IO ()
 main = do
   str <- getContents
-  forM_ str $ \c ->
-    when (isAlphaNum c) $ printf "%c 1\n" c
+  forM_ (words str) $ printf "%s\t1\n" 
