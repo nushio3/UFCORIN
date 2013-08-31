@@ -27,12 +27,15 @@ import Foreign.C.String (peekCString)
 import Foreign.C.Types (CDouble, CFloat, CChar)
 import System.Endian (fromBE32, fromLE32)
 import System.FilePath
+import System.IO
 import System.Posix.Process (getProcessID)
 import System.Process
 import Text.Printf
 import Unsafe.Coerce (unsafeCoerce)
 
 sq x = x*x
+
+type Rect = ((Int,Int),(Int,Int))
 
 gnuplot :: [String] -> IO ()
 gnuplot cmds = do
@@ -41,10 +44,18 @@ gnuplot cmds = do
   return ()
 
 type Wavelet = Ptr (Ptr C'gsl_wavelet_type)
+type RGB = (Word8,Word8,Word8)
 
 wavelets :: [(String, Wavelet, Int)]
 wavelets =
-  [("haarC", p'gsl_wavelet_haar_centered , 2)]
+  [ ("haarC", p'gsl_wavelet_haar_centered , 2)
+  , ("daubC", p'gsl_wavelet_daubechies_centered , 20)
+  , ("bsplC", p'gsl_wavelet_bspline_centered ,103 )    
+  , ("bsplC", p'gsl_wavelet_bspline_centered ,202 )    
+  , ("bsplC", p'gsl_wavelet_bspline_centered ,208 )    
+  , ("bsplC", p'gsl_wavelet_bspline_centered ,301 )    
+  , ("bsplC", p'gsl_wavelet_bspline_centered ,303 )    
+  ]
   -- [
   --   ("haar0", p'gsl_wavelet_haar , 2)
   -- , ("haarC", p'gsl_wavelet_haar_centered , 2)
@@ -67,7 +78,7 @@ main :: IO ()
 main = do
   input <- getContents
   let sourceFns = filter (isSuffixOf ".fits") $ words input
-  sequence_ $ testWavelet <$> [False,True] <*> wavelets <*> sourceFns
+  sequence_ $ testWavelet <$> [True,False] <*> wavelets <*> sourceFns
 
 
 testWavelet :: Bool -> (String, Wavelet, Int)   -> FilePath   -> IO ()
@@ -85,13 +96,14 @@ testWavelet    isStd   (wlabel, wptr   , waveletK) sourcePath = do
       
       localFitsFn :: String
       localBmpFn :: String
-      localFitsFn = printf "/tmp/%s.fits" (show myUnixPid)
-      localBmpFn = printf "/tmp/%s.bmp" (show myUnixPid)
+      localFitsFn = printf "tmp-%s.fits" (show myUnixPid)
+      localBmpFn = printf "tmp-%s.bmp" (show myUnixPid)
       
       destinationFn = (replace "/shibayama/" "/nushio/" sourceDir) </> (fnBase++".bmp")
                       
       (destinationDir,_) = splitFileName destinationFn
 
+  system $ printf "hadoop fs -mkdir -p %s" destinationDir
   system $ printf "rm -f %s" localFitsFn
   system $ printf "hadoop fs -get %s %s" sourcePath localFitsFn
 
@@ -115,7 +127,10 @@ testWavelet    isStd   (wlabel, wptr   , waveletK) sourcePath = do
         free pData
 
 
-  nam <- peekCString =<< c'gsl_wavelet_name pWavelet
+  waveletNameBody <- peekCString =<< c'gsl_wavelet_name pWavelet
+
+  let waveletName :: String
+      waveletName = printf "%s%d" waveletNameBody waveletK
 
   -- zero initialize the data
   forM_ [0..n*n-1] $ \i ->
@@ -168,7 +183,38 @@ testWavelet    isStd   (wlabel, wptr   , waveletK) sourcePath = do
 
   let bmpShape = R.ix2 n n
 
-  let toRGB :: Double -> (Word8,Word8,Word8)
+  let 
+    rects :: [Rect]
+    rects 
+      | isStd     = rsS
+      | otherwise = rsN
+
+
+    stdSizes  = takeWhile (<n) $ iterate (*2) 1
+    stdRanges = zip (0:stdSizes) (0:stdSizes)
+    rsS = [ ((x,y), (w,h)) | (x,w) <- stdRanges, (y,h) <- stdRanges]
+    
+    rsN = ((0,0),(1,1)) : concat
+      [[((0,x),(x,x)), ((x,0),(x,x)), ((x,x),(x,x))] | x <- stdSizes]
+
+    onEdge :: R.DIM2 -> Rect -> Bool
+    onEdge pt ((x,y),(w,h)) = go
+      where
+        [py,px] = R.listOfShape pt 
+        go | px == x     && py >= y && py < y+h = True   
+           | px == x+w-1 && py >= y && py < y+h = True   
+           | py == y     && px >= x && px < x+w = True   
+           | py == y+h-1 && px >= x && px < x+w = True   
+           | otherwise                          = False
+
+    paintEdge :: R.DIM2 -> RGB -> RGB
+    paintEdge pt orig
+      | any (onEdge pt) rects = (0,255,0)
+      | otherwise             = orig
+
+
+
+  let toRGB :: Double -> RGB
       toRGB x = 
         let red   = rb (x/10)
             green = min red blue
@@ -178,13 +224,23 @@ testWavelet    isStd   (wlabel, wptr   , waveletK) sourcePath = do
       rb :: Double -> Word8
       rb = round . min 255 . max 0 . (255-)
 
-  bmpData <- R.computeUnboxedP $ R.map (toRGB . realToFrac) $ R.fromForeignPtr bmpShape fgnPData
+  -- waveletSpace :: R.Array R.U R.DIM2 Double
+  waveletSpace <- R.computeUnboxedP $
+    R.map realToFrac $
+    R.fromForeignPtr bmpShape fgnPData
+
+  bmpData <- R.computeUnboxedP $ 
+    R.zipWith paintEdge (R.fromFunction bmpShape id) $
+    R.map toRGB waveletSpace
 
   R.writeImageToBMP localBmpFn  bmpData
-  system $ printf "hadoop fs -mkdir -p %s" destinationDir
   system $ printf "hadoop fs -rm -f -skipTrash %s > /dev/null" destinationFn
   system $ printf "hadoop fs -put %s %s" localBmpFn destinationFn
 
+
+
+
+  printf "%s:%s\t%s\n" sourcePath waveletName (show ret)
+  hFlush stdout
   finalizer
 
-  printf "%s:%s\t%s\n" sourcePath nam (show ret)

@@ -59,3 +59,15 @@ executable hs-wordcount-reducer
   build-depends:     
     base ==4.6.*
   ghc-options:       -Wall -O2
+
+executable daily-forecast
+  main-is:           daily-forecast.hs
+  hs-source-dirs:    exe-src/
+  build-depends:
+     base ==4.6.*
+   , containers
+   , lens
+   , safe
+   , text
+   , time
+  ghc-options:       -Wall -O2
