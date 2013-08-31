@@ -206,6 +206,12 @@ testWavelet    isStd   (wlabel, wptr   , waveletK) sourcePath = do
            | py == y     && px >= x && px < x+w = True   
            | py == y+h-1 && px >= x && px < x+w = True   
            | otherwise                          = False
+     
+    inRect :: R.DIM2 -> Rect -> Bool
+    inRect pt ((x,y),(w,h)) = 
+      px >= x && py >= y && px < x+w && py < y+h
+      where
+        [py,px] = R.listOfShape pt 
 
     paintEdge :: R.DIM2 -> RGB -> RGB
     paintEdge pt orig
@@ -237,10 +243,17 @@ testWavelet    isStd   (wlabel, wptr   , waveletK) sourcePath = do
   system $ printf "hadoop fs -rm -f -skipTrash %s > /dev/null" destinationFn
   system $ printf "hadoop fs -put %s %s" localBmpFn destinationFn
 
-
-
-
-  printf "%s:%s\t%s\n" sourcePath waveletName (show ret)
+  
+  forM_ [("id"::String,id),("sq",sq)] $ \(tag,func) -> do
+    forM_ rects $ \theRect@((rx,ry),(rw,rh)) -> do
+      sumInRect  <-
+        R.sumAllP $
+        R.zipWith (\pt x-> if (inRect pt theRect) then func x else 0) (R.fromFunction bmpShape id) $
+        waveletSpace
+  
+      printf "%s:%s:%s:%s\t%e\n" sourcePath waveletName (show (rx,ry)) tag sumInRect
   hFlush stdout
+
+
   finalizer
 

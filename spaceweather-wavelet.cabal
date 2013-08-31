@@ -38,7 +38,7 @@ executable main
    , repa
    , repa-io
    , unix
-  ghc-options:       -Wall -O2
+  ghc-options:       -Wall -O2 -threaded
 
 executable make-pdf
   main-is:           make-pdf.hs
