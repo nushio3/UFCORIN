@@ -49,12 +49,12 @@ type RGB = (Word8,Word8,Word8)
 wavelets :: [(String, Wavelet, Int)]
 wavelets =
   [ ("haarC", p'gsl_wavelet_haar_centered , 2)
-  , ("daubC", p'gsl_wavelet_daubechies_centered , 20)
-  , ("bsplC", p'gsl_wavelet_bspline_centered ,103 )    
-  , ("bsplC", p'gsl_wavelet_bspline_centered ,202 )    
-  , ("bsplC", p'gsl_wavelet_bspline_centered ,208 )    
-  , ("bsplC", p'gsl_wavelet_bspline_centered ,301 )    
-  , ("bsplC", p'gsl_wavelet_bspline_centered ,303 )    
+--   , ("daubC", p'gsl_wavelet_daubechies_centered , 20)
+--   , ("bsplC", p'gsl_wavelet_bspline_centered ,103 )    
+--   , ("bsplC", p'gsl_wavelet_bspline_centered ,202 )    
+--   , ("bsplC", p'gsl_wavelet_bspline_centered ,208 )    
+--   , ("bsplC", p'gsl_wavelet_bspline_centered ,301 )    
+--   , ("bsplC", p'gsl_wavelet_bspline_centered ,303 )    
   ]
   -- [
   --   ("haar0", p'gsl_wavelet_haar , 2)
@@ -76,13 +76,16 @@ wavelets =
 
 main :: IO ()
 main = do
-  input <- getContents
-  let sourceFns = filter (isSuffixOf ".fits") $ words input
-  sequence_ $ testWavelet <$> [True,False] <*> wavelets <*> sourceFns
+  b <- isEOF
+  when (not b) $ do
+    input <- getLine
+    let sourceFns = filter (isSuffixOf ".fits") $ words input
+    sequence_ $ testWavelet <$> wavelets <*> [True,False] <*> sourceFns
+    main
 
 
-testWavelet :: Bool -> (String, Wavelet, Int)   -> FilePath   -> IO ()
-testWavelet    isStd   (wlabel, wptr   , waveletK) sourcePath = do
+testWavelet :: (String, Wavelet, Int) -> Bool -> FilePath   -> IO ()
+testWavelet    (wlabel, wptr   , waveletK) isStd sourcePath = do
 
   myUnixPid <- getProcessID
 
@@ -102,6 +105,9 @@ testWavelet    isStd   (wlabel, wptr   , waveletK) sourcePath = do
       destinationFn = (replace "/shibayama/" "/nushio/" sourceDir) </> (fnBase++".bmp")
                       
       (destinationDir,_) = splitFileName destinationFn
+
+      timeWaveletTag :: String
+      timeWaveletTag = replace "/user/shibayama/sdo/hmi/" "" $ sourceDir ++ fnBase
 
   system $ printf "hadoop fs -mkdir -p %s" destinationDir
   system $ printf "rm -f %s" localFitsFn
@@ -127,10 +133,6 @@ testWavelet    isStd   (wlabel, wptr   , waveletK) sourcePath = do
         free pData
 
 
-  waveletNameBody <- peekCString =<< c'gsl_wavelet_name pWavelet
-
-  let waveletName :: String
-      waveletName = printf "%s%d" waveletNameBody waveletK
 
   -- zero initialize the data
   forM_ [0..n*n-1] $ \i ->
@@ -240,8 +242,7 @@ testWavelet    isStd   (wlabel, wptr   , waveletK) sourcePath = do
     R.map toRGB waveletSpace
 
   R.writeImageToBMP localBmpFn  bmpData
-  system $ printf "hadoop fs -rm -f -skipTrash %s > /dev/null" destinationFn
-  system $ printf "hadoop fs -put %s %s" localBmpFn destinationFn
+  system $ printf "hadoop fs -put -f %s %s" localBmpFn destinationFn
 
   
   forM_ [("id"::String,id),("sq",sq)] $ \(tag,func) -> do
@@ -251,7 +252,7 @@ testWavelet    isStd   (wlabel, wptr   , waveletK) sourcePath = do
         R.zipWith (\pt x-> if (inRect pt theRect) then func x else 0) (R.fromFunction bmpShape id) $
         waveletSpace
   
-      printf "%s:%s:%s:%s\t%e\n" sourcePath waveletName (show (rx,ry)) tag sumInRect
+      printf "%s:%s:%s\t%e\n" timeWaveletTag (show (rx,ry)) tag sumInRect
   hFlush stdout
 
 

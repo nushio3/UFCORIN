@@ -126,7 +126,7 @@ forecast span f src = ret
       let futureTs = [t..t+fromIntegral span]
 
       -- require all data to be present
---      vals <- forM futureTs (\t -> Map.lookup t src)
+      --vals <- forM futureTs (\t -> Map.lookup t src)
 
       -- require some of the data to be present.
       let vals = catMaybes $ map (\t -> Map.lookup t src) futureTs
