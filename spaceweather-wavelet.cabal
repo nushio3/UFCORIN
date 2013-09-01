@@ -140,5 +140,6 @@ executable linear-regression
    , containers
    , spoon
    , process
+   , random
   ghc-options:       -Wall -O2
 
