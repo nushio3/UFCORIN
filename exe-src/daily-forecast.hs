@@ -47,9 +47,9 @@ main = do
         | n < 0 = "back"
 
       goesFn :: FilePath
-      goesFn = printf "%scast-goes-%d.txt" tag n
+      goesFn = printf "%scast-goes-%d.txt" tag $ abs n
       hmiFn :: FilePath
-      hmiFn = printf "%scast-hmi-%d.txt" tag n
+      hmiFn = printf "%scast-hmi-%d.txt" tag $ abs n
     writeFile goesFn $ unlines $ map pprintGoes $ Map.toList goesData2
     writeFile hmiFn $ unlines $ map pprintHmi $ Map.toList hmiData2
   
