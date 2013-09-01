@@ -71,3 +71,20 @@ executable daily-forecast
    , text
    , time
   ghc-options:       -Wall -O2
+
+executable transpose-wavelet-mapper
+  main-is:           transpose-wavelet-mapper.hs
+  hs-source-dirs:    exe-src/
+  build-depends:    
+     base ==4.6.*
+   , text
+  ghc-options:       -Wall -O2
+
+executable transpose-wavelet-reducer
+  main-is:           transpose-wavelet-reducer.hs
+  hs-source-dirs:    exe-src/
+  build-depends:    
+     base ==4.6.*
+   , text
+  ghc-options:       -Wall -O2
+
