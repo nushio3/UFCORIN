@@ -4,7 +4,7 @@ set pm3d
 set pm3d map
 set xrange [0:1024]
 set yrange [0:1024]
-set cbrange [-1000:1000]
+set cbrange [-10000:10000]
 set pal gray
 set size ratio -1
 splot "test.txt"
