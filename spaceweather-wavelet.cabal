@@ -129,3 +129,16 @@ executable transpose-wavelet-finalizer
 
   ghc-options:       -Wall -O2
 
+executable linear-regression
+  main-is:           linear-regression.hs
+  hs-source-dirs:    exe-src/
+  build-depends:    
+     base ==4.6.*
+   , spaceweather-wavelet
+
+   , cmaes
+   , containers
+   , spoon
+   , process
+  ghc-options:       -Wall -O2
+
