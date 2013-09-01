@@ -36,15 +36,20 @@ main = do
             (Set.fromList $ Map.keys hmiData)
 
 
-  forM_ [0,24,48,72] $ \n -> do
+  forM_ [-72,-48,-24,0,24,48,72] $ \n -> do
     let
       goesData2 = forecast n catGoesFeatures goesData
       hmiData2 = forecast n catHmiFeatures hmiData
 
+      tag :: String
+      tag
+        | n >=0 = "fore"
+        | n < 0 = "back"
+
       goesFn :: FilePath
-      goesFn = printf "forecast-goes-%d.txt" n
+      goesFn = printf "%scast-goes-%d.txt" tag n
       hmiFn :: FilePath
-      hmiFn = printf "forecast-hmi-%d.txt" n
+      hmiFn = printf "%scast-hmi-%d.txt" tag n
     writeFile goesFn $ unlines $ map pprintGoes $ Map.toList goesData2
     writeFile hmiFn $ unlines $ map pprintHmi $ Map.toList hmiData2
   
