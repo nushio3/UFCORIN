@@ -17,10 +17,29 @@ cabal-version:       >=1.8
 library
   hs-source-dirs:    src/
   exposed-modules:     
+    SpaceWeather.Text
+    SpaceWeather.Timeline
     SpaceWeather.Wavelet
   -- other-modules:       
-  build-depends:     base ==4.6.*
-                   , bindings-gsl >= 0.2
+  build-depends:     
+     base ==4.6.*
+   , binary 
+   , bindings-gsl >= 0.2
+   , bytestring >= 0.10.0.2
+   , containers
+   , cpu >= 0.1.1
+   , filepath
+   , lens
+   , MissingH
+   , process
+   , repa
+   , repa-io
+   , safe
+   , spoon
+   , text >= 0.11.3.1
+   , time
+   , unix
+
 
 executable main
   main-is:           main.hs
@@ -65,6 +84,8 @@ executable daily-forecast
   hs-source-dirs:    exe-src/
   build-depends:
      base ==4.6.*
+   , spaceweather-wavelet
+
    , containers
    , lens
    , safe
@@ -77,6 +98,9 @@ executable transpose-wavelet-mapper
   hs-source-dirs:    exe-src/
   build-depends:    
      base ==4.6.*
+   , spaceweather-wavelet
+
+   , spoon
    , text
   ghc-options:       -Wall -O2
 
@@ -85,6 +109,23 @@ executable transpose-wavelet-reducer
   hs-source-dirs:    exe-src/
   build-depends:    
      base ==4.6.*
+   , spaceweather-wavelet
+
+   , spoon
    , text
+  ghc-options:       -Wall -O2
+
+executable transpose-wavelet-finalizer
+  main-is:           transpose-wavelet-finalizer.hs
+  hs-source-dirs:    exe-src/
+  build-depends:    
+     base ==4.6.*
+   , spaceweather-wavelet
+
+   , containers
+   , process
+   , spoon
+   , text
+
   ghc-options:       -Wall -O2
 
