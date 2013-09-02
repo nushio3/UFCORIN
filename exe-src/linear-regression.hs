@@ -76,8 +76,19 @@ loadFile fn x y f = do
   return $ (fn,) $ Map.fromList $ mapMaybe parse strs
 
 
+averageN :: TimeBin -> Vector Double -> Vector Double
+averageN n v = Map.fromList $
+  [ (t,) $ avgDef $ catMaybes [ Map.lookup (t+dt) v | dt <- [-n..0]] | t <- targetRange]
+  where
+    avgDef xs
+      | length xs <= 0 = 0
+      | otherwise      = sum xs / (fromIntegral $ length xs)
+
 main :: IO ()
 main = do
+  let outDir = "forecast-candidates" :: String
+  system $ printf "mkdir -p %s" outDir
+
   (_,forecastTarget) <- loadFile "forecast-goes-72.txt" 1 4 log10
   (_,backcast) <- loadFile "forecast-goes-24.txt" 1 2 log10
 
@@ -96,24 +107,34 @@ main = do
         (fn3, vx3) = features !! i3
         (fn4, vx4) = features !! i4
 
-        f [a0, a1,b, a2,a3,a4] = norm (forecastTarget -
+
+        fitCurve [a0, a1,b, a2,a3,a4] = averageN 24 $
           (scale a0 (zipV (*) backcast (scale (1e-10 * abs a3) vx3 + unitVector) )
             + zipV (/) (scale (1e-10*a1) vx1 + scale b unitVector) (scale (1e-10 * abs a2) vx2 + unitVector)  )
-            + (scale (1e-10 * abs a4) vx4))
+            + (scale (1e-10 * abs a4) vx4)
+
+        f xs = norm (forecastTarget - fitCurve xs)
         
         
         ppGoal :: [Double] -> String
         ppGoal [a0, a1,b,a2,a3,a4] = printf
-          "\"<paste forecast-goes-24.txt %s \" u 2:( %e *  (%e * $20 + 1) *log10($3) + (%e * $10 + %e) / (%e * $15 + 1)) + %e*$25"
+          "\"<paste forecast-goes-24.txt %s \" u 2:( %e *  (%e * $20 + 1) *log10($3) + (%e * $10 + %e) / (%e * $15 + 1) + %e*$25)"
                         (unwords [fn1,fn2,fn3,fn4])  a0     (1e-10*a3)                 (1e-10*a1)     b      (1e-10*abs a2)  (1e-10*abs a4)    
  
         nm1 = vx1 .* vx1
         nm2 = vx2 .* vx2
 
-        
-    when (nm1 > 0 && nm2 > 0 && Map.size vx1 >= 360 && Map.size vx2 >= 360) $ do
+        isOK v = v .* v > 0 && Map.size v >= 360
+
+    when (all isOK [vx1,vx2,vx3,vx4]) $ do
       goal <- Opt.run $ (Opt.minimize f [1,1,0,1,1,1]) -- {Opt.scaling=Just [1e-10,1]}
       printf "%f\t%s\n" (f goal) (ppGoal goal)
+
+      let fn = printf "%s/%f-curve.txt" outDir (f goal)
+          outStr = unlines $ ["# "++ppGoal goal] ++ map (\(t,x)->printf "%d\t%e" t x) (Map.toList $ fitCurve goal)
+
+      writeFile fn outStr
+
     hFlush stdout
 
   return ()
