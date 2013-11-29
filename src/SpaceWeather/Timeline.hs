@@ -82,6 +82,23 @@ parseTimeBin ws = do
       
   return $ t ^. discreteTime
 
+parseTimeBin2 :: Text.Text -> Maybe TimeBin
+parseTimeBin2 inputStr = do
+  let dayParts = Text.splitOn "/" inputStr
+
+  yearVal <- dayParts `readAt` 0
+  monthVal <- dayParts `readAt` 1
+  dayVal <- dayParts `readAt` 2
+
+  hourVal <- dayParts `readAt` 3
+  
+  let day = fromGregorian yearVal monthVal dayVal
+      sec = secondsToDiffTime $ hourVal * 3600
+      t = UTCTime day sec
+      
+  return $ t ^. discreteTime
+
+
 parseGoesLine :: Text.Text -> Maybe (TimeBin, GoesFeature)
 parseGoesLine str = do -- maybe monad
   let ws = Text.words str

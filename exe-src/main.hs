@@ -12,7 +12,7 @@ import qualified Data.ByteString.Lazy as BSL
 import Data.Binary (get)
 import Data.Binary.Get (runGet)
 import Data.Int(Int32)
-import Data.List(isSuffixOf)
+import Data.List(isSuffixOf,isInfixOf)
 import Data.Monoid ((<>))
 import Data.Word(Word8,Word32)
 import qualified Data.Text as Text
@@ -48,14 +48,20 @@ type RGB = (Word8,Word8,Word8)
 
 wavelets :: [(String, Wavelet, Int)]
 wavelets =
-  [ ("haarC", p'gsl_wavelet_haar_centered , 2)
+  [
+--    ("haarC", p'gsl_wavelet_haar_centered , 2)
+      ("bsplC", p'gsl_wavelet_bspline_centered ,301 )    
+--  , ("daubC", p'gsl_wavelet_daubechies_centered , 20)
+  ]
+  
+
+
 --   , ("daubC", p'gsl_wavelet_daubechies_centered , 20)
 --   , ("bsplC", p'gsl_wavelet_bspline_centered ,103 )    
 --   , ("bsplC", p'gsl_wavelet_bspline_centered ,202 )    
 --   , ("bsplC", p'gsl_wavelet_bspline_centered ,208 )    
---   , ("bsplC", p'gsl_wavelet_bspline_centered ,301 )    
 --   , ("bsplC", p'gsl_wavelet_bspline_centered ,303 )    
-  ]
+
   -- [
   --   ("haar0", p'gsl_wavelet_haar , 2)
   -- , ("haarC", p'gsl_wavelet_haar_centered , 2)
@@ -64,7 +70,6 @@ wavelets =
   -- , ("bspl0", p'gsl_wavelet_bspline , 103)
   -- , ("bsplC", p'gsl_wavelet_bspline_centered ,103 )
   -- , ("daub0", p'gsl_wavelet_daubechies , 20)
-  -- , ("daubC", p'gsl_wavelet_daubechies_centered , 20)
   -- , ("bspl0", p'gsl_wavelet_bspline , 309)
   -- , ("bsplC", p'gsl_wavelet_bspline_centered , 309 )
   -- ]
@@ -193,7 +198,7 @@ testWavelet    (wlabel, wptr   , waveletK) isStd sourcePath = do
 
 
     stdSizes  = takeWhile (<n) $ iterate (*2) 1
-    stdRanges = zip (0:stdSizes) (0:stdSizes)
+    stdRanges = zip (0:stdSizes) (1:stdSizes)
     rsS = [ ((x,y), (w,h)) | (x,w) <- stdRanges, (y,h) <- stdRanges]
     
     rsN = ((0,0),(1,1)) : concat
@@ -241,9 +246,10 @@ testWavelet    (wlabel, wptr   , waveletK) isStd sourcePath = do
     R.zipWith paintEdge (R.fromFunction bmpShape id) $
     R.map toRGB waveletSpace
 
-  R.writeImageToBMP localBmpFn  bmpData
-  system $ printf "hadoop fs -put -f %s %s" localBmpFn destinationFn
-
+  when ("/00-"`isInfixOf`destinationFn) $ do
+    R.writeImageToBMP localBmpFn  bmpData
+    system $ printf "hadoop fs -put -f %s %s" localBmpFn destinationFn
+    return ()
   
   forM_ [("id"::String,id),("sq",sq)] $ \(tag,func) -> do
     forM_ rects $ \theRect@((rx,ry),(rw,rh)) -> do
