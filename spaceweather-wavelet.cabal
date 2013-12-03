@@ -143,3 +143,14 @@ executable linear-regression
    , random
   ghc-options:       -Wall -O2
 
+
+executable visualize-feature-vector
+  main-is:           visualize-feature-vector.hs
+  hs-source-dirs:    exe-src/
+  build-depends:    
+     base ==4.6.*
+   , spaceweather-wavelet
+   , safe
+   , process
+  ghc-options:       -Wall -O2
+
