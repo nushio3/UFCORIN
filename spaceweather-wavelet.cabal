@@ -41,8 +41,8 @@ library
    , unix
 
 
-executable main
-  main-is:           main.hs
+executable wavelet-analysis
+  main-is:           wavelet-analysis.hs
   hs-source-dirs:    exe-src/
   build-depends:
      base ==4.6.*

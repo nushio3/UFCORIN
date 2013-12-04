@@ -273,6 +273,283 @@
             </configuration>
             <file>/user/nushio/wavelet-analysis</file>
         </streaming>
+        <ok to="wavelet-2012-01"/>
+        <error to="wavelet-2012-01"/>
+    </action>
+
+    <action name="wavelet-2012-01">
+        <streaming>
+            <job-tracker>${jobTracker}</job-tracker>
+            <name-node>${nameNode}</name-node>
+            <streaming>
+                <mapper>./wavelet-analysis</mapper>
+                <reducer>/bin/cat</reducer>
+            </streaming>
+            <configuration>
+                <property>
+                    <name>mapred.input.dir</name>
+                    <value>/user/nushio/filelist/2012-01-*.txt</value>
+                </property>
+                <property>
+                    <name>mapred.output.dir</name>
+                    <value>/user/nushio/wavelet-result/2012-01</value>
+                </property>
+            </configuration>
+            <file>/user/nushio/wavelet-analysis</file>
+        </streaming>
+        <ok to="wavelet-2012-02"/>
+        <error to="wavelet-2012-02"/>
+    </action>
+    <action name="wavelet-2012-02">
+        <streaming>
+            <job-tracker>${jobTracker}</job-tracker>
+            <name-node>${nameNode}</name-node>
+            <streaming>
+                <mapper>./wavelet-analysis</mapper>
+                <reducer>/bin/cat</reducer>
+            </streaming>
+            <configuration>
+                <property>
+                    <name>mapred.input.dir</name>
+                    <value>/user/nushio/filelist/2012-02-*.txt</value>
+                </property>
+                <property>
+                    <name>mapred.output.dir</name>
+                    <value>/user/nushio/wavelet-result/2012-02</value>
+                </property>
+            </configuration>
+            <file>/user/nushio/wavelet-analysis</file>
+        </streaming>
+        <ok to="wavelet-2012-03"/>
+        <error to="wavelet-2012-03"/>
+    </action>
+    <action name="wavelet-2012-03">
+        <streaming>
+            <job-tracker>${jobTracker}</job-tracker>
+            <name-node>${nameNode}</name-node>
+            <streaming>
+                <mapper>./wavelet-analysis</mapper>
+                <reducer>/bin/cat</reducer>
+            </streaming>
+            <configuration>
+                <property>
+                    <name>mapred.input.dir</name>
+                    <value>/user/nushio/filelist/2012-03-*.txt</value>
+                </property>
+                <property>
+                    <name>mapred.output.dir</name>
+                    <value>/user/nushio/wavelet-result/2012-03</value>
+                </property>
+            </configuration>
+            <file>/user/nushio/wavelet-analysis</file>
+        </streaming>
+        <ok to="wavelet-2012-04"/>
+        <error to="wavelet-2012-04"/>
+    </action>
+    <action name="wavelet-2012-04">
+        <streaming>
+            <job-tracker>${jobTracker}</job-tracker>
+            <name-node>${nameNode}</name-node>
+            <streaming>
+                <mapper>./wavelet-analysis</mapper>
+                <reducer>/bin/cat</reducer>
+            </streaming>
+            <configuration>
+                <property>
+                    <name>mapred.input.dir</name>
+                    <value>/user/nushio/filelist/2012-04-*.txt</value>
+                </property>
+                <property>
+                    <name>mapred.output.dir</name>
+                    <value>/user/nushio/wavelet-result/2012-04</value>
+                </property>
+            </configuration>
+            <file>/user/nushio/wavelet-analysis</file>
+        </streaming>
+        <ok to="wavelet-2012-05"/>
+        <error to="wavelet-2012-05"/>
+    </action>
+    <action name="wavelet-2012-05">
+        <streaming>
+            <job-tracker>${jobTracker}</job-tracker>
+            <name-node>${nameNode}</name-node>
+            <streaming>
+                <mapper>./wavelet-analysis</mapper>
+                <reducer>/bin/cat</reducer>
+            </streaming>
+            <configuration>
+                <property>
+                    <name>mapred.input.dir</name>
+                    <value>/user/nushio/filelist/2012-05-*.txt</value>
+                </property>
+                <property>
+                    <name>mapred.output.dir</name>
+                    <value>/user/nushio/wavelet-result/2012-05</value>
+                </property>
+            </configuration>
+            <file>/user/nushio/wavelet-analysis</file>
+        </streaming>
+        <ok to="wavelet-2012-06"/>
+        <error to="wavelet-2012-06"/>
+    </action>
+    <action name="wavelet-2012-06">
+        <streaming>
+            <job-tracker>${jobTracker}</job-tracker>
+            <name-node>${nameNode}</name-node>
+            <streaming>
+                <mapper>./wavelet-analysis</mapper>
+                <reducer>/bin/cat</reducer>
+            </streaming>
+            <configuration>
+                <property>
+                    <name>mapred.input.dir</name>
+                    <value>/user/nushio/filelist/2012-06-*.txt</value>
+                </property>
+                <property>
+                    <name>mapred.output.dir</name>
+                    <value>/user/nushio/wavelet-result/2012-06</value>
+                </property>
+            </configuration>
+            <file>/user/nushio/wavelet-analysis</file>
+        </streaming>
+        <ok to="wavelet-2012-07"/>
+        <error to="wavelet-2012-07"/>
+    </action>
+    <action name="wavelet-2012-07">
+        <streaming>
+            <job-tracker>${jobTracker}</job-tracker>
+            <name-node>${nameNode}</name-node>
+            <streaming>
+                <mapper>./wavelet-analysis</mapper>
+                <reducer>/bin/cat</reducer>
+            </streaming>
+            <configuration>
+                <property>
+                    <name>mapred.input.dir</name>
+                    <value>/user/nushio/filelist/2012-07-*.txt</value>
+                </property>
+                <property>
+                    <name>mapred.output.dir</name>
+                    <value>/user/nushio/wavelet-result/2012-07</value>
+                </property>
+            </configuration>
+            <file>/user/nushio/wavelet-analysis</file>
+        </streaming>
+        <ok to="wavelet-2012-08"/>
+        <error to="wavelet-2012-08"/>
+    </action>
+    <action name="wavelet-2012-08">
+        <streaming>
+            <job-tracker>${jobTracker}</job-tracker>
+            <name-node>${nameNode}</name-node>
+            <streaming>
+                <mapper>./wavelet-analysis</mapper>
+                <reducer>/bin/cat</reducer>
+            </streaming>
+            <configuration>
+                <property>
+                    <name>mapred.input.dir</name>
+                    <value>/user/nushio/filelist/2012-08-*.txt</value>
+                </property>
+                <property>
+                    <name>mapred.output.dir</name>
+                    <value>/user/nushio/wavelet-result/2012-08</value>
+                </property>
+            </configuration>
+            <file>/user/nushio/wavelet-analysis</file>
+        </streaming>
+        <ok to="wavelet-2012-09"/>
+        <error to="wavelet-2012-09"/>
+    </action>
+    <action name="wavelet-2012-09">
+        <streaming>
+            <job-tracker>${jobTracker}</job-tracker>
+            <name-node>${nameNode}</name-node>
+            <streaming>
+                <mapper>./wavelet-analysis</mapper>
+                <reducer>/bin/cat</reducer>
+            </streaming>
+            <configuration>
+                <property>
+                    <name>mapred.input.dir</name>
+                    <value>/user/nushio/filelist/2012-09-*.txt</value>
+                </property>
+                <property>
+                    <name>mapred.output.dir</name>
+                    <value>/user/nushio/wavelet-result/2012-09</value>
+                </property>
+            </configuration>
+            <file>/user/nushio/wavelet-analysis</file>
+        </streaming>
+        <ok to="wavelet-2012-10"/>
+        <error to="wavelet-2012-10"/>
+    </action>
+    <action name="wavelet-2012-10">
+        <streaming>
+            <job-tracker>${jobTracker}</job-tracker>
+            <name-node>${nameNode}</name-node>
+            <streaming>
+                <mapper>./wavelet-analysis</mapper>
+                <reducer>/bin/cat</reducer>
+            </streaming>
+            <configuration>
+                <property>
+                    <name>mapred.input.dir</name>
+                    <value>/user/nushio/filelist/2012-10-*.txt</value>
+                </property>
+                <property>
+                    <name>mapred.output.dir</name>
+                    <value>/user/nushio/wavelet-result/2012-10</value>
+                </property>
+            </configuration>
+            <file>/user/nushio/wavelet-analysis</file>
+        </streaming>
+        <ok to="wavelet-2012-11"/>
+        <error to="wavelet-2012-11"/>
+    </action>
+    <action name="wavelet-2012-11">
+        <streaming>
+            <job-tracker>${jobTracker}</job-tracker>
+            <name-node>${nameNode}</name-node>
+            <streaming>
+                <mapper>./wavelet-analysis</mapper>
+                <reducer>/bin/cat</reducer>
+            </streaming>
+            <configuration>
+                <property>
+                    <name>mapred.input.dir</name>
+                    <value>/user/nushio/filelist/2012-11-*.txt</value>
+                </property>
+                <property>
+                    <name>mapred.output.dir</name>
+                    <value>/user/nushio/wavelet-result/2012-11</value>
+                </property>
+            </configuration>
+            <file>/user/nushio/wavelet-analysis</file>
+        </streaming>
+        <ok to="wavelet-2012-12"/>
+        <error to="wavelet-2012-12"/>
+    </action>
+    <action name="wavelet-2012-12">
+        <streaming>
+            <job-tracker>${jobTracker}</job-tracker>
+            <name-node>${nameNode}</name-node>
+            <streaming>
+                <mapper>./wavelet-analysis</mapper>
+                <reducer>/bin/cat</reducer>
+            </streaming>
+            <configuration>
+                <property>
+                    <name>mapred.input.dir</name>
+                    <value>/user/nushio/filelist/2012-12-*.txt</value>
+                </property>
+                <property>
+                    <name>mapred.output.dir</name>
+                    <value>/user/nushio/wavelet-result/2012-12</value>
+                </property>
+            </configuration>
+            <file>/user/nushio/wavelet-analysis</file>
+        </streaming>
         <ok to="end"/>
         <error to="kill"/>
     </action>
@@ -280,4 +557,5 @@
         <message>Action failed, error message[${wf:errorMessage(wf:lastErrorNode())}]</message>
     </kill>
     <end name="end"/>
+
 </workflow-app>
