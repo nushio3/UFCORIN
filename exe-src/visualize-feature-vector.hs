@@ -89,9 +89,7 @@ trainData = foldl go t0 $ reverse featureCurves
     toClass :: Double -> Int                                            
     toClass x
       | x < 1e-6 = 0
-      | x < 1e-5 = 1
-      | x < 1e-4 = 2
-      | otherwise =3
+      | otherwise =1
     
     go :: TrainData -> FeatureCurve -> TrainData
     go x y = Map.intersectionWith go2 x (timeLine y)
@@ -103,7 +101,7 @@ pprint :: TrainDatum -> T.Text
 pprint (c,xs) = T.pack $ printf "%d %s" c xsstr
   where
     log10 :: Double->Double
-    log10 x = log x / log 10 - 11
+    log10 x = log x / log 10 - 10
     
     xsstr :: String
     xsstr = unwords $ zipWith (printf "%d:%f") [1 :: Int ..] $ map log10 xs
@@ -136,10 +134,18 @@ main = do
   let td = Map.elems trainData
       n  = length td
       (td2011, td2012) = splitAt (div n 2) td
+      
+      first500 = take 500 td
+      next500  = take 500 $ drop 500 td
+  
+  hPutStrLn stderr "create corpus 500..."
+  T.writeFile "corpus-C-500A.txt" $ T.unlines $ map pprint $ first500
+  T.writeFile "corpus-C-500B.txt" $ T.unlines $ map pprint $ next500
+  
   
   hPutStrLn stderr "create corpus 2011..."
-  T.writeFile "corpus-2011.txt" $ T.unlines $ map pprint $ td2011
+  T.writeFile "corpus-C-2011.txt" $ T.unlines $ map pprint $ td2011
   hPutStrLn stderr "create corpus 2012..."
-  T.writeFile "corpus-2012.txt" $ T.unlines $ map pprint $ td2012
+  T.writeFile "corpus-C-2012.txt" $ T.unlines $ map pprint $ td2012
   return ()
 
