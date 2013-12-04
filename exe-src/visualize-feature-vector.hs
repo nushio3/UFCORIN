@@ -102,8 +102,11 @@ trainData = foldl go t0 $ reverse featureCurves
 pprint :: TrainDatum -> T.Text
 pprint (c,xs) = T.pack $ printf "%d %s" c xsstr
   where
+    log10 :: Double->Double
+    log10 x = log x / log 10 - 11
+    
     xsstr :: String
-    xsstr = unwords $ zipWith (printf "%d:%f") [1 :: Int ..] xs
+    xsstr = unwords $ zipWith (printf "%d:%f") [1 :: Int ..] $ map log10 xs
 
 plotCmd :: String
 plotCmd = unlines $
