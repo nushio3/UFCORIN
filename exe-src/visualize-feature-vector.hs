@@ -89,6 +89,7 @@ plotCmd = unlines $
   , "set out 'test.eps'"
   , "set xlabel 'GOES flux (24hour forecast max)'"
   , "set ylabel 'feature vector component'"
+  , "set xrange [1e-8:1e-3]" 
   ] ++ map go featureCurves
   where
     go :: FeatureCurve -> String
