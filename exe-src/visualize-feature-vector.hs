@@ -44,10 +44,7 @@ data FeatureCurve
 featureCurves :: [FeatureCurve]
 featureCurves = unsafePerformIO $ do 
   str <- readProcess "ls" [dir1] ""
-  let fns0 = 
-        filter (not . isInfixOf "-0-") $
-        filter (not . isInfixOf "-0.txt") $
-        words str
+  let fns0 = words str
       fns1 = map (dir1++) $ fns0
       fns2 = map (dir2++) $ fns0
   zipWithM go fns1 fns2      
@@ -80,7 +77,33 @@ featureCurves = unsafePerformIO $ do
       T.writeFile fn2 $ T.unlines $ [T.pack $ printf "%f %f" v1 v2 | (_,(v1,v2)) <- Map.toList mixTL]
       return $ FeatureCurve {range = (small,large), tag = fn2, timeLine = tl}
       
-      
+type TrainDatum = (Int, [Double])
+type TrainData = TimeLine TrainDatum
+
+trainData :: TrainData
+trainData = foldl go t0 $ reverse featureCurves      
+  where
+    t0 :: TrainData
+    t0 = Map.map ((, []) . toClass) goesForecastCurve 
+
+    toClass :: Double -> Int                                            
+    toClass x
+      | x < 1e-6 = 0
+      | x < 1e-5 = 1
+      | x < 1e-4 = 2
+      | otherwise =3
+    
+    go :: TrainData -> FeatureCurve -> TrainData
+    go x y = Map.intersectionWith go2 x (timeLine y)
+    
+    go2 :: TrainDatum -> Double -> TrainDatum
+    go2 (i,xs) x = (i, x:xs)
+
+pprint :: TrainDatum -> T.Text
+pprint (c,xs) = T.pack $ printf "%d %s" c xsstr
+  where
+    xsstr :: String
+    xsstr = unwords $ zipWith (printf "%d:%f") [1 :: Int ..] xs
 
 plotCmd :: String
 plotCmd = unlines $
@@ -106,5 +129,14 @@ plotCmd = unlines $
 main :: IO ()
 main = do
   _ <- readProcess "gnuplot" [] plotCmd
+  
+  let td = Map.elems trainData
+      n  = length td
+      (td2011, td2012) = splitAt (div n 2) td
+  
+  hPutStrLn stderr "create corpus 2011..."
+  T.writeFile "corpus-2011.txt" $ T.unlines $ map pprint $ td2011
+  hPutStrLn stderr "create corpus 2012..."
+  T.writeFile "corpus-2012.txt" $ T.unlines $ map pprint $ td2012
   return ()
 
