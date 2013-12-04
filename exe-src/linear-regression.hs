@@ -11,7 +11,7 @@ import System.IO
 import System.Process
 import System.Random
 import Text.Printf
-import SpaceWeather.Timeline
+import SpaceWeather.TimeLine
 
 
 

@@ -126,22 +126,26 @@ testWavelet    (wlabel, wptr   , waveletK) isStd sourcePath = do
 
   pWavDau <- peek wptr
 
-  pData <- mallocBytes (sizeOf (0::CDouble) * n * n)
+  -- allocate the necessary memories
+  pData  <- mallocBytes (sizeOf (0::CDouble) * n * n)
+  pDataN <- mallocBytes (sizeOf (0::CDouble) * n * n)
   pWavelet <- c'gsl_wavelet_alloc pWavDau (fromIntegral waveletK)
   pWork <- c'gsl_wavelet_workspace_alloc (fromIntegral $ n*n)
-
   fgnPData <- newForeignPtr_ pData
 
+  -- and also prepare for freeing them later
   let finalizer = do
         c'gsl_wavelet_free pWavelet
         c'gsl_wavelet_workspace_free pWork
         free pData
-
+        free pDataN
+  
 
 
   -- zero initialize the data
-  forM_ [0..n*n-1] $ \i ->
-    pokeElemOff pData i (0 :: CDouble)
+  forM_ [0..n*n-1] $ \i -> do
+    pokeElemOff pData  i (0 :: CDouble)
+    pokeElemOff pDataN i (0 :: CDouble)
 
   -- read the fits file and shrink it
   let nOfInput :: Int
@@ -175,7 +179,17 @@ testWavelet    (wlabel, wptr   , waveletK) isStd sourcePath = do
 
         ix' = ix `div` (nOfInput `div`n)
         iy' = iy `div` (nOfInput `div`n)
-      pokeElemOff pData (iy'*n+ix') val
+      val0 <- peekElemOff pData (iy'*n+ix') 
+      valN0 <- peekElemOff pDataN (iy'*n+ix') 
+      pokeElemOff pData (iy'*n+ix') (val0 + val)
+      pokeElemOff pDataN (iy'*n+ix') (valN0 + 1)
+ 
+  -- divide the data to compute the average
+  forM_ [0..n*n-1] $ \i -> do
+    nume <- peekElemOff pData  i 
+    deno <- peekElemOff pDataN i
+    pokeElemOff pData i (nume/deno)
+
 
 
   let wavelet2d

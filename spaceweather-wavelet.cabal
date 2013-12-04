@@ -149,8 +149,10 @@ executable visualize-feature-vector
   hs-source-dirs:    exe-src/
   build-depends:    
      base ==4.6.*
-   , spaceweather-wavelet
-   , safe
+   , containers
    , process
+   , safe
+   , spaceweather-wavelet
+   , text
   ghc-options:       -Wall -O2
 

@@ -17,7 +17,7 @@ import           Safe (atMay, readMay)
 import           Text.Printf
 
 
-import SpaceWeather.Timeline
+import SpaceWeather.TimeLine
 
 main :: IO ()
 main = do

@@ -2,17 +2,34 @@ module Main where
 
 import Control.Monad
 import Data.List
+import qualified Data.Map.Strict as Map
 import Data.Maybe
+import qualified Data.Text as T
+import qualified Data.Text.IO as T
 import Safe
 import System.IO.Unsafe 
 import System.Process
 import Text.Printf
 
+import SpaceWeather.Text
 import SpaceWeather.TimeLine
 
 -- the filename to be forecasted.
 fnForecast :: FilePath
 fnForecast = "forecast/forecast-goes-24.txt"
+
+goesForecastCurve :: TimeLine Double
+goesForecastCurve = unsafePerformIO $ do
+  str <- T.readFile fnForecast
+  let xss :: [[T.Text]]
+      xss = map T.words $ T.lines str
+      
+      parseLine :: [T.Text] -> Maybe (TimeBin, Double)
+      parseLine ws = do
+        t <- readAt ws 1
+        v <- readAt ws 4
+        return (t,v)
+  return $ Map.fromList $ catMaybes $ map parseLine xss
 
 fnFeatures :: [((Double,Double),FilePath)]
 fnFeatures = unsafePerformIO $ do 

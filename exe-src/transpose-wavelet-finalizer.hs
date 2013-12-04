@@ -10,7 +10,7 @@ import qualified Data.Text.IO as T
 import System.Process (system)
 import Text.Printf
 
-import SpaceWeather.Timeline (parseTimeBin)
+import SpaceWeather.TimeLine (parseTimeBin)
 import SpaceWeather.Text
 
 main :: IO ()
