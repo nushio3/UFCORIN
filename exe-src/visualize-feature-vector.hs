@@ -31,8 +31,16 @@ goesForecastCurve = unsafePerformIO $ do
         return (t,v)
   return $ Map.fromList $ catMaybes $ map parseLine xss
 
-fnFeatures :: [((Double,Double),FilePath)]
-fnFeatures = unsafePerformIO $ do 
+data FeatureCurve
+  = FeatureCurve
+  { tag :: String
+  , range :: (Double, Double)
+  , timeLine :: TimeLine Double
+  }
+  
+
+featureCurves :: [FeatureCurve]
+featureCurves = unsafePerformIO $ do 
   str <- readProcess "ls" [dir1] ""
   let fns0 = 
         filter (not . isInfixOf "-0-") $
@@ -47,22 +55,25 @@ fnFeatures = unsafePerformIO $ do
     dir2 = "work/"    
     
     go fn1 fn2 = do
-      str1 <- readFile fn1
-      strF <- readFile fnForecast
+      str1 <- T.readFile fn1
       
-      let stream1 :: [String]
-          stream1 = catMaybes $ map (flip atMay 4) $ map words $ lines str1
-      let streamF :: [String]
-          streamF = catMaybes $ map (flip atMay 4) $ map words $ lines strF
+      let tl :: TimeLine Double
+          tl = Map.fromList $ catMaybes $ map parse $ map T.words $ T.lines str1
+
+          parse :: [T.Text] -> Maybe (TimeBin, Double)
+          parse ws = do
+            t <- readAt ws 2
+            v <- readAt ws 4
+            return (t,v)
       
           vals :: [Double]
-          vals = sort $ map read stream1
+          vals = sort $ Map.elems tl
           
           small =  maybe 1 id $ headMay $ drop (length vals `div` 100) vals
           large =  maybe 10 id $ headMay $ drop (length vals `div` 100) $ reverse vals
           
-      writeFile fn2 $ unlines $ zipWith (printf "%s %s") streamF stream1
-      return ((small,large), fn2)
+      T.writeFile fn2 $ T.unlines $ [T.pack $ printf "%d %f" t v | (t,v) <- Map.toList tl]
+      return $ FeatureCurve {range = (small,large), tag = fn2, timeLine = tl}
       
       
 
@@ -73,10 +84,13 @@ plotCmd = unlines $
   , "set out 'test.eps'"
   , "set xlabel 'GOES flux (24hour forecast max)'"
   , "set ylabel 'feature vector component'"
-  ] ++ map go fnFeatures 
+  ] ++ map go featureCurves
   where
-    go :: ((Double, Double),FilePath) -> String
-    go ((small, large),fn) = unlines
+    go :: FeatureCurve -> String
+    go fc = 
+      let (small,large) = range fc
+          fn = tag fc
+      in unlines
       [ printf "set title '%s'" fn
       , printf "set yrange [%f:%f]" small large
       , printf "plot '%s' u 1:2" fn]
