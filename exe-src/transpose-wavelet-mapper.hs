@@ -19,7 +19,7 @@ processLine str = spoon $ T.intercalate "\t" [newKeyStr,newValStr]
   where
     [keyStr,valStr] = T.splitOn "\t" str
     [coloned0, coordStr, funcStr] = T.splitOn ":" keyStr
-    [ymdhStr,nsStr,waveletStr,kStr] = T.splitOn "-" coloned0
+    [ymdhStr,waveletStr,kStr,nsStr] = T.splitOn "-" coloned0
     [year,month,day,hour] = T.splitOn "/" ymdhStr
 
     px :: Int
@@ -28,6 +28,6 @@ processLine str = spoon $ T.intercalate "\t" [newKeyStr,newValStr]
 
     newYmdStr = T.intercalate "-" [year,month,day] 
 
-    newFnStr = T.intercalate "-" [nsStr, waveletStr,kStr,showT px,showT py]
+    newFnStr = T.intercalate "-" [waveletStr,kStr,nsStr,showT px,showT py]
     newKeyStr = T.unwords [newFnStr, newYmdStr, hour]
     newValStr = T.unwords [funcStr, valStr]

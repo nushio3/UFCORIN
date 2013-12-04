@@ -97,7 +97,7 @@ testWavelet    (wlabel, wptr   , waveletK) isStd sourcePath = do
   let fnBase :: String
       fnBase = printf "%s-%s-%s-%d"
                sourceFnBody
-               (if isStd then "S" else "N" :: String) wlabel waveletK
+               wlabel waveletK (if isStd then "S" else "N" :: String) 
                
       (sourceDir, sourceFn) = splitFileName sourcePath
       (sourceFnBody, _) = splitExtension sourceFn
