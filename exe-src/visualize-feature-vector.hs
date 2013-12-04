@@ -53,7 +53,7 @@ featureCurves = unsafePerformIO $ do
   zipWithM go fns1 fns2      
 
   where
-    dir1 = "wavelet-features/"
+    dir1 = "wavelet-features-bsplC/"
     dir2 = "work/"    
     
     go fn1 fn2 = do

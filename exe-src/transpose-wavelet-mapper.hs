@@ -31,3 +31,4 @@ processLine str = spoon $ T.intercalate "\t" [newKeyStr,newValStr]
     newFnStr = T.intercalate "-" [waveletStr,kStr,nsStr,showT px,showT py]
     newKeyStr = T.unwords [newFnStr, newYmdStr, hour]
     newValStr = T.unwords [funcStr, valStr]
+

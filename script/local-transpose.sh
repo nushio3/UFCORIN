@@ -1,4 +1,4 @@
-cat resource/wavelet-result-twoyear.txt | \
+cat resource/wavelet-result-bsplC.txt | \
     ./dist/build/transpose-wavelet-mapper/transpose-wavelet-mapper | \
     sort | \
     ./dist/build/transpose-wavelet-reducer/transpose-wavelet-reducer | \
