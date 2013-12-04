@@ -1,3 +1,4 @@
+{-# LANGUAGE TupleSections #-}
 module Main where
 
 import Control.Monad
@@ -7,6 +8,7 @@ import Data.Maybe
 import qualified Data.Text as T
 import qualified Data.Text.IO as T
 import Safe
+import System.IO
 import System.IO.Unsafe 
 import System.Process
 import Text.Printf
@@ -55,6 +57,7 @@ featureCurves = unsafePerformIO $ do
     dir2 = "work/"    
     
     go fn1 fn2 = do
+      hPutStrLn stderr $ printf "processing %s..." fn1
       str1 <- T.readFile fn1
       
       let tl :: TimeLine Double
@@ -72,7 +75,9 @@ featureCurves = unsafePerformIO $ do
           small =  maybe 1 id $ headMay $ drop (length vals `div` 100) vals
           large =  maybe 10 id $ headMay $ drop (length vals `div` 100) $ reverse vals
           
-      T.writeFile fn2 $ T.unlines $ [T.pack $ printf "%d %f" t v | (t,v) <- Map.toList tl]
+          mixTL = Map.intersectionWith (,) goesForecastCurve tl
+          
+      T.writeFile fn2 $ T.unlines $ [T.pack $ printf "%f %f" v1 v2 | (_,(v1,v2)) <- Map.toList mixTL]
       return $ FeatureCurve {range = (small,large), tag = fn2, timeLine = tl}
       
       
