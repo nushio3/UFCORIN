@@ -49,8 +49,8 @@ type RGB = (Word8,Word8,Word8)
 wavelets :: [(String, Wavelet, Int)]
 wavelets =
   [
---    ("haarC", p'gsl_wavelet_haar_centered , 2)
-      ("bsplC", p'gsl_wavelet_bspline_centered ,301 )    
+    ("haarC", p'gsl_wavelet_haar_centered , 2)
+  , ("bsplC", p'gsl_wavelet_bspline_centered ,301 )    
 --  , ("daubC", p'gsl_wavelet_daubechies_centered , 20)
   ]
   
