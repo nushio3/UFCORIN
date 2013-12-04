@@ -18,7 +18,7 @@ library
   hs-source-dirs:    src/
   exposed-modules:     
     SpaceWeather.Text
-    SpaceWeather.Timeline
+    SpaceWeather.TimeLine
     SpaceWeather.Wavelet
   -- other-modules:       
   build-depends:     

@@ -1,12 +1,12 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TemplateHaskell #-}
-module SpaceWeather.Timeline where
+module SpaceWeather.TimeLine where
 
 import           Control.Lens (iso, Iso', (^.), from)
 import           Control.Lens.TH
 import           Control.Monad
 import           Data.List (intercalate)
-import qualified Data.Map as Map
+import qualified Data.Map.Strict as Map
 import           Data.Maybe
 import qualified Data.Set as Set
 import qualified Data.Text as Text
@@ -29,10 +29,11 @@ average xs = sum xs / (fromIntegral $ length xs)
 -- Time features
 ----------------------------------------------------
 
+type TimeBin = Integer
+type TimeLine a = Map.Map TimeBin a
+
 epoch :: UTCTime
 epoch = UTCTime (fromGregorian 2011 1 1) 0
-
-type TimeBin = Integer
 
 discreteTime :: Iso' UTCTime TimeBin
 discreteTime = iso f g

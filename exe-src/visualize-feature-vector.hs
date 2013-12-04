@@ -8,6 +8,7 @@ import System.IO.Unsafe
 import System.Process
 import Text.Printf
 
+import SpaceWeather.TimeLine
 
 -- the filename to be forecasted.
 fnForecast :: FilePath
