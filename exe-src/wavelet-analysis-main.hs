@@ -95,7 +95,7 @@ testWavelet    (wlabel, wptr   , waveletK) isStd sourcePath = do
   myUnixPid <- getProcessID
 
   let fnBase :: String
-      fnBase = printf "%s-%s-%s-%d"
+      fnBase = printf "%s-%s-%d-%s"
                sourceFnBody
                wlabel waveletK (if isStd then "S" else "N" :: String) 
                
