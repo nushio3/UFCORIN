@@ -77,8 +77,16 @@ featureCurves = unsafePerformIO $ do
       T.writeFile fn2 $ T.unlines $ [T.pack $ printf "%f %f" v1 v2 | (_,(v1,v2)) <- Map.toList mixTL]
       return $ FeatureCurve {range = (small,large), tag = fn2, timeLine = tl}
       
-type TrainDatum = (Int, [Double])
+type TrainDatum = (String, [Double])
 type TrainData = TimeLine TrainDatum
+svmTypeStr = "R"
+toClass :: Double -> String                                        
+toClass x = show $ log x / log 10
+-- toClass x
+--   | x < 1e-6 = 0
+--   | otherwise =1
+    
+
 
 trainData :: TrainData
 trainData = foldl go t0 $ reverse featureCurves      
@@ -86,11 +94,6 @@ trainData = foldl go t0 $ reverse featureCurves
     t0 :: TrainData
     t0 = Map.map ((, []) . toClass) goesForecastCurve 
 
-    toClass :: Double -> Int                                            
-    toClass x
-      | x < 1e-6 = 0
-      | otherwise =1
-    
     go :: TrainData -> FeatureCurve -> TrainData
     go x y = Map.intersectionWith go2 x (timeLine y)
     
@@ -98,7 +101,7 @@ trainData = foldl go t0 $ reverse featureCurves
     go2 (i,xs) x = (i, x:xs)
 
 pprint :: TrainDatum -> T.Text
-pprint (c,xs) = T.pack $ printf "%d %s" c xsstr
+pprint (c,xs) = T.pack $ printf "%s %s" c xsstr
   where
     log10 :: Double->Double
     log10 x = log x / log 10 - 10
@@ -127,6 +130,8 @@ plotCmd = unlines $
 
 
 
+
+
 main :: IO ()
 main = do
   _ <- readProcess "gnuplot" [] plotCmd
@@ -139,13 +144,13 @@ main = do
       next500  = take 500 $ drop 500 td
   
   hPutStrLn stderr "create corpus 500..."
-  T.writeFile "corpus-C-500A.txt" $ T.unlines $ map pprint $ first500
-  T.writeFile "corpus-C-500B.txt" $ T.unlines $ map pprint $ next500
+  T.writeFile (printf "corpus-%s-500A.txt" svmTypeStr) $ T.unlines $ map pprint $ first500
+  T.writeFile (printf "corpus-%s-500B.txt" svmTypeStr) $ T.unlines $ map pprint $ next500
   
   
   hPutStrLn stderr "create corpus 2011..."
-  T.writeFile "corpus-C-2011.txt" $ T.unlines $ map pprint $ td2011
+  T.writeFile (printf "corpus-%s-2011.txt" svmTypeStr) $ T.unlines $ map pprint $ td2011
   hPutStrLn stderr "create corpus 2012..."
-  T.writeFile "corpus-C-2012.txt" $ T.unlines $ map pprint $ td2012
+  T.writeFile (printf "corpus-%s-2012.txt" svmTypeStr) $ T.unlines $ map pprint $ td2012
   return ()
 
