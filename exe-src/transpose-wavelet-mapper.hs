@@ -5,6 +5,7 @@ import Control.Spoon(spoon)
 import Data.Maybe
 import qualified Data.Text as T
 import qualified Data.Text.IO as T
+import Text.Printf
 
 import SpaceWeather.Text
 
@@ -28,7 +29,7 @@ processLine str = spoon $ T.intercalate "\t" [newKeyStr,newValStr]
 
     newYmdStr = T.intercalate "-" [year,month,day] 
 
-    newFnStr = T.intercalate "-" [waveletStr,kStr,nsStr,showT px,showT py]
+    newFnStr = T.intercalate "-" [waveletStr,kStr,nsStr,T.pack $ printf "%04d-%04d" px py]
     newKeyStr = T.unwords [newFnStr, newYmdStr, hour]
     newValStr = T.unwords [funcStr, valStr]
 
