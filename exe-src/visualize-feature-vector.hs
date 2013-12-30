@@ -50,7 +50,7 @@ featureCurves = unsafePerformIO $ do
   zipWithM go fns1 fns2      
 
   where
-    dir1 = "wavelet-features-bsplC/"
+    dir1 = "wavelet-features/"
     dir2 = "work/"    
     
     go fn1 fn2 = do
@@ -142,7 +142,11 @@ main = do
       
       first500 = take 500 td
       next500  = take 500 $ drop 500 td
-  
+                 
+      weekSw = cycle $ (replicate (24*7) True ++ replicate (24*7) False)
+
+      (tdweekA,tdweekB) = partition fst $ zip weekSw td
+
   hPutStrLn stderr "create corpus 500..."
   T.writeFile (printf "corpus-%s-500A.txt" svmTypeStr) $ T.unlines $ map pprint $ first500
   T.writeFile (printf "corpus-%s-500B.txt" svmTypeStr) $ T.unlines $ map pprint $ next500
@@ -152,5 +156,11 @@ main = do
   T.writeFile (printf "corpus-%s-2011.txt" svmTypeStr) $ T.unlines $ map pprint $ td2011
   hPutStrLn stderr "create corpus 2012..."
   T.writeFile (printf "corpus-%s-2012.txt" svmTypeStr) $ T.unlines $ map pprint $ td2012
+
+  hPutStrLn stderr "create corpus week-A..."
+  T.writeFile (printf "corpus-%s-weeklyA.txt" svmTypeStr) $ T.unlines $ map pprint $ map snd $ tdweekA
+  hPutStrLn stderr "create corpus week-B..."
+  T.writeFile (printf "corpus-%s-weeklyB.txt" svmTypeStr) $ T.unlines $ map pprint $ map snd $ tdweekB
+
   return ()
 
