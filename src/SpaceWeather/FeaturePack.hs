@@ -1,1 +1,1 @@
-module SpaceWeather.LWFeature where
+module SpaceWeather.FeaturePack where
