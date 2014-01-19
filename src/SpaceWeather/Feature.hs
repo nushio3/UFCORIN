@@ -20,7 +20,7 @@ instance Format Feature where
   encode = 
     T.unlines .
     map (\(t,a) -> T.unwords [showT t, showT a] ) .
-    Map.toList
+    Map.toList 
 
   decode txt0 = do
     -- (Either String) monad
@@ -58,5 +58,6 @@ instance Format FeatureIOPair where
 
 catFeatures :: [Feature] -> Features
 catFeatures [] = Map.empty
-catFeatures xs = let (fs1: fss) = reverse xs in
-  foldr (Map.intersectionWith (:)) (Map.map (:[]) fs1) fss
+catFeatures xs = 
+  let (fs1: fss) = reverse xs 
+  in foldr (Map.intersectionWith (:)) (Map.map (:[]) fs1) fss

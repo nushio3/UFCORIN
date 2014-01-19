@@ -17,7 +17,8 @@ import SpaceWeather.Feature
 newtype LibSVMFeatures = LibSVMFeatures {
       _libSVMIOPair :: FeatureIOPair
    }
-makeClassy ''LibSVMFeatures
+makeClassy  ''LibSVMFeatures
+makeWrapped ''LibSVMFeatures
 
 instance Arbitrary LibSVMFeatures where
   arbitrary = 

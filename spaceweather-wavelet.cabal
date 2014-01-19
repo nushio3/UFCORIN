@@ -20,6 +20,7 @@ library
     SpaceWeather.Feature
     SpaceWeather.Format  
     SpaceWeather.LibSVM
+    SpaceWeather.LWFeature
     SpaceWeather.TimeLine
     SpaceWeather.Wavelet
   -- other-modules:       
