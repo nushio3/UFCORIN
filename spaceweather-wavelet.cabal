@@ -19,8 +19,8 @@ library
   exposed-modules:   
     SpaceWeather.Feature
     SpaceWeather.Format  
+    SpaceWeather.FeaturePack
     SpaceWeather.LibSVM
-    SpaceWeather.LWFeature
     SpaceWeather.TimeLine
     SpaceWeather.Wavelet
   -- other-modules:       
