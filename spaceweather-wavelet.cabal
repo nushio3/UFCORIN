@@ -16,13 +16,14 @@ cabal-version:       >=1.8
 
 library
   hs-source-dirs:    src/
-  exposed-modules:     
-    SpaceWeather.Text
+  exposed-modules:   
+    SpaceWeather.Feature
+    SpaceWeather.Format  
     SpaceWeather.TimeLine
     SpaceWeather.Wavelet
   -- other-modules:       
   build-depends:     
-     base ==4.6.*
+     base ==4.*
    , binary 
    , bindings-gsl >= 0.2
    , bytestring >= 0.10.0.2
@@ -32,6 +33,7 @@ library
    , lens
    , MissingH
    , process
+   , QuickCheck
    , repa
    , repa-io
    , safe

@@ -11,7 +11,7 @@ import System.Process (system)
 import Text.Printf
 
 import SpaceWeather.TimeLine (parseTimeBin)
-import SpaceWeather.Text
+import SpaceWeather.Format
 
 main :: IO ()
 main = do
