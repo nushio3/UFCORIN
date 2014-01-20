@@ -3,7 +3,7 @@ module SpaceWeather.Feature where
 
 import Control.Lens
 import Control.Monad
-import qualified Data.Map as Map
+import qualified Data.Map.Strict as Map
 import Data.Monoid
 import qualified Data.Text as T
 import SpaceWeather.Format
@@ -32,3 +32,8 @@ instance Format Feature where
             a <- readAt wtxt 1
             return (t,a)
     fmap Map.fromList $ mapM parseLine xs
+
+catFeatures :: [Feature] -> Features
+catFeatures [] = Map.empty
+catFeatures xs = let (fs1: fss) = reverse xs in
+  foldr (Map.intersectionWith (:)) (Map.map (:[]) fs1) fss
