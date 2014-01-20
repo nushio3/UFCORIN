@@ -1,5 +1,4 @@
-{-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE FlexibleContexts, FlexibleInstances, OverloadedStrings, TemplateHaskell, TypeSynonymInstances #-}
 module SpaceWeather.TimeLine where
 
 import           Control.Lens (iso, Iso', (^.), from)
@@ -13,9 +12,17 @@ import qualified Data.Text as Text
 import qualified Data.Text.IO as Text
 import           Data.Time
 import           Safe (atMay, readMay)
+import           Test.QuickCheck.Arbitrary
 import           Text.Printf
 
-import SpaceWeather.Text
+import SpaceWeather.Format
+
+----------------------------------------------------
+-- Utility Functions
+
+import           Text.Printf
+
+import SpaceWeather.Format
 
 ----------------------------------------------------
 -- Utility Functions
@@ -31,6 +38,11 @@ average xs = sum xs / (fromIntegral $ length xs)
 
 type TimeBin = Integer
 type TimeLine a = Map.Map TimeBin a
+
+instance (Arbitrary a) => Arbitrary (TimeLine a) where
+  arbitrary = fmap Map.fromList $ arbitrary
+  shrink = map Map.fromList . shrink . Map.toList
+
 
 epoch :: UTCTime
 epoch = UTCTime (fromGregorian 2011 1 1) 0
@@ -59,7 +71,7 @@ data HmiFeature
   { _sphereAvg :: Double
   , _sphereAbsSum :: Double}
 
-$(makeLenses ''HmiFeature)
+makeLenses ''HmiFeature
 
 ----------------------------------------------------
 -- Parsers

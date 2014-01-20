@@ -13,7 +13,7 @@ import System.IO.Unsafe
 import System.Process
 import Text.Printf
 
-import SpaceWeather.Text
+import SpaceWeather.Format
 import SpaceWeather.TimeLine
 
 -- the filename to be forecasted.

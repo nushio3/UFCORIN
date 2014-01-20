@@ -7,7 +7,7 @@ import qualified Data.Text as T
 import qualified Data.Text.IO as T
 import Text.Printf
 
-import SpaceWeather.Text
+import SpaceWeather.Format
 
 main :: IO ()
 main = do
