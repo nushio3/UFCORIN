@@ -79,12 +79,12 @@ featureCurves = unsafePerformIO $ do
       
 type TrainDatum = (String, [Double])
 type TrainData = TimeLine TrainDatum
-svmTypeStr = "C"
+svmTypeStr = "R"
 toClass :: Double -> String                                        
--- toClass x = show $ log x / log 10
-toClass x
-   | x < 1e-6 = show 0
-   | otherwise =show 1
+toClass x = show $ log x / log 10
+-- toClass x
+--    | x < 1e-6 = show 0
+--    | otherwise =show 1
     
 
 
