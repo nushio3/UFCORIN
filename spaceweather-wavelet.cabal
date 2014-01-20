@@ -50,12 +50,15 @@ Test-Suite spec
   Main-Is:              Spec.hs
   Other-Modules:        
                         
-  Build-Depends:        base
-                      , hspec >= 1.3
-                      , lens 
-                      , QuickCheck
+  Build-Depends:        
+      base
+    , containers
+    , hspec >= 1.3
+    , lens 
+    , QuickCheck
+    , text
 
-                      , spaceweather-wavelet
+    , spaceweather-wavelet
 
 executable wavelet-analysis-main
   main-is:           wavelet-analysis-main.hs
