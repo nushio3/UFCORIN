@@ -20,7 +20,9 @@ library
     SpaceWeather.Feature
     SpaceWeather.Format  
     SpaceWeather.FeaturePack
+    SpaceWeather.MachineLearningEngine
     SpaceWeather.LibSVM
+    SpaceWeather.PredictionStrategy
     SpaceWeather.TimeLine
     SpaceWeather.Wavelet
   -- other-modules:       
@@ -32,6 +34,7 @@ library
    , bytestring >= 0.10.0.2
    , containers
    , cpu >= 0.1.1
+   , either
    , filepath
    , lens
    , MissingH
@@ -43,6 +46,7 @@ library
    , spoon
    , text >= 0.11.3.1
    , time
+   , transformers
    , unix
    , yaml
 
