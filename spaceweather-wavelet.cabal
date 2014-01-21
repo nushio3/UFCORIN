@@ -22,7 +22,7 @@ library
     SpaceWeather.FeaturePack
     SpaceWeather.MachineLearningEngine
     SpaceWeather.LibSVM
-    SpaceWeather.PredictionStrategy
+    SpaceWeather.Prediction
     SpaceWeather.TimeLine
     SpaceWeather.Wavelet
   -- other-modules:       

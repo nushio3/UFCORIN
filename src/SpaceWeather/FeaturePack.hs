@@ -26,7 +26,7 @@ newtype FeaturePackFile
 
 makeWrapped ''FeaturePackFile
 makeClassy  ''FeaturePackFile
-Aeson.deriveJSON Aeson.defaultOptions{Aeson.fieldLabelModifier = drop 4, Aeson.constructorTagModifier = map toLower} ''FeaturePackFile
+Aeson.deriveJSON Aeson.defaultOptions ''FeaturePackFile
 instance Format FeaturePackFile where
   encode = Text.pack . BS.unpack . Yaml.encode
   decode = Yaml.decodeEither . BS.pack . Text.unpack
