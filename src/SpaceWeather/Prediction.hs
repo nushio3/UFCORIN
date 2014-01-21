@@ -10,7 +10,7 @@ import SpaceWeather.MachineLearningEngine
 
 data PredictionStrategy = PredictionStrategy 
   { _regressorUsed :: Regressor
-  , _featureFilesUsed  :: FeaturePackFile
+  , _featureFilesUsed  :: FeatureSchemaPack
   , _predictionTargetFile :: FilePath
   , _predictionResultFile :: FilePath
   }

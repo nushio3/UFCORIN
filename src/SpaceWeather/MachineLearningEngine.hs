@@ -29,5 +29,5 @@ defaultLibSVMOption = LibSVMOption
 
 
 data Regressor = LibSVM LibSVMOption | Linear LinearOption
-Aeson.deriveJSON Aeson.defaultOptions ''Regressor
+Aeson.deriveJSON Aeson.defaultOptions{Aeson.fieldLabelModifier = drop 1} ''Regressor
 

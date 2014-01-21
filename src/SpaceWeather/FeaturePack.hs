@@ -7,38 +7,70 @@ import Control.Monad.IO.Class
 import qualified Data.Aeson.TH as Aeson
 import qualified Data.ByteString.Char8 as BS
 import Data.Char
-import qualified Data.Text as Text
+import qualified Data.Map as Map
+import qualified Data.Text as T
+import qualified Data.Text.IO as T
 import qualified Data.Yaml as Yaml
 import           Test.QuickCheck.Arbitrary
+import           Text.Printf
 
 import SpaceWeather.Feature
 import SpaceWeather.Format
+import SpaceWeather.TimeLine
+
+data FeatureSchema 
+  = FeatureSchema 
+  { _colX           :: Int
+  , _colY           :: Int
+  , _weight         :: Double
+  , _isLog          :: Bool
+  , _schemaFilename :: FilePath
+  }
+makeClassy ''FeatureSchema
+Aeson.deriveJSON Aeson.defaultOptions{Aeson.fieldLabelModifier = drop 1} ''FeatureSchema
 
 newtype FeaturePack
-  = FeaturePack  [(Double, Feature)] 
+  = FeaturePack [Feature] 
 makeWrapped ''FeaturePack
 makeClassy  ''FeaturePack
 
-newtype FeaturePackFile 
-  = FeaturePackFile  [(Double, FilePath)] 
+newtype FeatureSchemaPack
+  = FeatureSchemaPack [FeatureSchema]
+
+makeWrapped ''FeatureSchemaPack
+makeClassy  ''FeatureSchemaPack
+Aeson.deriveJSON Aeson.defaultOptions ''FeatureSchemaPack
+instance Format FeatureSchemaPack where
+  encode = T.pack . BS.unpack . Yaml.encode
+  decode = Yaml.decodeEither . BS.pack . T.unpack
+
+loadFeatureSchema :: FeatureSchema -> EitherT String IO Feature
+loadFeatureSchema schema0 = do
+  txt0 <- liftIO $ T.readFile $ schema0^.schemaFilename
+
+  let 
+      convert :: Double -> Double
+      convert x = if schema0^.isLog then log x / log 10 else x
 
 
+      parseLine :: (Int, T.Text) -> Either String (TimeBin, Double)
+      parseLine (lineNum, txt) = 
+        maybe (Left $ printf "parse error on line %d" lineNum) Right $ do
+          -- maybe monad here
+          let wtxt = T.words txt
+          t <- readAt wtxt (schema0 ^. colX)
+          a <- readAt wtxt (schema0 ^. colY)
+          return (t,(schema0^.weight) * convert a)
 
-makeWrapped ''FeaturePackFile
-makeClassy  ''FeaturePackFile
-Aeson.deriveJSON Aeson.defaultOptions ''FeaturePackFile
-instance Format FeaturePackFile where
-  encode = Text.pack . BS.unpack . Yaml.encode
-  decode = Yaml.decodeEither . BS.pack . Text.unpack
+      ret :: Either String Feature
+      ret = fmap Map.fromList $ mapM parseLine $ linesWithComment txt0
+  hoistEither ret
 
-loadFeaturePackFile :: FeaturePackFile -> IO (Either String FeaturePack)
-loadFeaturePackFile fpf = do 
-  let map0 = view unwrapped fpf
-  map1 <- runEitherT $ mapM go map0 
-  return $ fmap FeaturePack map1  
 
-  where
-    go :: (Double, FilePath) -> EitherT String IO (Double,Feature)
-    go (w,fp) = do
-      econ <- liftIO $ decodeFile fp
-      hoistEither $ fmap (w,) econ
+loadFeatureSchemaPack :: FeatureSchemaPack -> IO (Either String FeaturePack)
+loadFeatureSchemaPack fsp = do 
+  let list0 = view unwrapped fsp
+  list1 <- runEitherT $ mapM loadFeatureSchema list0
+  return $ fmap (view wrapped) list1
+
+
