@@ -17,6 +17,7 @@ cabal-version:       >=1.8
 library
   hs-source-dirs:    src/
   exposed-modules:   
+    SpaceWeather.CmdArgs
     SpaceWeather.Feature
     SpaceWeather.Format  
     SpaceWeather.FeaturePack
@@ -25,6 +26,7 @@ library
     SpaceWeather.Prediction
     SpaceWeather.TimeLine
     SpaceWeather.Wavelet
+    System.IO.Hadoop
   -- other-modules:       
   build-depends:     
      base ==4.*
