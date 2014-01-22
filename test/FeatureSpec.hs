@@ -52,3 +52,7 @@ spec = do
       catFeatures (replicate n feature) == Map.map (replicate n) feature 
     prop "every row of cat of N features contain N elements." $ \fs -> 
       all ((== length fs) . length)  $ Map.elems $ catFeatures fs
+
+  describe "FeatureIOPair" $ do
+    prop "is encoded/decoded back properly." $ \fio -> 
+      (decode $ encode (fio :: FeatureIOPair)) == Right fio
