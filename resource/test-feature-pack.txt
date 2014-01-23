@@ -1,0 +1,10 @@
+- colY: 5
+  isLog: true
+  colX: 3
+  weight: 1.0
+  schemaFilename: /user/nushio/wavelet-features/haarC-2-S-0000-0000.txt
+- colY: 5
+  isLog: true
+  colX: 3
+  weight: 1.0
+  schemaFilename: /user/nushio/wavelet-features/bsplC-2-S-0000-0000.txt
