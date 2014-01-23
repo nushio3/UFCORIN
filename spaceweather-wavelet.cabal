@@ -67,6 +67,8 @@ Test-Suite spec
     , lens 
     , QuickCheck
     , text
+    , transformers
+
 
     , spaceweather-wavelet
 
