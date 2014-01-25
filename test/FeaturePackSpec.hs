@@ -8,6 +8,7 @@ import qualified Data.Map as Map
 import SpaceWeather.Feature
 import SpaceWeather.FeaturePack
 import SpaceWeather.Format
+import System.IO.Unsafe
 import Test.Hspec
 import Test.Hspec.QuickCheck
 import Test.QuickCheck.Arbitrary
@@ -18,19 +19,31 @@ testFS1 = FeatureSchema
   , _colY = 5
   , _weight = 1
   , _isLog = True
-  , _schemaFilename = "/user/nushio/wavelet-features/haarC-2-S-0000-0000.txt"
   }
 
-testFS2 :: FeatureSchema
-testFS2 = testFS1 & schemaFileName ^~
-  "/user/nushio/wavelet-features/bsplC-2-S-0000-0000.txt"
 
-testFP :: FeatureSchemaPack
-testFP = FeatureSchemaPack [testFS1, testFS2]
+testFSP :: FeatureSchemaPack
+testFSP = FeatureSchemaPack
+  { _fspSchemaDefinitions = Map.fromList
+      [("35L", testFS1)]
+  , _fspFilenamePairs = 
+      [("35L",   "/user/nushio/wavelet-features/haarC-2-S-0000-0000.txt")
+      ,("35L",   "/user/nushio/wavelet-features/bsplC-2-S-0000-0000.txt")
+      ,("35L",   "/user/nushio/wavelet-features/bsplC-2-S-0001-0001.txt")]}
+
+testFSP2 :: FeatureSchemaPack
+testFSP2 = ret
+  where
+    Right ret = 
+      unsafePerformIO $ 
+      decodeFile "resource/sample.fsp"
+
+
+
 
 spec::Spec
 spec = do
-  describe "A" $ do
-    it "B" $ do
-      liftIO $ T.writeFile "test.fp" $ encode testFP
-      (1+1) `shouldBe` 2
+  describe "FeaturePack" $ do
+    it "accepts easy Yaml." $ do
+      liftIO $ T.writeFile "test.fsp" $ encode testFSP
+      testFSP `shouldBe` testFSP2

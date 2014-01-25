@@ -18,6 +18,13 @@ data PredictionStrategy = PredictionStrategy
 makeClassy ''PredictionStrategy
 Aeson.deriveJSON Aeson.defaultOptions ''PredictionStrategy
 
+defaultPredictionStrategy :: PredictionStrategy
+defaultPredictionStrategy = PredictionStrategy
+  { _regressorUsed = LibSVM defaultLibSVMOption
+  , _featureFilesUsed = undefined
+  , _predictionTargetFile = ""
+  , _predictionResultFile = ""}
+
 data PredictionSession = PredictionSession
   { _predictionStrategyUsed :: PredictionStrategy
   , _heidkeSkillScore       :: Double

@@ -11,6 +11,7 @@ import qualified Data.Map as Map
 import qualified Data.Text as T
 import qualified Data.Text.IO as T
 import qualified Data.Yaml as Yaml
+import qualified System.IO.Hadoop as HFS
 import           Test.QuickCheck.Arbitrary
 import           Text.Printf
 
@@ -24,29 +25,37 @@ data FeatureSchema
   , _colY           :: Int
   , _weight         :: Double
   , _isLog          :: Bool
-  , _schemaFilename :: FilePath
-  }
+  } deriving (Eq, Ord, Show, Read)
 makeClassy ''FeatureSchema
 Aeson.deriveJSON Aeson.defaultOptions{Aeson.fieldLabelModifier = drop 1} ''FeatureSchema
+
+defaultFeatureSchema :: FeatureSchema
+defaultFeatureSchema = FeatureSchema
+  { _colX = 1
+  , _colY = 2
+  , _weight = 1
+  , _isLog = False
+  } 
 
 newtype FeaturePack
   = FeaturePack [Feature] 
 makeWrapped ''FeaturePack
 makeClassy  ''FeaturePack
 
-newtype FeatureSchemaPack
-  = FeatureSchemaPack [FeatureSchema]
-
-makeWrapped ''FeatureSchemaPack
+data FeatureSchemaPack
+  = FeatureSchemaPack 
+  { _fspSchemaDefinitions :: Map.Map String FeatureSchema
+  , _fspFilenamePairs :: [(String, FilePath)]
+  } deriving (Eq, Ord, Show, Read)
 makeClassy  ''FeatureSchemaPack
-Aeson.deriveJSON Aeson.defaultOptions ''FeatureSchemaPack
+Aeson.deriveJSON Aeson.defaultOptions{Aeson.fieldLabelModifier = drop 4} ''FeatureSchemaPack
 instance Format FeatureSchemaPack where
   encode = T.pack . BS.unpack . Yaml.encode
   decode = Yaml.decodeEither . BS.pack . T.unpack
 
-loadFeatureSchema :: FeatureSchema -> EitherT String IO Feature
-loadFeatureSchema schema0 = do
-  txt0 <- liftIO $ T.readFile $ schema0^.schemaFilename
+loadFeatureWithSchema :: FeatureSchema -> FilePath -> EitherT String IO Feature
+loadFeatureWithSchema schema0 fp = do
+  txt0 <- liftIO $ HFS.readFile $ fp
 
   let 
       convert :: Double -> Double
@@ -58,8 +67,8 @@ loadFeatureSchema schema0 = do
         maybe (Left $ printf "parse error on line %d" lineNum) Right $ do
           -- maybe monad here
           let wtxt = T.words txt
-          t <- readAt wtxt (schema0 ^. colX)
-          a <- readAt wtxt (schema0 ^. colY)
+          t <- readAt wtxt (schema0 ^. colX - 1)
+          a <- readAt wtxt (schema0 ^. colY - 1)
           return (t,(schema0^.weight) * convert a)
 
       ret :: Either String Feature
@@ -69,8 +78,15 @@ loadFeatureSchema schema0 = do
 
 loadFeatureSchemaPack :: FeatureSchemaPack -> IO (Either String FeaturePack)
 loadFeatureSchemaPack fsp = do 
-  let list0 = view unwrapped fsp
-  list1 <- runEitherT $ mapM loadFeatureSchema list0
+  let 
+      list0 = fsp ^. fspFilenamePairs
+      scMap = fsp ^. fspSchemaDefinitions
+
+      name2map :: String -> FeatureSchema
+      name2map fmtName = maybe defaultFeatureSchema
+        id (Map.lookup fmtName scMap)  
+  list1 <- runEitherT $ mapM (uncurry loadFeatureWithSchema) $ 
+    map (_1 %~ name2map) list0 
   return $ fmap (view wrapped) list1
 
 

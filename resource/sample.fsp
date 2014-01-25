@@ -1,0 +1,6 @@
+SchemaDefinitions:
+  f35L: { colX: 3, colY: 5, isLog: true, weight: 1.0}
+FilenamePairs:
+- [f35L, /user/nushio/wavelet-features/haarC-2-S-0000-0000.txt]
+- [f35L, /user/nushio/wavelet-features/bsplC-301-S-0000-0000.txt]
+- [f35L, /user/shibayama/sdo/hmi/hmi_totalflux.txt]
