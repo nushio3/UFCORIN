@@ -4,7 +4,7 @@ module SpaceWeather.MachineLearningEngine where
 import qualified Data.Aeson.TH as Aeson
 import SpaceWeather.TimeLine
 
-data LinearOption = LinearOption 
+data LinearOption = LinearOption  deriving (Eq, Ord, Show, Read)
 Aeson.deriveJSON Aeson.defaultOptions ''LinearOption
 
 
@@ -15,7 +15,7 @@ data LibSVMOption = LibSVMOption
   , _libSVMEpsilon    :: Double
   , _libSVMGamma      :: Maybe Double
   , _libSVMNu         :: Double
-  }
+  } deriving (Eq, Ord, Show, Read)
 Aeson.deriveJSON Aeson.defaultOptions{Aeson.fieldLabelModifier = drop 7} ''LibSVMOption
 
 defaultLibSVMOption :: LibSVMOption
@@ -31,10 +31,10 @@ defaultLibSVMOption = LibSVMOption
 
 -- | Choice for regression engine.
 
-data Regressor = LibSVM LibSVMOption | Linear LinearOption
+data Regressor = LibSVM LibSVMOption | Linear LinearOption deriving (Eq, Ord, Show, Read)
 Aeson.deriveJSON Aeson.defaultOptions{Aeson.fieldLabelModifier = drop 1} ''Regressor
 
-data CrossValidationStrategy = CVWeekly | CVMonthly | CVYearly
+data CrossValidationStrategy = CVWeekly | CVMonthly | CVYearly deriving (Eq, Ord, Show, Read)
 Aeson.deriveJSON Aeson.defaultOptions{Aeson.fieldLabelModifier = drop 1} ''CrossValidationStrategy
 
 inTrainingSet :: CrossValidationStrategy -> TimeBin -> Bool

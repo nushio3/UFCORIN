@@ -19,7 +19,7 @@ data PredictionStrategy = PredictionStrategy
   , _crossValidationStrategy :: CrossValidationStrategy
   , _predictionTargetSchema :: FeatureSchema
   , _predictionResultFile :: FilePath
-  }
+  } deriving (Eq, Ord, Show, Read)
 
 makeClassy ''PredictionStrategy
 Aeson.deriveJSON Aeson.defaultOptions ''PredictionStrategy
@@ -48,4 +48,4 @@ data PredictionSession = PredictionSession
   { _predictionStrategyUsed :: PredictionStrategy
   , _heidkeSkillScore       :: Double
   , _trueSkillScore         :: Double
-  }
+  } deriving (Eq, Ord, Show, Read)

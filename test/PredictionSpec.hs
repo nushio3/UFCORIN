@@ -21,5 +21,5 @@ spec = do
   describe "Prediction Pack" $ do
     it "generates Yaml." $ do
       liftIO $ T.writeFile "resource/sample-predictor.yml" $ encode defaultPredictionStrategy
-      (1+1) `shouldBe` 2
+      (decode $ encode defaultPredictionStrategy) `shouldBe` Right defaultPredictionStrategy
 
