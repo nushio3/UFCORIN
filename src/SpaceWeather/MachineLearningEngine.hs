@@ -2,6 +2,7 @@
 module SpaceWeather.MachineLearningEngine where
 
 import qualified Data.Aeson.TH as Aeson
+import SpaceWeather.TimeLine
 
 data LinearOption = LinearOption 
 Aeson.deriveJSON Aeson.defaultOptions ''LinearOption
@@ -28,6 +29,15 @@ defaultLibSVMOption = LibSVMOption
   }
 
 
+-- | Choice for regression engine.
+
 data Regressor = LibSVM LibSVMOption | Linear LinearOption
 Aeson.deriveJSON Aeson.defaultOptions{Aeson.fieldLabelModifier = drop 1} ''Regressor
 
+data CrossValidationStrategy = CVWeekly | CVMonthly | CVYearly
+Aeson.deriveJSON Aeson.defaultOptions{Aeson.fieldLabelModifier = drop 1} ''CrossValidationStrategy
+
+inTrainingSet :: CrossValidationStrategy -> TimeBin -> Bool
+inTrainingSet CVWeekly n = even (n `div` (24*7))
+inTrainingSet CVMonthly n = even (n `div` (24*31))
+inTrainingSet CVYearly n = even (n `div` (24*366))

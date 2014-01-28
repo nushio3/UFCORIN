@@ -25,11 +25,11 @@ testFS1 = FeatureSchema
 testFSP :: FeatureSchemaPack
 testFSP = FeatureSchemaPack
   { _fspSchemaDefinitions = Map.fromList
-      [("35L", testFS1)]
+      [("f35L", testFS1)]
   , _fspFilenamePairs = 
-      [("35L",   "/user/nushio/wavelet-features/haarC-2-S-0000-0000.txt")
-      ,("35L",   "/user/nushio/wavelet-features/bsplC-2-S-0000-0000.txt")
-      ,("35L",   "/user/nushio/wavelet-features/bsplC-2-S-0001-0001.txt")]}
+      [("f35L",   "/user/nushio/wavelet-features/haarC-2-S-0000-0000.txt")
+      ,("f35L",   "/user/nushio/wavelet-features/bsplC-301-S-0000-0000.txt")
+      ,("f35L",   "/user/shibayama/sdo/hmi/hmi_totalflux.txt")]}
 
 testFSP2 :: FeatureSchemaPack
 testFSP2 = ret
@@ -45,5 +45,5 @@ spec::Spec
 spec = do
   describe "FeaturePack" $ do
     it "accepts easy Yaml." $ do
-      liftIO $ T.writeFile "test.fsp" $ encode testFSP
+      liftIO $ T.writeFile "resource/sample-featurepack.yml" $ encode testFSP
       testFSP `shouldBe` testFSP2

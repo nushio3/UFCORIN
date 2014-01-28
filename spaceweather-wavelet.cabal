@@ -18,6 +18,7 @@ library
   hs-source-dirs:    src/
   exposed-modules:   
     SpaceWeather.CmdArgs
+    SpaceWeather.DefaultFeatureSchemaPack
     SpaceWeather.Feature
     SpaceWeather.Format  
     SpaceWeather.FeaturePack
