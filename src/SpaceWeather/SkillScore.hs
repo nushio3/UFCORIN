@@ -64,7 +64,7 @@ searchThreshold tbl score thre0 = maximum $
   where
     scoreOf thre1 = score [(xp > thre1, xo > thre0) | (xp, xo) <- tbl]
 
-    thres = map ((/50) . fromInteger) [-100 .. 100]
+    thres = map ((+thre0) . (/50) . fromInteger) [-100 .. 100]
 
 makeScoreMap :: [(Double,Double)] -> Double -> ScoreMap
 makeScoreMap tbl thre0 = Map.fromList

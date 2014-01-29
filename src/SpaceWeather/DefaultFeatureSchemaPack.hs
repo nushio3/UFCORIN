@@ -19,6 +19,7 @@ defaultFeatureSchemaPack =
   where
     f :: [(String, FilePath)] -> [(String, FilePath)]
     f = (("f35L",   "/user/shibayama/sdo/hmi/hmi_totalflux.txt"):)
+      . take 1 
       . filter (isInfixOf "-N-" . snd)
 
 defaultFeatureSchemaPackBig :: FeatureSchemaPack
