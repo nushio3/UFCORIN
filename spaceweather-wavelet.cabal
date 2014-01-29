@@ -22,7 +22,7 @@ library
     SpaceWeather.Feature
     SpaceWeather.Format  
     SpaceWeather.FeaturePack
-    SpaceWeather.MachineLearningEngine
+    SpaceWeather.GeneralRegressor
     SpaceWeather.LibSVM
     SpaceWeather.Prediction
     SpaceWeather.TimeLine
@@ -72,6 +72,16 @@ Test-Suite spec
 
 
     , spaceweather-wavelet
+
+executable prediction-main
+  main-is:           prediction-main.hs
+  hs-source-dirs:    exe-src/
+  build-depends:
+     base ==4.6.*
+
+   , spaceweather-wavelet
+  ghc-options:       -Wall -O2 
+
 
 executable wavelet-analysis-main
   main-is:           wavelet-analysis-main.hs

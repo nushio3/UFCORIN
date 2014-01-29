@@ -9,6 +9,7 @@ import SpaceWeather.Feature
 import SpaceWeather.FeaturePack
 import SpaceWeather.Format
 import SpaceWeather.Prediction
+import SpaceWeather.GeneralRegressor
 import System.IO.Unsafe
 import Test.Hspec
 import Test.Hspec.QuickCheck

@@ -1,4 +1,4 @@
-{-# LANGUAGE FlexibleContexts, FlexibleInstances, MultiParamTypeClasses, TemplateHaskell, TupleSections, TypeSynonymInstances #-}
+{-# LANGUAGE FlexibleContexts, FlexibleInstances, FunctionalDependencies, MultiParamTypeClasses, TemplateHaskell, TupleSections, TypeSynonymInstances #-}
 module SpaceWeather.Prediction where
 
 import Control.Lens 
@@ -11,10 +11,18 @@ import qualified Data.Yaml as Yaml
 import SpaceWeather.DefaultFeatureSchemaPack
 import SpaceWeather.FeaturePack
 import SpaceWeather.Format
-import SpaceWeather.MachineLearningEngine
+import SpaceWeather.TimeLine
 
-data PredictionStrategy = PredictionStrategy 
-  { _regressorUsed :: Regressor
+data CrossValidationStrategy = CVWeekly | CVMonthly | CVYearly deriving (Eq, Ord, Show, Read)
+Aeson.deriveJSON Aeson.defaultOptions{Aeson.fieldLabelModifier = drop 1} ''CrossValidationStrategy
+
+inTrainingSet :: CrossValidationStrategy -> TimeBin -> Bool
+inTrainingSet CVWeekly n = even (n `div` (24*7))
+inTrainingSet CVMonthly n = even (n `div` (24*31))
+inTrainingSet CVYearly n = even (n `div` (24*366))
+
+data PredictionStrategy a = PredictionStrategy 
+  { _regressorUsed :: a
   , _featureSchemaPackUsed  :: FeatureSchemaPack
   , _crossValidationStrategy :: CrossValidationStrategy
   , _predictionTargetSchema :: FeatureSchema
@@ -22,30 +30,22 @@ data PredictionStrategy = PredictionStrategy
   } deriving (Eq, Ord, Show, Read)
 
 makeClassy ''PredictionStrategy
-Aeson.deriveJSON Aeson.defaultOptions ''PredictionStrategy
+Aeson.deriveJSON Aeson.defaultOptions{Aeson.fieldLabelModifier = drop 1} ''PredictionStrategy
 
-instance Format PredictionStrategy where
+instance (Yaml.ToJSON a, Yaml.FromJSON a) => Format (PredictionStrategy a) where
   encode = T.pack . BS.unpack . Yaml.encode
   decode = Yaml.decodeEither . BS.pack . T.unpack
 
 
-defaultPredictionStrategy :: PredictionStrategy
-defaultPredictionStrategy = PredictionStrategy
-  { _regressorUsed = LibSVM defaultLibSVMOption
-  , _featureSchemaPackUsed = defaultFeatureSchemaPack
-  , _crossValidationStrategy = CVWeekly
-  , _predictionTargetSchema = goes24max
-  , _predictionResultFile = ""}
 
-goes24max :: FeatureSchema
-goes24max = FeatureSchema
-  { _colX = 2
-  , _colY = 5
-  , _weight = 1
-  , _isLog = True}
-
-data PredictionSession = PredictionSession
-  { _predictionStrategyUsed :: PredictionStrategy
+data PredictionSession a = PredictionSession
+  { _predictionStrategyUsed :: PredictionStrategy a
   , _heidkeSkillScore       :: Double
   , _trueSkillScore         :: Double
   } deriving (Eq, Ord, Show, Read)
+makeClassy ''PredictionSession
+Aeson.deriveJSON Aeson.defaultOptions{Aeson.fieldLabelModifier = drop 1} ''PredictionSession
+
+class Predictor a where
+  performPrediction :: PredictionStrategy a -> IO (PredictionSession a)
+
