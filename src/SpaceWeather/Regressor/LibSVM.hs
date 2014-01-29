@@ -13,6 +13,7 @@ import Test.QuickCheck.Gen
 import SpaceWeather.TimeLine
 import SpaceWeather.Format
 import SpaceWeather.Feature
+import SpaceWeather.Prediction
 
 data LibSVMOption = LibSVMOption 
   { _libSVMType       :: Int
@@ -65,3 +66,5 @@ instance Format LibSVMFeatures where
         zipWith (\i x -> showT i <> ":" <> showT x) [1..] $ xis
 
 
+instance Predictor LibSVMOption where
+  performPrediction = undefined

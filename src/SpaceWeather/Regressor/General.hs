@@ -1,6 +1,7 @@
 {-# LANGUAGE FlexibleContexts, FlexibleInstances, MultiParamTypeClasses, TemplateHaskell, TupleSections, TypeSynonymInstances #-}
 module SpaceWeather.Regressor.General where
 
+import Control.Lens
 import qualified Data.Aeson.TH as Aeson
 
 import SpaceWeather.DefaultFeatureSchemaPack
@@ -17,6 +18,11 @@ import SpaceWeather.TimeLine
 
 data GeneralRegressor = LibSVM LibSVMOption | Linear LinearOption deriving (Eq, Ord, Show, Read)
 Aeson.deriveJSON Aeson.defaultOptions ''GeneralRegressor
+
+instance Predictor GeneralRegressor where
+  performPrediction ps = let optG = ps^.regressorUsed in case optG of
+    LibSVM opt -> fmap (fmap (const optG)) $ performPrediction $ fmap (const opt) ps
+    Linear opt -> fmap (fmap (const optG)) $ performPrediction $ fmap (const opt) ps
 
 defaultPredictionStrategy :: PredictionStrategy GeneralRegressor
 defaultPredictionStrategy = PredictionStrategy 

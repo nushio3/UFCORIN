@@ -1,4 +1,4 @@
-{-# LANGUAGE FlexibleContexts, FlexibleInstances, FunctionalDependencies, MultiParamTypeClasses, TemplateHaskell, TupleSections, TypeSynonymInstances #-}
+{-# LANGUAGE DeriveFunctor, FlexibleContexts, FlexibleInstances, FunctionalDependencies, MultiParamTypeClasses, TemplateHaskell, TupleSections, TypeSynonymInstances #-}
 module SpaceWeather.Prediction where
 
 import Control.Lens 
@@ -21,13 +21,16 @@ inTrainingSet CVWeekly n = even (n `div` (24*7))
 inTrainingSet CVMonthly n = even (n `div` (24*31))
 inTrainingSet CVYearly n = even (n `div` (24*366))
 
+
+-- | Using the functor instance you can change the regressor to other types.
+
 data PredictionStrategy a = PredictionStrategy 
   { _regressorUsed :: a
   , _featureSchemaPackUsed  :: FeatureSchemaPack
   , _crossValidationStrategy :: CrossValidationStrategy
   , _predictionTargetSchema :: FeatureSchema
   , _predictionResultFile :: FilePath
-  } deriving (Eq, Ord, Show, Read)
+  } deriving (Eq, Ord, Show, Read, Functor)
 
 makeClassy ''PredictionStrategy
 Aeson.deriveJSON Aeson.defaultOptions{Aeson.fieldLabelModifier = drop 1} ''PredictionStrategy
@@ -42,7 +45,7 @@ data PredictionSession a = PredictionSession
   { _predictionStrategyUsed :: PredictionStrategy a
   , _heidkeSkillScore       :: Double
   , _trueSkillScore         :: Double
-  } deriving (Eq, Ord, Show, Read)
+  } deriving (Eq, Ord, Show, Read, Functor)
 makeClassy ''PredictionSession
 Aeson.deriveJSON Aeson.defaultOptions{Aeson.fieldLabelModifier = drop 1} ''PredictionSession
 
