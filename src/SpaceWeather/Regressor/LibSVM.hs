@@ -6,17 +6,25 @@ import Control.Monad
 import Control.Monad.IO.Class
 import Control.Monad.Trans.Either
 import qualified Data.Aeson.TH as Aeson
+import qualified Data.ByteString as BS
+import qualified Data.Yaml as Yaml
 import qualified Data.Map.Strict as Map
 import Data.Monoid
 import qualified Data.Text as T
+import qualified Data.Text.IO as T
+import System.IO
+import System.Process
 import Test.QuickCheck.Arbitrary
 import Test.QuickCheck.Gen
+import Text.Printf
 
 import SpaceWeather.CmdArgs
 import SpaceWeather.TimeLine
+import SpaceWeather.FlareClass
 import SpaceWeather.Format
 import SpaceWeather.Feature
 import SpaceWeather.FeaturePack
+import SpaceWeather.SkillScore
 import SpaceWeather.Prediction
 
 data LibSVMOption = LibSVMOption 
@@ -27,6 +35,7 @@ data LibSVMOption = LibSVMOption
   , _libSVMGamma      :: Maybe Double
   , _libSVMNu         :: Double
   } deriving (Eq, Ord, Show, Read)
+makeClassy ''LibSVMOption
 Aeson.deriveJSON Aeson.defaultOptions{Aeson.fieldLabelModifier = drop 7} ''LibSVMOption
 
 defaultLibSVMOption :: LibSVMOption
@@ -39,6 +48,14 @@ defaultLibSVMOption = LibSVMOption
   , _libSVMNu         = 0.5
   }
 
+libSVMOptionCmdLine :: LibSVMOption -> String
+libSVMOptionCmdLine opt = 
+  printf "-s %d -t %d -c %f -e %f %s -n %f"
+    (opt^.libSVMType) (opt^.libSVMKernelType) (opt^.libSVMCost) (opt^.libSVMEpsilon) gammaStr (opt^.libSVMNu)
+  where
+    gammaStr = case opt ^. libSVMGamma of
+      Nothing -> ""
+      Just x  -> "-g " ++ show x
 newtype LibSVMFeatures = LibSVMFeatures {
       _libSVMIOPair :: FeatureIOPair
    }
@@ -61,7 +78,7 @@ instance Arbitrary LibSVMFeatures where
 
 instance Format LibSVMFeatures where
   decode _ = Left "LibSVMFeatures is read only."
-  encode lf = T.unlines $ map mkLibSVMLine $ Map.toList $ lf ^. libSVMIOPair
+  encode lf = T.unlines $ map mkLibSVMLine $ Map.toAscList $ lf ^. libSVMIOPair
     where
       mkLibSVMLine :: (TimeBin,  ([Double],Double)) -> T.Text
       mkLibSVMLine (_, (xis,xo)) = 
@@ -84,21 +101,69 @@ instance Predictor LibSVMOption where
 
 libSVMPerformPrediction :: PredictionStrategy LibSVMOption -> EitherT String IO PredictionResult
 libSVMPerformPrediction strategy = do
-    let fsp :: FeatureSchemaPack
-        fsp = strategy ^. featureSchemaPackUsed
+  let fsp :: FeatureSchemaPack
+      fsp = strategy ^. featureSchemaPackUsed
 
-    featurePack0 <- EitherT $ loadFeatureSchemaPack fsp
+  featurePack0 <- EitherT $ loadFeatureSchemaPack fsp
 
-    let tgtSchema = strategy ^. predictionTargetSchema
-        tgtFn     = strategy ^. predictionTargetFile
+  let tgtSchema = strategy ^. predictionTargetSchema
+      tgtFn     = strategy ^. predictionTargetFile
 
-    tgtFeature <- loadFeatureWithSchemaT tgtSchema tgtFn
+  tgtFeature <- loadFeatureWithSchemaT tgtSchema tgtFn
 
 
-    let fioPair0 :: FeatureIOPair
-        fioPair0 = catFeaturePair fs0 tgtFeature
-        
-        fs0 :: [Feature]
-        fs0 = view unwrapped featurePack0
+  let fioPair0 :: FeatureIOPair
+      fioPair0 = catFeaturePair fs0 tgtFeature
+      
+      fs0 :: [Feature]
+      fs0 = view unwrapped featurePack0
 
-    return undefined
+      pred :: TimeBin -> Bool
+      pred = inTrainingSet $ strategy ^. crossValidationStrategy
+
+      (fioTrainSet, fioTestSet) = Map.partitionWithKey (\k _ -> pred k) fioPair0
+
+      svmTrainSet = LibSVMFeatures fioTrainSet
+      svmTestSet = LibSVMFeatures fioTestSet
+
+      fnTrainSet = workDir ++ "/train.txt" 
+      fnModel =  workDir ++ "/train.txt.model" 
+      fnTestSet = workDir ++ "/test.txt" 
+      fnPrediction = workDir ++ "/test.txt.prediction" 
+ 
+      svmTrainCmd = printf "./svm-train %s %s %s"
+        (libSVMOptionCmdLine $ strategy ^. regressorUsed)
+        fnTrainSet fnModel
+
+      svmPredictCmd = printf "./svm-predict %s %s %s"
+        fnTestSet
+        fnModel
+        fnPrediction
+
+  liftIO $ do
+    encodeFile fnTrainSet svmTrainSet
+    encodeFile fnTestSet svmTestSet
+
+    system "hadoop fs -get /user/nushio/libsvm-3.17/svm-train ."
+    system "hadoop fs -get /user/nushio/libsvm-3.17/svm-predict ."
+    system $ svmTrainCmd
+    system $ svmPredictCmd
+
+  predictionStr <- liftIO $ readFile fnPrediction  
+
+  let predictions :: [Double]
+      predictions = map read $ lines predictionStr
+
+      observations :: [Double]
+      observations = map (snd . snd) $ Map.toAscList fioTestSet
+
+      poTbl = zip predictions observations
+
+      resultMap0 = Map.fromList $ 
+        [ let logXRF = log (xRayFlux flare1) / log 10 in (flare1 , makeScoreMap poTbl logXRF)
+        | flare1 <- defaultFlareClasses]
+  
+      ret = PredictionSuccess resultMap0
+
+  liftIO $ BS.hPutStrLn stderr $ Yaml.encode ret
+  return ret

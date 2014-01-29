@@ -20,7 +20,7 @@ instance Format Feature where
   encode = 
     T.unlines .
     map (\(t,a) -> T.unwords [showT t, showT a] ) .
-    Map.toList 
+    Map.toAscList 
 
   decode txt0 = do
     -- (Either String) monad
@@ -39,7 +39,7 @@ instance Format FeatureIOPair where
   encode = 
     T.unlines .
     map (\(t,(xi,xo)) -> T.unwords (showT t: showT xo : map showT xi) ) .
-    Map.toList
+    Map.toAscList
 
   decode txt0 = do
     -- (Either String) monad

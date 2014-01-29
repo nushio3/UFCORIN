@@ -4,13 +4,16 @@ module SpaceWeather.Prediction where
 import Control.Lens 
 import qualified Data.ByteString.Char8 as BS
 import qualified Data.Aeson.TH as Aeson
+import qualified Data.Map as Map
 import qualified Data.Text as T
 import qualified Data.Yaml as Yaml
 
 
 import SpaceWeather.DefaultFeatureSchemaPack
 import SpaceWeather.FeaturePack
+import SpaceWeather.FlareClass
 import SpaceWeather.Format
+import SpaceWeather.SkillScore       
 import SpaceWeather.TimeLine
 
 data CrossValidationStrategy = CVWeekly | CVMonthly | CVYearly deriving (Eq, Ord, Show, Read)
@@ -44,11 +47,9 @@ instance (Yaml.ToJSON a, Yaml.FromJSON a) => Format (PredictionStrategy a) where
 data PredictionResult 
   = PredictionFailure { _predictionFailureMessage :: String }
   | PredictionSuccess 
-    { _heidkeSkillScore       :: Double
-    , _trueSkillScore         :: Double
+    { _predictionResultMap :: Map.Map FlareClass ScoreMap
     }deriving (Eq, Ord, Show, Read)
 makeClassy ''PredictionResult
-
 Aeson.deriveJSON Aeson.defaultOptions{Aeson.fieldLabelModifier = filter (/= '_')} ''PredictionResult
 
 data PredictionSession a = PredictionSession

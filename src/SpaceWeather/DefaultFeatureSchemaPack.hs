@@ -1,5 +1,7 @@
 module SpaceWeather.DefaultFeatureSchemaPack where
 
+import Control.Lens
+import Data.List
 import qualified Data.Map as Map
 import SpaceWeather.FeaturePack
 
@@ -11,9 +13,16 @@ featureSchema35L = FeatureSchema
   , _isLog = True
   } 
 
-
 defaultFeatureSchemaPack :: FeatureSchemaPack
-defaultFeatureSchemaPack = FeatureSchemaPack
+defaultFeatureSchemaPack = 
+  defaultFeatureSchemaPackBig & fspFilenamePairs %~ f
+  where
+    f :: [(String, FilePath)] -> [(String, FilePath)]
+    f = (("f35L",   "/user/shibayama/sdo/hmi/hmi_totalflux.txt"):)
+      . filter (isInfixOf "-N-" . snd)
+
+defaultFeatureSchemaPackBig :: FeatureSchemaPack
+defaultFeatureSchemaPackBig = FeatureSchemaPack
   { _fspSchemaDefinitions = Map.fromList [("f35L", featureSchema35L)] 
   , _fspFilenamePairs = map go fns}
 

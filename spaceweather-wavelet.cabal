@@ -19,13 +19,15 @@ library
   exposed-modules:   
     SpaceWeather.CmdArgs
     SpaceWeather.DefaultFeatureSchemaPack
+    SpaceWeather.FlareClass
     SpaceWeather.Feature
-    SpaceWeather.Format  
     SpaceWeather.FeaturePack
+    SpaceWeather.Format  
     SpaceWeather.Prediction
     SpaceWeather.Regressor.General
     SpaceWeather.Regressor.Linear
     SpaceWeather.Regressor.LibSVM
+    SpaceWeather.SkillScore
     SpaceWeather.TimeLine
     SpaceWeather.Wavelet
     System.IO.Hadoop

@@ -11,6 +11,7 @@ import qualified Data.Map.Strict as Map
 import qualified Data.Text as T
 import qualified Data.Text.IO as T
 import qualified Data.Yaml as Yaml
+import           System.IO
 import qualified System.IO.Hadoop as HFS
 import           Test.QuickCheck.Arbitrary
 import           Text.Printf
@@ -58,7 +59,9 @@ loadFeatureWithSchema schema0 fp = runEitherT $ loadFeatureWithSchemaT schema0 f
 
 loadFeatureWithSchemaT :: FeatureSchema -> FilePath -> EitherT String IO Feature
 loadFeatureWithSchemaT schema0 fp = do
-  txt0 <- liftIO $ HFS.readFile $ fp
+  txt0 <- liftIO $ do
+    hPutStrLn stderr $ "loading: " ++ fp
+    HFS.readFile $ fp
 
   let 
       convert :: Double -> Double
