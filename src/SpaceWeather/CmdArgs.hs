@@ -17,5 +17,5 @@ workDir = unsafePerformIO $ do
 
 withWorkDir = bracket_ 
   (system $ "mkdir -p " ++ workDir)
-  (system $ "rmdir -fr " ++ workDir)
+  (system $ "rm -fr " ++ workDir)
   

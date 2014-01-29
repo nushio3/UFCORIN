@@ -6,7 +6,6 @@ import Control.Monad
 import Control.Monad.IO.Class
 import Control.Monad.Trans.Either
 import qualified Data.Aeson.TH as Aeson
-import qualified Data.ByteString.Char8 as BS
 import qualified Data.Yaml as Yaml
 import qualified Data.Map.Strict as Map
 import Data.Monoid
@@ -166,5 +165,5 @@ libSVMPerformPrediction strategy = do
       ret = PredictionSuccess resultMap0
 
 
-  liftIO $ BS.hPutStrLn stderr $ Yaml.encode ret
+  liftIO $ T.hPutStrLn stderr $ encode ret
   return ret

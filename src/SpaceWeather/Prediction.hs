@@ -34,6 +34,7 @@ data PredictionStrategy a = PredictionStrategy
   , _predictionTargetSchema :: FeatureSchema
   , _predictionTargetFile :: FilePath
   , _predictionResultFile :: FilePath
+  , _predictionSessionFile :: FilePath
   } deriving (Eq, Ord, Show, Read, Functor)
 
 makeClassy ''PredictionStrategy
@@ -51,6 +52,9 @@ data PredictionResult
     }deriving (Eq, Ord, Show, Read)
 makeClassy ''PredictionResult
 Aeson.deriveJSON Aeson.defaultOptions{Aeson.fieldLabelModifier = filter (/= '_')} ''PredictionResult
+instance Format PredictionResult where
+  encode = T.pack . BS.unpack . Yaml.encode
+  decode = Yaml.decodeEither . BS.pack . T.unpack
 
 data PredictionSession a = PredictionSession
   { _predictionStrategyUsed  :: PredictionStrategy a
@@ -58,6 +62,9 @@ data PredictionSession a = PredictionSession
   } deriving (Eq, Ord, Show, Read, Functor)
 makeClassy ''PredictionSession
 Aeson.deriveJSON Aeson.defaultOptions{Aeson.fieldLabelModifier = drop 1} ''PredictionSession
+instance HasPredictionResult (PredictionSession a) where
+  predictionResult = predictionSessionResult
+
 
 instance (Yaml.ToJSON a, Yaml.FromJSON a) => Format (PredictionSession a) where
   encode = T.pack . BS.unpack . Yaml.encode

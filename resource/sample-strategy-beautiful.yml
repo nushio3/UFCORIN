@@ -1,27 +1,14 @@
 crossValidationStrategy: CVWeekly
-predictionTargetSchema:
-  colX: 2
-  colY: 5
-  isLog: true
-  scaling: 1.0
+predictionTargetSchema: {colX: 2, colY: 5, isLog: true, scaling: 1.0}
 predictionTargetFile: /user/nushio/forecast/forecast-goes-24.txt
+predictionSessionFile: ''
 predictionResultFile: ''
 regressorUsed:
-  contents:
-    Cost: 1.0
-    Nu: 0.5
-    Epsilon: 1.0e-3
-    Gamma: null
-    KernelType: 2
-    Type: 3
   tag: LibSVM
+  contents: { Cost: 1.0, Nu: 0.5, Epsilon: 1.0e-3, Gamma: null, KernelType: 2, Type: 3}
 featureSchemaPackUsed:
   SchemaDefinitions:
-    f35L:
-      colY: 5
-      isLog: true
-      colX: 3
-      scaling: 1.0
+    f35L: { colX: 3, colY: 5, isLog: true, scaling: 1.0}
   FilenamePairs:
   - [f35L, /user/shibayama/sdo/hmi/hmi_totalflux.txt]
   - [f35L,  /user/nushio/wavelet-features/bsplC-301-N-0000-0000.txt]

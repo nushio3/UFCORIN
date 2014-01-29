@@ -26,11 +26,17 @@ process fn = withWorkDir $ do
     Right strategy -> do
       res <- performPrediction (strategy :: PredictionStrategyG)
       let
-        candFn = strategy ^. predictionResultFile 
-        resultFn 
-          | candFn /= "" = candFn
+        candSesFn = strategy ^. predictionSessionFile 
+        candResFn = strategy ^. predictionResultFile 
+        finalSesFn 
+          | candSesFn /= "" = candSesFn
+          | ".yml" `isSuffixOf` fn = (++"-session.yml") $ reverse $ drop 4 $ reverse fn  
+          | otherwise              = fn ++ ".result.yml" 
+        finalResFn
+          | candResFn /= "" = candResFn
           | ".yml" `isSuffixOf` fn = (++"-result.yml") $ reverse $ drop 4 $ reverse fn  
           | otherwise              = fn ++ ".result.yml" 
-      HFS.writeFile resultFn $ encode res
+      HFS.writeFile finalSesFn $ encode (res ^. predictionResult)
+      HFS.writeFile finalResFn $ encode res
       return ()
   

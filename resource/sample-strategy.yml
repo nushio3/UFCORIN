@@ -3,7 +3,7 @@ predictionTargetSchema:
   colY: 5
   isLog: true
   colX: 2
-  weight: 1.0
+  scaling: 1.0
 predictionResultFile: ''
 featureSchemaPackUsed:
   SchemaDefinitions:
@@ -11,7 +11,7 @@ featureSchemaPackUsed:
       colY: 5
       isLog: true
       colX: 3
-      weight: 1.0
+      scaling: 1.0
   FilenamePairs:
   - - f35L
     - /user/shibayama/sdo/hmi/hmi_totalflux.txt
@@ -148,4 +148,5 @@ regressorUsed:
     KernelType: 2
     Type: 3
   tag: LibSVM
+predictionSessionFile: ''
 predictionTargetFile: /user/nushio/forecast/forecast-goes-24.txt

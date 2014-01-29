@@ -23,4 +23,7 @@ spec = do
     it "generates Yaml." $ do
       liftIO $ T.writeFile "resource/sample-strategy.yml" $ encode defaultPredictionStrategy
       (decode $ encode defaultPredictionStrategy) `shouldBe` Right defaultPredictionStrategy
+    it "accepts easy Yaml." $ do
+      res <- liftIO $ decodeFile "resource/sample-strategy-beautiful.yml"
+      res `shouldBe` Right defaultPredictionStrategy
 
