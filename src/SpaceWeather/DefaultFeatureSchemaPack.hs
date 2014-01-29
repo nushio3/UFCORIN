@@ -9,7 +9,7 @@ featureSchema35L :: FeatureSchema
 featureSchema35L = FeatureSchema
   { _colX = 3
   , _colY = 5
-  , _weight = 1
+  , _scaling = 1
   , _isLog = True
   } 
 

@@ -1,6 +1,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Main where
 
+import Control.Lens
 import Control.Monad
 import Data.List
 import System.Environment
@@ -15,19 +16,20 @@ main = do
   fns <- getArgs
   mapM_ process fns 
 
-outputFileName :: FilePath -> FilePath
-outputFileName fn
-  | ".yml" `isSuffixOf` fn = (++"-result.yml") $ reverse $ drop 4 $ reverse fn  
-  | otherwise              = fn ++ ".result.yml" 
 
 process :: FilePath -> IO () 
 process fn = do
   strE <- fmap decode $ HFS.readFile fn
-  let resultFn = outputFileName fn
   case strE of 
     Left msg -> putStrLn msg
     Right strategy -> do
       res <- performPrediction (strategy :: PredictionStrategyG)
+      let
+        candFn = strategy ^. predictionResultFile 
+        resultFn 
+          | candFn /= "" = candFn
+          | ".yml" `isSuffixOf` fn = (++"-result.yml") $ reverse $ drop 4 $ reverse fn  
+          | otherwise              = fn ++ ".result.yml" 
       HFS.writeFile resultFn $ encode res
       return ()
   

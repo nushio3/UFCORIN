@@ -81,6 +81,7 @@ executable prediction-main
   hs-source-dirs:    exe-src/
   build-depends:
      base ==4.6.*
+   , lens
 
    , spaceweather-wavelet
   ghc-options:       -Wall -O2 

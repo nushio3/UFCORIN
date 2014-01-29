@@ -24,7 +24,7 @@ data FeatureSchema
   = FeatureSchema 
   { _colX           :: Int
   , _colY           :: Int
-  , _weight         :: Double
+  , _scaling         :: Double
   , _isLog          :: Bool
   } deriving (Eq, Ord, Show, Read)
 makeClassy ''FeatureSchema
@@ -34,7 +34,7 @@ defaultFeatureSchema :: FeatureSchema
 defaultFeatureSchema = FeatureSchema
   { _colX = 1
   , _colY = 2
-  , _weight = 1
+  , _scaling = 1
   , _isLog = False
   } 
 
@@ -75,7 +75,7 @@ loadFeatureWithSchemaT schema0 fp = do
           let wtxt = T.words txt
           t <- readAt wtxt (schema0 ^. colX - 1)
           a <- readAt wtxt (schema0 ^. colY - 1)
-          return (t,(schema0^.weight) * convert a)
+          return (t,(schema0^.scaling) * convert a)
 
       ret :: Either String Feature
       ret = fmap Map.fromList $ mapM parseLine $ linesWithComment txt0

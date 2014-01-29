@@ -40,5 +40,5 @@ goes24max :: FeatureSchema
 goes24max = FeatureSchema
   { _colX = 2
   , _colY = 5
-  , _weight = 1
+  , _scaling = 1
   , _isLog = True}
