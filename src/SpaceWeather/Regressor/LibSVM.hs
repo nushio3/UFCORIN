@@ -173,7 +173,9 @@ libSVMPerformPrediction strategy = do
           resultMap0 = Map.fromList $ 
             [ let logXRF = log (xRayFlux flare1) / log 10 in (flare1 , makeScoreMap poTbl logXRF)
             | flare1 <- defaultFlareClasses]
-      return $ PredictionSuccess resultMap0
+          ret = PredictionSuccess resultMap0
+      hPutStrLn stderr $ "sum TSS : " ++ (show $ prToDouble ret)
+      return $ ret
 
   let logOpt0 = fmap log (opt0 & libSVMGamma .~ Just 0.01)
       minimizationTgt :: LibSVMOption -> IO Double

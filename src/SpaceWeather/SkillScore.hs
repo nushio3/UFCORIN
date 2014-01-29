@@ -48,12 +48,14 @@ evalScore mode arg =
       nFP = count True  False
       nTN = count False False
       
-      hss = 2*(nTP*nTN - nFN*nFP)/
+      hss = 2*(nTP*nTN - nFN*nFP) //
             ((nTP+nFN)*(nFN+nTN) + (nTP+nFP)*(nFP+nTN))
 
-      tss = nTP/(nTP+nFN) - nFP/(nFP+nTN)
+      tss = nTP//(nTP+nFN) - nFP//(nFP+nTN)
 
-
+      x//y 
+        | y==0 = 0
+        | otherwise = x/y
 
 
 -- | Returns the pair of the maximum found and the threshold
