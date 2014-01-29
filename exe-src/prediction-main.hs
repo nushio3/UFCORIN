@@ -31,12 +31,12 @@ process fn = withWorkDir $ do
         finalSesFn 
           | candSesFn /= "" = candSesFn
           | ".yml" `isSuffixOf` fn = (++"-session.yml") $ reverse $ drop 4 $ reverse fn  
-          | otherwise              = fn ++ ".result.yml" 
+          | otherwise              = fn ++ ".session.yml" 
         finalResFn
           | candResFn /= "" = candResFn
           | ".yml" `isSuffixOf` fn = (++"-result.yml") $ reverse $ drop 4 $ reverse fn  
           | otherwise              = fn ++ ".result.yml" 
-      HFS.writeFile finalSesFn $ encode (res ^. predictionResult)
-      HFS.writeFile finalResFn $ encode res
+      HFS.writeFile finalResFn $ encode (res ^. predictionResult)
+      HFS.writeFile finalSesFn $ encode res
       return ()
   
