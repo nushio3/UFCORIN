@@ -192,7 +192,8 @@ libSVMPerformPrediction strategy = do
           return $ fmap exp logBestOpt
 
     problem = (CMAES.minimizeTIO minimizationTgt logOpt0)
-      { CMAES.scaling = Just $ repeat (log 100) }  
+      { CMAES.sigma0 = 1
+      , CMAES.scaling = Just $ repeat (log 100) }  
   bestOpt <- liftIO goBestOpt
 
   ret <- liftIO $ evaluate bestOpt
