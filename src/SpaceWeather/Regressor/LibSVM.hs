@@ -165,7 +165,6 @@ libSVMPerformPrediction strategy = do
   
       ret = PredictionSuccess resultMap0
 
-  liftIO $ mapM_ print poTbl
 
 
   liftIO $ BS.hPutStrLn stderr $ Yaml.encode ret
