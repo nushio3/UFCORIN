@@ -1,5 +1,5 @@
 {-# LANGUAGE FlexibleContexts, FlexibleInstances, MultiParamTypeClasses, OverloadedStrings, TemplateHaskell, TypeSynonymInstances #-}
-module SpaceWeather.LibSVM where
+module SpaceWeather.Regressor.LibSVM where
 
 import Control.Lens
 import Control.Monad
@@ -57,12 +57,11 @@ instance Arbitrary LibSVMFeatures where
 instance Format LibSVMFeatures where
   decode _ = Left "LibSVMFeatures is read only."
   encode lf = T.unlines $ map mkLibSVMLine $ Map.toList $ lf ^. libSVMIOPair
-
-
-mkLibSVMLine :: (TimeBin,  ([Double],Double)) -> T.Text
-mkLibSVMLine (_, (xis,xo)) = 
-  ((showT xo <> " ") <> ) $ 
-  T.unwords $ 
-  zipWith (\i x -> showT i <> ":" <> showT x) [1..] $ xis
+    where
+      mkLibSVMLine :: (TimeBin,  ([Double],Double)) -> T.Text
+      mkLibSVMLine (_, (xis,xo)) = 
+        ((showT xo <> " ") <> ) $ 
+        T.unwords $ 
+        zipWith (\i x -> showT i <> ":" <> showT x) [1..] $ xis
 
 

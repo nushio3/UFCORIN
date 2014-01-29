@@ -5,7 +5,7 @@ import qualified Data.Text as T
 import qualified Data.Map as Map
 import SpaceWeather.Feature
 import SpaceWeather.Format
-import SpaceWeather.LibSVM
+import SpaceWeather.Regressor.LibSVM
 import Test.Hspec
 import Test.Hspec.QuickCheck
 import Test.QuickCheck.Arbitrary

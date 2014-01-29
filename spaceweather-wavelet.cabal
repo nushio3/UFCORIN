@@ -22,9 +22,10 @@ library
     SpaceWeather.Feature
     SpaceWeather.Format  
     SpaceWeather.FeaturePack
-    SpaceWeather.GeneralRegressor
-    SpaceWeather.LibSVM
     SpaceWeather.Prediction
+    SpaceWeather.Regressor.General
+    SpaceWeather.Regressor.Linear
+    SpaceWeather.Regressor.LibSVM
     SpaceWeather.TimeLine
     SpaceWeather.Wavelet
     System.IO.Hadoop

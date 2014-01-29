@@ -1,17 +1,15 @@
 {-# LANGUAGE FlexibleContexts, FlexibleInstances, MultiParamTypeClasses, TemplateHaskell, TupleSections, TypeSynonymInstances #-}
-module SpaceWeather.GeneralRegressor where
+module SpaceWeather.Regressor.General where
 
 import qualified Data.Aeson.TH as Aeson
 
 import SpaceWeather.DefaultFeatureSchemaPack
 import SpaceWeather.FeaturePack
-import SpaceWeather.LibSVM
+import SpaceWeather.Regressor.LibSVM
+import SpaceWeather.Regressor.Linear
 import SpaceWeather.Prediction
 import SpaceWeather.TimeLine
 
-
-data LinearOption = LinearOption  deriving (Eq, Ord, Show, Read)
-Aeson.deriveJSON Aeson.defaultOptions ''LinearOption
 
 
 
