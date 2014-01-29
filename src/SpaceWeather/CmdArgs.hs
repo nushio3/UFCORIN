@@ -1,5 +1,6 @@
 module SpaceWeather.CmdArgs where
 
+import Control.Exception (bracket_)
 import System.Process
 import System.Posix.Process
 import System.IO
@@ -13,3 +14,8 @@ workDir = unsafePerformIO $ do
   system $ "mkdir -p " ++ ret
   hPutStrLn stderr $ "using workdir: " ++ ret
   return ret
+
+withWorkDir = bracket_ 
+  (system $ "mkdir -p " ++ workDir)
+  (system $ "rmdir -fr " ++ workDir)
+  

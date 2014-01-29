@@ -6,6 +6,7 @@ import Control.Monad
 import Data.List
 import System.Environment
        
+import SpaceWeather.CmdArgs
 import SpaceWeather.Format
 import SpaceWeather.Prediction
 import SpaceWeather.Regressor.General
@@ -18,7 +19,7 @@ main = do
 
 
 process :: FilePath -> IO () 
-process fn = do
+process fn = withWorkDir $ do
   strE <- fmap decode $ HFS.readFile fn
   case strE of 
     Left msg -> putStrLn msg
