@@ -175,7 +175,7 @@ libSVMPerformPrediction strategy = do
             | flare1 <- defaultFlareClasses]
       return $ PredictionSuccess resultMap0
 
-  let logOpt0 = fmap log opt0
+  let logOpt0 = fmap log (opt0 & libSVMGamma .~ Just 0.01)
       minimizationTgt :: LibSVMOption -> IO Double
       minimizationTgt = 
         fmap (negate . prToDouble) .            
