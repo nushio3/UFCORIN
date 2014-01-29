@@ -1,16 +1,20 @@
-{-# LANGUAGE FlexibleContexts, FlexibleInstances, MultiParamTypeClasses, OverloadedStrings, TemplateHaskell, TypeSynonymInstances #-}
+{-# LANGUAGE DeriveFunctor, DeriveFoldable, DeriveTraversable, FlexibleContexts, FlexibleInstances, FunctionalDependencies, MultiParamTypeClasses, MultiWayIf, OverloadedStrings, TemplateHaskell, TypeSynonymInstances #-}
 module SpaceWeather.Regressor.LibSVM where
 
 import Control.Lens
 import Control.Monad
 import Control.Monad.IO.Class
 import Control.Monad.Trans.Either
+import Data.Foldable
+import Data.Maybe
+import Data.Traversable
 import qualified Data.Aeson.TH as Aeson
 import qualified Data.Yaml as Yaml
 import qualified Data.Map.Strict as Map
 import Data.Monoid
 import qualified Data.Text as T
 import qualified Data.Text.IO as T
+import Numeric.Optimization.Algorithms.CMAES as CMAES
 import System.IO
 import System.Process
 import Test.QuickCheck.Arbitrary
@@ -26,16 +30,18 @@ import SpaceWeather.FeaturePack
 import SpaceWeather.SkillScore
 import SpaceWeather.Prediction
 
-data LibSVMOption = LibSVMOption 
+data LibSVMOptionOf a = LibSVMOption 
   { _libSVMType       :: Int
   , _libSVMKernelType :: Int
-  , _libSVMCost       :: Double  
-  , _libSVMEpsilon    :: Double
-  , _libSVMGamma      :: Maybe Double
-  , _libSVMNu         :: Double
-  } deriving (Eq, Ord, Show, Read)
-makeClassy ''LibSVMOption
-Aeson.deriveJSON Aeson.defaultOptions{Aeson.fieldLabelModifier = drop 7} ''LibSVMOption
+  , _libSVMCost       :: a
+  , _libSVMEpsilon    :: a
+  , _libSVMGamma      :: Maybe a
+  , _libSVMNu         :: a
+  , _libSVMAutomationLevel :: Int
+  } deriving (Eq, Ord, Show, Read, Functor, Foldable, Traversable)
+type LibSVMOption = LibSVMOptionOf Double
+makeClassy ''LibSVMOptionOf
+Aeson.deriveJSON Aeson.defaultOptions{Aeson.fieldLabelModifier = drop 7} ''LibSVMOptionOf
 
 defaultLibSVMOption :: LibSVMOption
 defaultLibSVMOption = LibSVMOption
@@ -45,6 +51,7 @@ defaultLibSVMOption = LibSVMOption
   , _libSVMEpsilon    = 0.001
   , _libSVMGamma      = Nothing
   , _libSVMNu         = 0.5
+  , _libSVMAutomationLevel = 0
   }
 
 libSVMOptionCmdLine :: LibSVMOption -> String
@@ -89,19 +96,21 @@ instance Format LibSVMFeatures where
 instance Predictor LibSVMOption where
   performPrediction strategy = do
     e <- runEitherT $ libSVMPerformPrediction strategy
-    let res = case e of
-          Left msg -> PredictionFailure msg
-          Right x  -> x
-    return $ PredictionSession {
-      _predictionStrategyUsed = strategy
-    , _predictionSessionResult = res
-    }
+    return $ case e of
+      Right x  -> x
+      Left msg -> 
+        PredictionSession {
+          _predictionStrategyUsed = strategy
+        , _predictionSessionResult = PredictionFailure msg
+        }
 
 
-libSVMPerformPrediction :: PredictionStrategy LibSVMOption -> EitherT String IO PredictionResult
+libSVMPerformPrediction :: PredictionStrategy LibSVMOption -> EitherT String IO (PredictionSession LibSVMOption)
 libSVMPerformPrediction strategy = do
   let fsp :: FeatureSchemaPack
       fsp = strategy ^. featureSchemaPackUsed
+      opt0 :: LibSVMOption
+      opt0 = strategy ^. regressorUsed
 
   featurePack0 <- EitherT $ loadFeatureSchemaPack fsp
 
@@ -130,40 +139,72 @@ libSVMPerformPrediction strategy = do
       fnTestSet = workDir ++ "/test.txt" 
       fnPrediction = workDir ++ "/test.txt.prediction" 
  
-      svmTrainCmd = printf "./svm-train %s %s %s"
-        (libSVMOptionCmdLine $ strategy ^. regressorUsed)
-        fnTrainSet fnModel
-
-      svmPredictCmd = printf "./svm-predict %s %s %s"
-        fnTestSet
-        fnModel
-        fnPrediction
-
   liftIO $ do
     encodeFile fnTrainSet svmTrainSet
     encodeFile fnTestSet svmTestSet
 
     system "hadoop fs -get /user/nushio/libsvm-3.17/svm-train ."
     system "hadoop fs -get /user/nushio/libsvm-3.17/svm-predict ."
-    system $ svmTrainCmd
-    system $ svmPredictCmd
 
-  predictionStr <- liftIO $ readFile fnPrediction  
 
-  let predictions :: [Double]
-      predictions = map read $ lines predictionStr
+  let 
+    evaluate :: LibSVMOption -> IO PredictionResult
+    evaluate opt = do
+      hPutStrLn stderr $ "testing: " ++ show opt
+      let
+          svmTrainCmd = printf "./svm-train %s %s %s"
+            (libSVMOptionCmdLine opt) fnTrainSet fnModel
+    
+          svmPredictCmd = printf "./svm-predict %s %s %s"
+            fnTestSet fnModel fnPrediction
+      system $ svmTrainCmd
+      system $ svmPredictCmd
 
-      observations :: [Double]
-      observations = map (snd . snd) $ Map.toAscList fioTestSet
+      predictionStr <- readFile fnPrediction  
 
-      poTbl = zip predictions observations
+      let predictions :: [Double]
+          predictions = map read $ lines predictionStr
+    
+          observations :: [Double]
+          observations = map (snd . snd) $ Map.toAscList fioTestSet
+    
+          poTbl = zip predictions observations
+    
+          resultMap0 = Map.fromList $ 
+            [ let logXRF = log (xRayFlux flare1) / log 10 in (flare1 , makeScoreMap poTbl logXRF)
+            | flare1 <- defaultFlareClasses]
+      return $ PredictionSuccess resultMap0
 
-      resultMap0 = Map.fromList $ 
-        [ let logXRF = log (xRayFlux flare1) / log 10 in (flare1 , makeScoreMap poTbl logXRF)
-        | flare1 <- defaultFlareClasses]
-  
-      ret = PredictionSuccess resultMap0
+  let logOpt0 = fmap log opt0
+      minimizationTgt :: LibSVMOption -> IO Double
+      minimizationTgt = 
+        fmap (negate . prToDouble) .            
+        evaluate .               
+        fmap exp  
+  let 
+    lv = opt0 ^. libSVMAutomationLevel
+    goBestOpt
+      | lv <= 0 = return $ opt0
+      | lv >= 1 = do
+          logBestOpt <- CMAES.run $ CMAES.minimizeTIO minimizationTgt logOpt0
+          return $ fmap exp logBestOpt
 
+  bestOpt <- liftIO goBestOpt
+
+  ret <- liftIO $ evaluate bestOpt
 
   liftIO $ T.hPutStrLn stderr $ encode ret
-  return ret
+  return $ PredictionSession
+     (strategy & regressorUsed .~ bestOpt) 
+     ret
+
+
+prToDouble :: PredictionResult -> Double
+prToDouble (PredictionFailure _) = 0
+prToDouble (PredictionSuccess m) = 
+  Prelude.sum $
+  catMaybes $
+  map (Map.lookup TrueSkillStatistic) $        
+  map snd $ 
+  Map.toList m
+

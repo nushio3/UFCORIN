@@ -141,10 +141,11 @@ featureSchemaPackUsed:
     - /user/nushio/wavelet-features/haarC-2-N-0512-0512.txt
 regressorUsed:
   contents:
+    AutomationLevel: 0
     Cost: 1.0
     Nu: 0.5
     Epsilon: 1.0e-3
-    Gamma: null
+    Gamma: 1.0e-2
     KernelType: 2
     Type: 3
   tag: LibSVM

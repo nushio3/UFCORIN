@@ -5,7 +5,7 @@ predictionSessionFile: ''
 predictionResultFile: ''
 regressorUsed:
   tag: LibSVM
-  contents: { Cost: 1.0, Nu: 0.5, Epsilon: 1.0e-3, Gamma: null, KernelType: 2, Type: 3}
+  contents: { Cost: 1.0, Nu: 0.5, Epsilon: 1.0e-3, Gamma: null, KernelType: 2, Type: 3, AutomationLevel: 0}
 featureSchemaPackUsed:
   SchemaDefinitions:
     f35L: { colX: 3, colY: 5, isLog: true, scaling: 1.0}

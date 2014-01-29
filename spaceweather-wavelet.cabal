@@ -38,6 +38,7 @@ library
    , binary 
    , bindings-gsl >= 0.2
    , bytestring >= 0.10.0.2
+   , cmaes
    , containers
    , cpu >= 0.1.1
    , either
