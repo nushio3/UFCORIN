@@ -14,7 +14,7 @@ import qualified Data.Map.Strict as Map
 import Data.Monoid
 import qualified Data.Text as T
 import qualified Data.Text.IO as T
-import Numeric.Optimization.Algorithms.CMAES as CMAES
+import qualified Numeric.Optimization.Algorithms.CMAES as CMAES
 import System.IO
 import System.Process
 import Test.QuickCheck.Arbitrary
@@ -188,9 +188,11 @@ libSVMPerformPrediction strategy = do
     goBestOpt
       | lv <= 0 = return $ opt0
       | lv >= 1 = do
-          logBestOpt <- CMAES.run $ CMAES.minimizeTIO minimizationTgt logOpt0
+          logBestOpt <- CMAES.run $ problem
           return $ fmap exp logBestOpt
 
+    problem = (CMAES.minimizeTIO minimizationTgt logOpt0)
+      { CMAES.scaling = Just $ repeat (log 100) }  
   bestOpt <- liftIO goBestOpt
 
   ret <- liftIO $ evaluate bestOpt
