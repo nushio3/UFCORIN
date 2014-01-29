@@ -59,6 +59,11 @@ data PredictionSession a = PredictionSession
 makeClassy ''PredictionSession
 Aeson.deriveJSON Aeson.defaultOptions{Aeson.fieldLabelModifier = drop 1} ''PredictionSession
 
+instance (Yaml.ToJSON a, Yaml.FromJSON a) => Format (PredictionSession a) where
+  encode = T.pack . BS.unpack . Yaml.encode
+  decode = Yaml.decodeEither . BS.pack . T.unpack
+
+
 class Predictor a where
   performPrediction :: PredictionStrategy a -> IO (PredictionSession a)
 
