@@ -7,7 +7,7 @@ import Control.Monad.IO.Class
 import qualified Data.Aeson.TH as Aeson
 import qualified Data.ByteString.Char8 as BS
 import Data.Char
-import qualified Data.Map as Map
+import qualified Data.Map.Strict as Map
 import qualified Data.Text as T
 import qualified Data.Text.IO as T
 import qualified Data.Yaml as Yaml
@@ -53,8 +53,11 @@ instance Format FeatureSchemaPack where
   encode = T.pack . BS.unpack . Yaml.encode
   decode = Yaml.decodeEither . BS.pack . T.unpack
 
-loadFeatureWithSchema :: FeatureSchema -> FilePath -> EitherT String IO Feature
-loadFeatureWithSchema schema0 fp = do
+loadFeatureWithSchema :: FeatureSchema -> FilePath -> IO (Either String Feature)
+loadFeatureWithSchema schema0 fp = runEitherT $ loadFeatureWithSchemaT schema0 fp
+
+loadFeatureWithSchemaT :: FeatureSchema -> FilePath -> EitherT String IO Feature
+loadFeatureWithSchemaT schema0 fp = do
   txt0 <- liftIO $ HFS.readFile $ fp
 
   let 
@@ -85,8 +88,7 @@ loadFeatureSchemaPack fsp = do
       name2map :: String -> FeatureSchema
       name2map fmtName = maybe defaultFeatureSchema
         id (Map.lookup fmtName scMap)  
-  list1 <- runEitherT $ mapM (uncurry loadFeatureWithSchema) $ 
+  list1 <- runEitherT $ mapM (uncurry loadFeatureWithSchemaT) $ 
     map (_1 %~ name2map) list0 
   return $ fmap (view wrapped) list1
-
 

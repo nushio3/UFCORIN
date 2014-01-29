@@ -30,6 +30,7 @@ defaultPredictionStrategy = PredictionStrategy
   , _featureSchemaPackUsed = defaultFeatureSchemaPack
   , _crossValidationStrategy = CVWeekly
   , _predictionTargetSchema = goes24max
+  , _predictionTargetFile = "/user/nushio/forecast/forecast-goes-24.txt"
   , _predictionResultFile = ""}
 
 goes24max :: FeatureSchema

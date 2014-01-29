@@ -61,3 +61,9 @@ catFeatures [] = Map.empty
 catFeatures xs = 
   let (fs1: fss) = reverse xs 
   in foldr (Map.intersectionWith (:)) (Map.map (:[]) fs1) fss
+
+catFeaturePair :: [Feature] -> Feature -> FeatureIOPair
+catFeaturePair fs0 f = Map.intersectionWith (,) fs1 f
+  where
+    fs1 :: Features
+    fs1 = catFeatures fs0

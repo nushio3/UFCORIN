@@ -29,6 +29,7 @@ data PredictionStrategy a = PredictionStrategy
   , _featureSchemaPackUsed  :: FeatureSchemaPack
   , _crossValidationStrategy :: CrossValidationStrategy
   , _predictionTargetSchema :: FeatureSchema
+  , _predictionTargetFile :: FilePath
   , _predictionResultFile :: FilePath
   } deriving (Eq, Ord, Show, Read, Functor)
 
@@ -40,11 +41,19 @@ instance (Yaml.ToJSON a, Yaml.FromJSON a) => Format (PredictionStrategy a) where
   decode = Yaml.decodeEither . BS.pack . T.unpack
 
 
+data PredictionResult 
+  = PredictionFailure { _predictionFailureMessage :: String }
+  | PredictionSuccess 
+    { _heidkeSkillScore       :: Double
+    , _trueSkillScore         :: Double
+    }deriving (Eq, Ord, Show, Read)
+makeClassy ''PredictionResult
+
+Aeson.deriveJSON Aeson.defaultOptions{Aeson.fieldLabelModifier = filter (/= '_')} ''PredictionResult
 
 data PredictionSession a = PredictionSession
-  { _predictionStrategyUsed :: PredictionStrategy a
-  , _heidkeSkillScore       :: Double
-  , _trueSkillScore         :: Double
+  { _predictionStrategyUsed  :: PredictionStrategy a
+  , _predictionSessionResult :: PredictionResult
   } deriving (Eq, Ord, Show, Read, Functor)
 makeClassy ''PredictionSession
 Aeson.deriveJSON Aeson.defaultOptions{Aeson.fieldLabelModifier = drop 1} ''PredictionSession

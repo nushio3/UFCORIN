@@ -3,6 +3,8 @@ module SpaceWeather.Regressor.LibSVM where
 
 import Control.Lens
 import Control.Monad
+import Control.Monad.IO.Class
+import Control.Monad.Trans.Either
 import qualified Data.Aeson.TH as Aeson
 import qualified Data.Map.Strict as Map
 import Data.Monoid
@@ -14,6 +16,7 @@ import SpaceWeather.CmdArgs
 import SpaceWeather.TimeLine
 import SpaceWeather.Format
 import SpaceWeather.Feature
+import SpaceWeather.FeaturePack
 import SpaceWeather.Prediction
 
 data LibSVMOption = LibSVMOption 
@@ -68,6 +71,34 @@ instance Format LibSVMFeatures where
 
 
 instance Predictor LibSVMOption where
-  performPrediction scheme = do
-    print workDir
+  performPrediction strategy = do
+    e <- runEitherT $ libSVMPerformPrediction strategy
+    let res = case e of
+          Left msg -> PredictionFailure msg
+          Right x  -> x
+    return $ PredictionSession {
+      _predictionStrategyUsed = strategy
+    , _predictionSessionResult = res
+    }
+
+
+libSVMPerformPrediction :: PredictionStrategy LibSVMOption -> EitherT String IO PredictionResult
+libSVMPerformPrediction strategy = do
+    let fsp :: FeatureSchemaPack
+        fsp = strategy ^. featureSchemaPackUsed
+
+    featurePack0 <- EitherT $ loadFeatureSchemaPack fsp
+
+    let tgtSchema = strategy ^. predictionTargetSchema
+        tgtFn     = strategy ^. predictionTargetFile
+
+    tgtFeature <- loadFeatureWithSchemaT tgtSchema tgtFn
+
+
+    let fioPair0 :: FeatureIOPair
+        fioPair0 = catFeaturePair fs0 tgtFeature
+        
+        fs0 :: [Feature]
+        fs0 = view unwrapped featurePack0
+
     return undefined
