@@ -10,6 +10,7 @@ import qualified Data.Text as T
 import Test.QuickCheck.Arbitrary
 import Test.QuickCheck.Gen
 
+import SpaceWeather.CmdArgs
 import SpaceWeather.TimeLine
 import SpaceWeather.Format
 import SpaceWeather.Feature
@@ -67,4 +68,6 @@ instance Format LibSVMFeatures where
 
 
 instance Predictor LibSVMOption where
-  performPrediction = undefined
+  performPrediction scheme = do
+    print workDir
+    return undefined
