@@ -13,17 +13,30 @@ featureSchema35L = FeatureSchema
   , _isLog = True
   } 
 
+featureSchema25L :: FeatureSchema
+featureSchema25L = FeatureSchema
+  { _colX = 2
+  , _colY = 5
+  , _scaling = 1
+  , _isLog = True
+  } 
+
 defaultFeatureSchemaPack :: FeatureSchemaPack
 defaultFeatureSchemaPack = 
-  defaultFeatureSchemaPackBig & fspFilenamePairs %~ f
+  defaultFeatureSchemaPackBig & fspFilenamePairs .~ g
   where
-    f :: [(String, FilePath)] -> [(String, FilePath)]
-    f = (("f35L",   "/user/shibayama/sdo/hmi/hmi_totalflux.txt"):)
-      . filter (isInfixOf "-N-" . snd)
+    g :: [(String,FilePath)]
+    g = [ ("f35Log",   "/user/shibayama/sdo/hmi/hmi_totalflux.txt")
+        , ("f35Log",   "/user/nushio/wavelet-features/bsplC-301-N-0000-0000.txt")
+        , ("f25Log",   "/user/nushio/forecast/backcast-goes-24.txt")]
+--    f :: [(String, FilePath)] -> [(String, FilePath)]
+--    f = (("f35L",   "/user/shibayama/sdo/hmi/hmi_totalflux.txt"):)
+--      . filter (isInfixOf "-N-" . snd)
+
 
 defaultFeatureSchemaPackBig :: FeatureSchemaPack
 defaultFeatureSchemaPackBig = FeatureSchemaPack
-  { _fspSchemaDefinitions = Map.fromList [("f35L", featureSchema35L)] 
+  { _fspSchemaDefinitions = Map.fromList [("f35Log", featureSchema35L), ("f25Log", featureSchema25L)] 
   , _fspFilenamePairs = map go fns}
 
   where

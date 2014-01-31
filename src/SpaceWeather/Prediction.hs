@@ -16,8 +16,9 @@ import SpaceWeather.Format
 import SpaceWeather.SkillScore       
 import SpaceWeather.TimeLine
 
-data CrossValidationStrategy = CVWeekly | CVMonthly | CVYearly deriving (Eq, Ord, Show, Read)
-Aeson.deriveJSON Aeson.defaultOptions{Aeson.fieldLabelModifier = drop 1} ''CrossValidationStrategy
+data CrossValidationStrategy = CVWeekly | CVMonthly | CVYearly  | CVNegate CrossValidationStrategy
+  deriving (Eq, Ord, Show, Read)
+Aeson.deriveJSON Aeson.defaultOptions ''CrossValidationStrategy
 
 inTrainingSet :: CrossValidationStrategy -> TimeBin -> Bool
 inTrainingSet CVWeekly n = even (n `div` (24*7))
@@ -28,7 +29,8 @@ inTrainingSet CVYearly n = even (n `div` (24*366))
 -- | Using the functor instance you can change the regressor to other types.
 
 data PredictionStrategy a = PredictionStrategy 
-  { _regressorUsed :: a
+  { _spaceWeatherLibVersion :: String
+  , _regressorUsed :: a
   , _featureSchemaPackUsed  :: FeatureSchemaPack
   , _crossValidationStrategy :: CrossValidationStrategy
   , _predictionTargetSchema :: FeatureSchema

@@ -2,7 +2,7 @@
 --  documentation, see http://haskell.org/cabal/users-guide/
 
 name:                spaceweather-wavelet
-version:             0.1.0.0
+version:             1.0.1
 -- synopsis:            
 -- description:         
 license:             AllRightsReserved
@@ -31,7 +31,9 @@ library
     SpaceWeather.TimeLine
     SpaceWeather.Wavelet
     System.IO.Hadoop
-  -- other-modules:       
+  other-modules:       
+    Paths_spaceweather_wavelet
+
   build-depends:     
      base ==4.*
    , aeson

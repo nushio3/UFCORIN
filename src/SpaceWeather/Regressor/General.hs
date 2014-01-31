@@ -1,6 +1,8 @@
 {-# LANGUAGE FlexibleContexts, FlexibleInstances, MultiParamTypeClasses, TemplateHaskell, TupleSections, TypeSynonymInstances #-}
 module SpaceWeather.Regressor.General where
 
+import Paths_spaceweather_wavelet
+import Data.Version (showVersion)
 import Control.Lens
 import qualified Data.Aeson.TH as Aeson
 
@@ -16,7 +18,7 @@ import SpaceWeather.TimeLine
 
 -- | Choice for regression engine.
 
-data GeneralRegressor = LibSVM LibSVMOption | Linear LinearOption deriving (Eq, Ord, Show, Read)
+data GeneralRegressor = LibSVMRegressor LibSVMOption | LinearRegressor LinearOption deriving (Eq, Ord, Show, Read)
 Aeson.deriveJSON Aeson.defaultOptions ''GeneralRegressor
 
 type PredictionStrategyG = PredictionStrategy GeneralRegressor
@@ -24,12 +26,13 @@ type PredictionSessionG = PredictionSession GeneralRegressor
 
 instance Predictor GeneralRegressor where
   performPrediction ps = let optG = ps^.regressorUsed in case optG of
-    LibSVM opt -> fmap (fmap (const optG)) $ performPrediction $ fmap (const opt) ps
-    Linear opt -> fmap (fmap (const optG)) $ performPrediction $ fmap (const opt) ps
+    LibSVMRegressor opt -> fmap (fmap LibSVMRegressor) $ performPrediction $ fmap (const opt) ps
+    LinearRegressor opt -> fmap (fmap LinearRegressor) $ performPrediction $ fmap (const opt) ps
 
 defaultPredictionStrategy :: PredictionStrategy GeneralRegressor
 defaultPredictionStrategy = PredictionStrategy 
-  { _regressorUsed = LibSVM defaultLibSVMOption
+  { _spaceWeatherLibVersion = "version " ++ showVersion version
+  , _regressorUsed = LibSVMRegressor defaultLibSVMOption
   , _featureSchemaPackUsed = defaultFeatureSchemaPack
   , _crossValidationStrategy = CVWeekly
   , _predictionTargetSchema = goes24max

@@ -1,75 +1,18 @@
-crossValidationStrategy: CVWeekly
+# This is a sample strategy written by hand.
+spaceWeatherLibVersion: version 1.0.1
+crossValidationStrategy: {tag: CVWeekly, contents: []}
 predictionTargetSchema: {colX: 2, colY: 5, isLog: true, scaling: 1.0}
 predictionTargetFile: /user/nushio/forecast/forecast-goes-24.txt
 predictionSessionFile: ''
 predictionResultFile: ''
 regressorUsed:
-  tag: LibSVM
+  tag: LibSVMRegressor
   contents: { Cost: 1.0, Nu: 0.5, Epsilon: 1.0e-3, Gamma: null, KernelType: 2, Type: 3, AutomationLevel: 0}
 featureSchemaPackUsed:
   SchemaDefinitions:
-    f35L: { colX: 3, colY: 5, isLog: true, scaling: 1.0}
+    f25Log: { colX: 2, colY: 5, isLog: true, scaling: 1.0}
+    f35Log: { colX: 3, colY: 5, isLog: true, scaling: 1.0}
   FilenamePairs:
-  - [f35L, /user/shibayama/sdo/hmi/hmi_totalflux.txt]
-  - [f35L,  /user/nushio/wavelet-features/bsplC-301-N-0000-0000.txt]
-  - [f35L,  /user/nushio/wavelet-features/bsplC-301-N-0000-0001.txt]
-  - [f35L,  /user/nushio/wavelet-features/bsplC-301-N-0000-0002.txt]
-  - [f35L,  /user/nushio/wavelet-features/bsplC-301-N-0000-0004.txt]
-  - [f35L,  /user/nushio/wavelet-features/bsplC-301-N-0000-0008.txt]
-  - [f35L,  /user/nushio/wavelet-features/bsplC-301-N-0000-0016.txt]
-  - [f35L,  /user/nushio/wavelet-features/bsplC-301-N-0000-0032.txt]
-  - [f35L,  /user/nushio/wavelet-features/bsplC-301-N-0000-0064.txt]
-  - [f35L,  /user/nushio/wavelet-features/bsplC-301-N-0000-0128.txt]
-  - [f35L,  /user/nushio/wavelet-features/bsplC-301-N-0000-0256.txt]
-  - [f35L,  /user/nushio/wavelet-features/bsplC-301-N-0000-0512.txt]
-  - [f35L,  /user/nushio/wavelet-features/bsplC-301-N-0001-0000.txt]
-  - [f35L,  /user/nushio/wavelet-features/bsplC-301-N-0001-0001.txt]
-  - [f35L,  /user/nushio/wavelet-features/bsplC-301-N-0002-0000.txt]
-  - [f35L,  /user/nushio/wavelet-features/bsplC-301-N-0002-0002.txt]
-  - [f35L,  /user/nushio/wavelet-features/bsplC-301-N-0004-0000.txt]
-  - [f35L,  /user/nushio/wavelet-features/bsplC-301-N-0004-0004.txt]
-  - [f35L,  /user/nushio/wavelet-features/bsplC-301-N-0008-0000.txt]
-  - [f35L,  /user/nushio/wavelet-features/bsplC-301-N-0008-0008.txt]
-  - [f35L,  /user/nushio/wavelet-features/bsplC-301-N-0016-0000.txt]
-  - [f35L,  /user/nushio/wavelet-features/bsplC-301-N-0016-0016.txt]
-  - [f35L,  /user/nushio/wavelet-features/bsplC-301-N-0032-0000.txt]
-  - [f35L,  /user/nushio/wavelet-features/bsplC-301-N-0032-0032.txt]
-  - [f35L,  /user/nushio/wavelet-features/bsplC-301-N-0064-0000.txt]
-  - [f35L,  /user/nushio/wavelet-features/bsplC-301-N-0064-0064.txt]
-  - [f35L,  /user/nushio/wavelet-features/bsplC-301-N-0128-0000.txt]
-  - [f35L,  /user/nushio/wavelet-features/bsplC-301-N-0128-0128.txt]
-  - [f35L,  /user/nushio/wavelet-features/bsplC-301-N-0256-0000.txt]
-  - [f35L,  /user/nushio/wavelet-features/bsplC-301-N-0256-0256.txt]
-  - [f35L,  /user/nushio/wavelet-features/bsplC-301-N-0512-0000.txt]
-  - [f35L,  /user/nushio/wavelet-features/bsplC-301-N-0512-0512.txt]
-  - [f35L,  /user/nushio/wavelet-features/haarC-2-N-0000-0000.txt]
-  - [f35L,  /user/nushio/wavelet-features/haarC-2-N-0000-0001.txt]
-  - [f35L,  /user/nushio/wavelet-features/haarC-2-N-0000-0002.txt]
-  - [f35L,  /user/nushio/wavelet-features/haarC-2-N-0000-0004.txt]
-  - [f35L,  /user/nushio/wavelet-features/haarC-2-N-0000-0008.txt]
-  - [f35L,  /user/nushio/wavelet-features/haarC-2-N-0000-0016.txt]
-  - [f35L,  /user/nushio/wavelet-features/haarC-2-N-0000-0032.txt]
-  - [f35L,  /user/nushio/wavelet-features/haarC-2-N-0000-0064.txt]
-  - [f35L,  /user/nushio/wavelet-features/haarC-2-N-0000-0128.txt]
-  - [f35L,  /user/nushio/wavelet-features/haarC-2-N-0000-0256.txt]
-  - [f35L,  /user/nushio/wavelet-features/haarC-2-N-0000-0512.txt]
-  - [f35L,  /user/nushio/wavelet-features/haarC-2-N-0001-0000.txt]
-  - [f35L,  /user/nushio/wavelet-features/haarC-2-N-0001-0001.txt]
-  - [f35L,  /user/nushio/wavelet-features/haarC-2-N-0002-0000.txt]
-  - [f35L,  /user/nushio/wavelet-features/haarC-2-N-0002-0002.txt]
-  - [f35L,  /user/nushio/wavelet-features/haarC-2-N-0004-0000.txt]
-  - [f35L,  /user/nushio/wavelet-features/haarC-2-N-0004-0004.txt]
-  - [f35L,  /user/nushio/wavelet-features/haarC-2-N-0008-0000.txt]
-  - [f35L,  /user/nushio/wavelet-features/haarC-2-N-0008-0008.txt]
-  - [f35L,  /user/nushio/wavelet-features/haarC-2-N-0016-0000.txt]
-  - [f35L,  /user/nushio/wavelet-features/haarC-2-N-0016-0016.txt]
-  - [f35L,  /user/nushio/wavelet-features/haarC-2-N-0032-0000.txt]
-  - [f35L,  /user/nushio/wavelet-features/haarC-2-N-0032-0032.txt]
-  - [f35L,  /user/nushio/wavelet-features/haarC-2-N-0064-0000.txt]
-  - [f35L,  /user/nushio/wavelet-features/haarC-2-N-0064-0064.txt]
-  - [f35L,  /user/nushio/wavelet-features/haarC-2-N-0128-0000.txt]
-  - [f35L,  /user/nushio/wavelet-features/haarC-2-N-0128-0128.txt]
-  - [f35L,  /user/nushio/wavelet-features/haarC-2-N-0256-0000.txt]
-  - [f35L,  /user/nushio/wavelet-features/haarC-2-N-0256-0256.txt]
-  - [f35L,  /user/nushio/wavelet-features/haarC-2-N-0512-0000.txt]
-  - [f35L,  /user/nushio/wavelet-features/haarC-2-N-0512-0512.txt]
+  - [f35Log, /user/shibayama/sdo/hmi/hmi_totalflux.txt]
+  - [f35Log, /user/nushio/wavelet-features/bsplC-301-N-0000-0000.txt]
+  - [f25Log, /user/nushio/forecast/backcast-goes-24.txt]
