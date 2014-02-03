@@ -145,8 +145,8 @@ libSVMPerformPrediction strategy = do
 
     system "hadoop fs -get /user/nushio/libsvm-3.17/svm-train ."
     system "hadoop fs -get /user/nushio/libsvm-3.17/svm-predict ."
-
-
+    system "cabal install cmaes"
+  
   let 
     evaluate :: LibSVMOption -> IO PredictionResult
     evaluate opt = do
@@ -192,9 +192,9 @@ libSVMPerformPrediction strategy = do
           return $ fmap exp logBestOpt
 
     problem = (CMAES.minimizeTIO minimizationTgt logOpt0)
-      { CMAES.sigma0 = 0.25 
-      , CMAES.tolFun = Just 1 -- 1e-6
-      , CMAES.scaling = Just $ repeat (log 100) }  
+      { CMAES.sigma0 = 1 -- we need big sigma to find out the best config!
+      , CMAES.tolFun = Just 1e-4
+      , CMAES.scaling = Just $ repeat (log 1e3) }  
   bestOpt <- liftIO goBestOpt
 
   ret <- liftIO $ evaluate bestOpt
