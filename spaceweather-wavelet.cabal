@@ -90,6 +90,20 @@ executable prediction-main
   ghc-options:       -Wall -O2 
 
 
+executable aia2feature
+  main-is:           aia2feature.hs
+  hs-source-dirs:    exe-src/
+  build-depends:
+     base ==4.6.*
+   , lens
+   , text
+   , time
+
+   , spaceweather-wavelet
+  ghc-options:       -Wall -O2 
+
+
+
 executable wavelet-analysis-main
   main-is:           wavelet-analysis-main.hs
   hs-source-dirs:    exe-src/

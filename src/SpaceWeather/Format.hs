@@ -34,6 +34,9 @@ readT = read . T.unpack
 readMayT :: Read a => T.Text -> Maybe a
 readMayT = readMay . T.unpack
 
+readMaySubT :: Read a => Int -> Int -> T.Text -> Maybe a
+readMaySubT start len = readMay .  T.unpack . T.take len . T.drop start 
+
 readAt :: Read a => [T.Text] -> Int -> Maybe a
 readAt xs n = atMay xs n >>= readMayT
 
