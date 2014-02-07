@@ -6,7 +6,9 @@ import qualified Data.Aeson as Aeson
 import qualified Data.Aeson.TH as Aeson
 import qualified Data.Map as Map
 
-data ScoreMode = HeidkeSkillScore | TrueSkillStatistic
+data ScoreMode 
+  = HeidkeSkillScore 
+  | TrueSkillStatistic
   deriving (Eq, Ord, Show, Read)
 Aeson.deriveJSON Aeson.defaultOptions ''ScoreMode
 
@@ -20,9 +22,16 @@ instance Aeson.FromJSON a => Aeson.FromJSON (Map.Map ScoreMode a) where
       go :: Map.Map String a -> Map.Map ScoreMode a  
       go = Map.fromList . (map (_1 %~ read)) . Map.toList
 
-
-
 type ScoreMap = Map.Map ScoreMode Double
+
+
+
+data ScoreMap2 = ScoreMap2 
+  { heidkeSkillScore :: Double
+  , trueSkillStatistic :: Double
+  , contingencyTable :: Map.Map String Integer
+  }
+Aeson.deriveJSON Aeson.defaultOptions ''ScoreMap2
 
 type BinaryPredictorScore =  [(Bool, Bool)] -> Double
 
