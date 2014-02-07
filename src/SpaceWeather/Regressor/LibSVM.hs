@@ -209,8 +209,7 @@ prToDouble :: PredictionResult -> Double
 prToDouble (PredictionFailure _) = 0
 prToDouble (PredictionSuccess m) = 
   Prelude.sum $
-  catMaybes $
-  map (Map.lookup TrueSkillStatistic) $        
+  map _trueSkillStatistic $ 
   map snd $ 
   Map.toList m
 

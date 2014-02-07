@@ -9,6 +9,7 @@ import qualified Data.Map as Map
 data ScoreMode 
   = HeidkeSkillScore 
   | TrueSkillStatistic
+  | ContingencyTableElem Bool Bool
   deriving (Eq, Ord, Show, Read)
 Aeson.deriveJSON Aeson.defaultOptions ''ScoreMode
 
@@ -22,16 +23,13 @@ instance Aeson.FromJSON a => Aeson.FromJSON (Map.Map ScoreMode a) where
       go :: Map.Map String a -> Map.Map ScoreMode a  
       go = Map.fromList . (map (_1 %~ read)) . Map.toList
 
-type ScoreMap = Map.Map ScoreMode Double
-
-
-
-data ScoreMap2 = ScoreMap2 
-  { heidkeSkillScore :: Double
-  , trueSkillStatistic :: Double
-  , contingencyTable :: Map.Map String Integer
+data ScoreMap = ScoreMap
+  { _heidkeSkillScore :: Double
+  , _trueSkillStatistic :: Double
+  , _contingencyTable :: Map.Map String Double
   }
-Aeson.deriveJSON Aeson.defaultOptions ''ScoreMap2
+  deriving (Eq, Ord, Show, Read)
+Aeson.deriveJSON Aeson.defaultOptions{Aeson.fieldLabelModifier = drop 1} ''ScoreMap
 
 type BinaryPredictorScore =  [(Bool, Bool)] -> Double
 
@@ -40,7 +38,8 @@ evalScore mode arg =
   case mode of
     HeidkeSkillScore -> hss
     TrueSkillStatistic -> tss
-    
+    ContingencyTableElem a b -> count a b
+
   where
       predictions = map fst arg
       observations = map snd arg
@@ -78,5 +77,18 @@ searchThreshold tbl score thre0 = maximum $
     thres = map ((+thre0) . (/50) . fromInteger) [-100 .. 100]
 
 makeScoreMap :: [(Double,Double)] -> Double -> ScoreMap
-makeScoreMap tbl thre0 = Map.fromList
-  [(mode, fst $ searchThreshold tbl (evalScore mode) thre0) | mode <- [HeidkeSkillScore, TrueSkillStatistic]]
+makeScoreMap tbl thre0 = ScoreMap
+  { _heidkeSkillScore = go HeidkeSkillScore
+  , _trueSkillStatistic = go TrueSkillStatistic
+  , _contingencyTable = Map.fromList
+     [ ("pToT", go $ ContingencyTableElem True  True )
+     , ("pToF", go $ ContingencyTableElem True  False)
+     , ("pFoT", go $ ContingencyTableElem False True )
+     , ("pFoF", go $ ContingencyTableElem False False)
+     ]
+  }
+  where 
+    go :: ScoreMode -> Double
+    go mode = fst $ searchThreshold tbl (evalScore mode) thre0
+
+--  [(mode, fst $ searchThreshold tbl (evalScore mode) thre0) | mode <- [HeidkeSkillScore, TrueSkillStatistic]]
