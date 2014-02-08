@@ -14,23 +14,29 @@ data ScoreMode
   deriving (Eq, Ord, Show, Read)
 Aeson.deriveJSON Aeson.defaultOptions ''ScoreMode
 
+-- ScoreMode can be a key to JSON map.
 instance Aeson.ToJSON a => Aeson.ToJSON (Map.Map ScoreMode a) where
   toJSON = Aeson.toJSON . Map.fromList . (map (_1 %~ show)) . Map.toList
-
-
 instance Aeson.FromJSON a => Aeson.FromJSON (Map.Map ScoreMode a) where
   parseJSON = fmap go . Aeson.parseJSON
     where
       go :: Map.Map String a -> Map.Map ScoreMode a  
       go = Map.fromList . (map (_1 %~ read)) . Map.toList
 
-data ScoreMap = ScoreMap
-  { _heidkeSkillScore :: Double
-  , _trueSkillStatistic :: Double
+
+
+data ScoreReport = ScoreReport
+  { _scoreValue :: Double
+  , _maximizingThreshold :: Double
   , _contingencyTable :: Map.Map String Double
   }
   deriving (Eq, Ord, Show, Read)
-Aeson.deriveJSON Aeson.defaultOptions{Aeson.fieldLabelModifier = drop 1} ''ScoreMap
+Aeson.deriveJSON Aeson.defaultOptions{Aeson.fieldLabelModifier = drop 1} ''ScoreReport
+
+type ScoreMap = Map.Map ScoreMode ScoreReport
+
+
+
 
 type BinaryPredictorScore =  [(Bool, Bool)] -> Double
 
@@ -67,29 +73,38 @@ evalScore mode arg =
         | otherwise = x/y
 
 
--- | Returns the pair of the maximum found and the threshold
+poTblToBools :: Double -> Double -> [(Double, Double)] -> [(Bool,Bool)]
+poTblToBools threP threO tbl = 
+  [(xp > threP, xo > threO) | (xp, xo) <- tbl]
 
+
+-- | Returns the pair of the maximum found and the threshold
 searchThreshold :: [(Double,Double)] -> BinaryPredictorScore -> Double -> (Double, Double)
-searchThreshold tbl score thre0 = maximum $
+searchThreshold tbl score threO = maximum $
     [(scoreOf t1, t1) | t1 <- thres]
   where
-    scoreOf thre1 = score [(xp > thre1, xo > thre0) | (xp, xo) <- tbl]
+    scoreOf threP = score $ poTblToBools threP threO tbl
 
-    thres = map ((+thre0) . (/50) . fromInteger) [-100 .. 100]
+    thres = map ((+threO) . (/500) . fromInteger) [-1000 .. 1000]
 
 makeScoreMap :: [(Double,Double)] -> Double -> ScoreMap
-makeScoreMap tbl thre0 = ScoreMap
-  { _heidkeSkillScore = go HeidkeSkillScore
-  , _trueSkillStatistic = go TrueSkillStatistic
-  , _contingencyTable = Map.fromList
-     [ ("pToT", go $ ContingencyTableElem True  True )
-     , ("pToF", go $ ContingencyTableElem True  False)
-     , ("pFoT", go $ ContingencyTableElem False True )
-     , ("pFoF", go $ ContingencyTableElem False False)
-     ]
-  }
+makeScoreMap tbl threO = Map.fromList
+  [ (mode1, go mode1)
+  | mode1 <- [HeidkeSkillScore, TrueSkillStatistic]]
   where 
-    go :: ScoreMode -> Double
-    go mode = fst $ searchThreshold tbl (evalScore mode) thre0
+    eSX threP mode = evalScore mode $ poTblToBools threP threO tbl
 
---  [(mode, fst $ searchThreshold tbl (evalScore mode) thre0) | mode <- [HeidkeSkillScore, TrueSkillStatistic]]
+    go :: ScoreMode -> ScoreReport
+    go mode = let
+      (val,threP) = searchThreshold tbl (evalScore mode) threO
+      in ScoreReport
+        { _scoreValue = val
+        , _maximizingThreshold = threP
+        , _contingencyTable = 
+          Map.fromList
+            [ ("pToT", eSX threP $ ContingencyTableElem True  True )
+            , ("pToF", eSX threP $ ContingencyTableElem True  False)
+            , ("pFoT", eSX threP $ ContingencyTableElem False True )
+            , ("pFoF", eSX threP $ ContingencyTableElem False False)
+            ]
+        }
