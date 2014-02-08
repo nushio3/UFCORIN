@@ -10,6 +10,7 @@ data ScoreMode
   = HeidkeSkillScore 
   | TrueSkillStatistic
   | ContingencyTableElem Bool Bool
+
   deriving (Eq, Ord, Show, Read)
 Aeson.deriveJSON Aeson.defaultOptions ''ScoreMode
 
