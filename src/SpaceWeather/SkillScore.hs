@@ -4,6 +4,7 @@ module SpaceWeather.SkillScore where
 import Control.Lens
 import qualified Data.Aeson as Aeson
 import qualified Data.Aeson.TH as Aeson
+import           Data.List
 import qualified Data.Map as Map
 
 data ScoreMode 
@@ -80,12 +81,19 @@ poTblToBools threP threO tbl =
 
 -- | Returns the pair of the maximum found and the threshold
 searchThreshold :: [(Double,Double)] -> BinaryPredictorScore -> Double -> (Double, Double)
-searchThreshold tbl score threO = maximum $
-    [(scoreOf t1, t1) | t1 <- thres]
+searchThreshold tbl score threO = maximum $ take 420 stPairs 
   where
     scoreOf threP = score $ poTblToBools threP threO tbl
 
-    thres = map ((+threO) . (/50) . fromInteger) [-100 .. 100]
+    stPairs = [(scoreOf t1, t1) | t1 <- thres]
+    thres = thres0
+      ++ concat [ mkThre i | i <- [0..]]
+    thres0 = [threO + dt | dt <- [-2, -1.99 .. 2]]
+
+    mkThre i = [tbsf-dt,tbsf+dt]
+      where 
+        (_, tbsf) = maximum $ take (i+length thres0) stPairs
+        dt = 0.01 * exp (negate $ fromIntegral i / 5)
 
 makeScoreMap :: [(Double,Double)] -> Double -> ScoreMap
 makeScoreMap tbl threO = Map.fromList
