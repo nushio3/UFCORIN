@@ -85,7 +85,7 @@ searchThreshold tbl score threO = maximum $
   where
     scoreOf threP = score $ poTblToBools threP threO tbl
 
-    thres = map ((+threO) . (/500) . fromInteger) [-1000 .. 1000]
+    thres = map ((+threO) . (/50) . fromInteger) [-100 .. 100]
 
 makeScoreMap :: [(Double,Double)] -> Double -> ScoreMap
 makeScoreMap tbl threO = Map.fromList
