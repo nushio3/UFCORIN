@@ -82,14 +82,14 @@ poTblToBools threP threO tbl =
 -- | Returns the pair of the maximum found and the threshold
 searchThreshold :: [(Double,Double)] -> BinaryPredictorScore -> Double -> (Double, Double)
 searchThreshold tbl score threO = 
-  maximum $ take (length thres0 + 40) stPairs 
+  maximum $ take (length thres0 + 50) stPairs 
   where
     scoreOf threP = score $ poTblToBools threP threO tbl
 
     stPairs = [(scoreOf t1, t1) | t1 <- thres]
     thres = thres0
       ++ concat [ mkThre i | i <- [0..]]
-    thres0 = [threO + dt | dt <- [-2, -1.98 .. 2]]
+    thres0 = [threO + dt | dt <- [-2, -1.99 .. 2]]
 
     mkThre i = [tbsf-dt,tbsf+dt]
       where 
