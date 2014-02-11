@@ -69,13 +69,15 @@ loadFeatureWithSchemaT schema0 fp = do
 
 
       parseLine :: (Int, T.Text) -> Either String (TimeBin, Double)
-      parseLine (lineNum, txt) = 
-        maybe (Left $ printf "parse error on line %d" lineNum) Right $ do
-          -- maybe monad here
+      parseLine (lineNum, txt) = do
           let wtxt = T.words txt
-          t <- readAt wtxt (schema0 ^. colT - 1)
-          a <- readAt wtxt (schema0 ^. colX - 1)
-          return (t,(schema0^.scaling) * convert a)
+              m2e Nothing =  Left $ printf "file %s line %d: parse error" fp lineNum
+              m2e (Just x) = Right $ x
+          t <- m2e $ readAt wtxt (schema0 ^. colT - 1)
+          a <- m2e $ readAt wtxt (schema0 ^. colX - 1)
+          if (schema0^.isLog && a <= 0) 
+             then Left $ printf "file %s line %d:  logscale specified but non-positive colX value: %s" fp lineNum (show a)
+             else return (t,(schema0^.scaling) * convert a)
 
       ret :: Either String Feature
       ret = fmap Map.fromList $ mapM parseLine $ linesWithComment txt0

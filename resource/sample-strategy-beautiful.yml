@@ -1,5 +1,5 @@
 # This is a sample strategy written by hand.
-spaceWeatherLibVersion: version 1.0.3
+spaceWeatherLibVersion: version 1.0.4
 crossValidationStrategy: {tag: CVWeekly, contents: []}
 predictionTargetSchema: {colT: 2, colX: 5, isLog: true, scaling: 1.0}
 predictionTargetFile: /user/nushio/forecast/forecast-goes-24.txt

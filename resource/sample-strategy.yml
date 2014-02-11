@@ -1,24 +1,24 @@
-spaceWeatherLibVersion: version 1.0.3
+spaceWeatherLibVersion: version 1.0.4
 crossValidationStrategy:
   contents: []
   tag: CVWeekly
 predictionTargetSchema:
-  colY: 5
+  colT: 2
   isLog: true
-  colX: 2
+  colX: 5
   scaling: 1.0
 predictionResultFile: ''
 featureSchemaPackUsed:
   SchemaDefinitions:
     f25Log:
-      colY: 5
+      colT: 2
       isLog: true
-      colX: 2
+      colX: 5
       scaling: 1.0
     f35Log:
-      colY: 5
+      colT: 3
       isLog: true
-      colX: 3
+      colX: 5
       scaling: 1.0
   FilenamePairs:
   - - f35Log
