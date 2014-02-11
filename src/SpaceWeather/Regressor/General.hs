@@ -42,7 +42,7 @@ defaultPredictionStrategy = PredictionStrategy
 
 goes24max :: FeatureSchema
 goes24max = FeatureSchema
-  { _colX = 2
-  , _colY = 5
+  { _colT = 2
+  , _colX = 5
   , _scaling = 1
   , _isLog = True}

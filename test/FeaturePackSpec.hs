@@ -15,8 +15,8 @@ import Test.QuickCheck.Arbitrary
 
 testFS1 :: FeatureSchema
 testFS1 = FeatureSchema 
-  { _colX = 3
-  , _colY = 5
+  { _colT = 3
+  , _colX = 5
   , _scaling = 1
   , _isLog = True
   }

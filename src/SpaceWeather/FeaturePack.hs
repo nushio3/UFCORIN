@@ -22,8 +22,8 @@ import SpaceWeather.TimeLine
 
 data FeatureSchema 
   = FeatureSchema 
-  { _colX           :: Int
-  , _colY           :: Int
+  { _colT           :: Int
+  , _colX           :: Int
   , _scaling         :: Double
   , _isLog          :: Bool
   } deriving (Eq, Ord, Show, Read)
@@ -32,8 +32,8 @@ Aeson.deriveJSON Aeson.defaultOptions{Aeson.fieldLabelModifier = drop 1} ''Featu
 
 defaultFeatureSchema :: FeatureSchema
 defaultFeatureSchema = FeatureSchema
-  { _colX = 1
-  , _colY = 2
+  { _colT = 1
+  , _colX = 2
   , _scaling = 1
   , _isLog = False
   } 
@@ -73,8 +73,8 @@ loadFeatureWithSchemaT schema0 fp = do
         maybe (Left $ printf "parse error on line %d" lineNum) Right $ do
           -- maybe monad here
           let wtxt = T.words txt
-          t <- readAt wtxt (schema0 ^. colX - 1)
-          a <- readAt wtxt (schema0 ^. colY - 1)
+          t <- readAt wtxt (schema0 ^. colT - 1)
+          a <- readAt wtxt (schema0 ^. colX - 1)
           return (t,(schema0^.scaling) * convert a)
 
       ret :: Either String Feature

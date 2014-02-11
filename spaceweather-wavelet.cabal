@@ -2,7 +2,7 @@
 --  documentation, see http://haskell.org/cabal/users-guide/
 
 name:                spaceweather-wavelet
-version:             1.0.3
+version:             1.0.4
 -- synopsis:            
 -- description:         
 license:             AllRightsReserved
@@ -90,8 +90,8 @@ executable prediction-main
   ghc-options:       -Wall -O2 
 
 
-executable aia2feature
-  main-is:           aia2feature.hs
+executable aia2timebin
+  main-is:           aia2timebin.hs
   hs-source-dirs:    exe-src/
   build-depends:
      base ==4.6.*

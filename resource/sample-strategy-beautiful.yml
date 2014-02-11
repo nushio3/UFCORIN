@@ -1,7 +1,7 @@
 # This is a sample strategy written by hand.
 spaceWeatherLibVersion: version 1.0.3
 crossValidationStrategy: {tag: CVWeekly, contents: []}
-predictionTargetSchema: {colX: 2, colY: 5, isLog: true, scaling: 1.0}
+predictionTargetSchema: {colT: 2, colX: 5, isLog: true, scaling: 1.0}
 predictionTargetFile: /user/nushio/forecast/forecast-goes-24.txt
 predictionSessionFile: ''
 predictionResultFile: ''
@@ -10,8 +10,8 @@ regressorUsed:
   contents: { Cost: 1.0, Nu: 0.5, Epsilon: 1.0e-3, Gamma: null, KernelType: 2, Type: 3, AutomationLevel: 0}
 featureSchemaPackUsed:
   SchemaDefinitions:
-    f25Log: { colX: 2, colY: 5, isLog: true, scaling: 1.0}
-    f35Log: { colX: 3, colY: 5, isLog: true, scaling: 1.0}
+    f25Log: { colT: 2, colX: 5, isLog: true, scaling: 1.0}
+    f35Log: { colT: 3, colX: 5, isLog: true, scaling: 1.0}
   FilenamePairs:
   - [f35Log, /user/shibayama/sdo/hmi/hmi_totalflux.txt]
   - [f35Log, /user/nushio/wavelet-features/bsplC-301-N-0000-0000.txt]

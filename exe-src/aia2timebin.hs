@@ -13,6 +13,7 @@ import Text.Printf
 
 import SpaceWeather.Format
 import SpaceWeather.TimeLine
+import qualified System.IO.Hadoop as HFS
 
 -- AIA/AIA20100701_010006_0193.fits     5.1739596800e+09
 
@@ -22,9 +23,10 @@ main = getArgs >>= mapM_ process
 
 process :: FilePath -> IO ()
 process fn0 = do
-  txt0 <- T.readFile fn0
+  txt0 <- HFS.readFile fn0
   let ls0 = T.lines txt0
       lsx = mapMaybe parse ls0
+      fn1=fn0 ++ ".timebin"
 
       parse :: T.Text -> Maybe (TimeBin, Double)
       parse txt1 = do
@@ -39,4 +41,6 @@ process fn0 = do
         val <- readAt (T.words txt1) 1
         Just (t ^. discreteTime, val)
         
-  forM_ lsx $ (\(t,v) -> printf "%6d %20e\n" t v )
+      lsxpp :: T.Text
+      lsxpp = T.unlines $ map (\(t,v) -> T.pack $ printf "%6d %20e" t v ) lsx
+  HFS.writeFile fn1 lsxpp
