@@ -8,6 +8,10 @@ predictionResultFile: ''
 regressorUsed:
   - tag: LibSVMRegressor
     contents: { Cost: 1.0, Nu: 0.5, Epsilon: 1.0e-3, Gamma: null, KernelType: 2, Type: 3, AutomationLevel: 0}
+  - tag: LibSVMRegressor
+    contents: { Cost: 10.0, Nu: 0.5, Epsilon: 1.0e-3, Gamma: null, KernelType: 2, Type: 3, AutomationLevel: 0}
+  - tag: LibSVMRegressor
+    contents: { Cost: 100.0, Nu: 0.5, Epsilon: 1.0e-3, Gamma: null, KernelType: 2, Type: 3, AutomationLevel: 0}
 featureSchemaPackUsed:
   SchemaDefinitions:
     f25Log: { colT: 2, colX: 5, isLog: true, scaling: 1.0}

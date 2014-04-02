@@ -215,13 +215,4 @@ libSVMPerformPrediction strategy = do
      ret
 
 
-prToDouble :: PredictionResult -> Double
-prToDouble (PredictionFailure _) = 0
-prToDouble (PredictionSuccess m) = 
-  Prelude.sum $
-  map _scoreValue $
-  catMaybes $
-  map (Map.lookup TrueSkillStatistic )$ 
-  map snd $ 
-  Map.toList m
 

@@ -7,7 +7,7 @@ import qualified Data.Aeson.TH as Aeson
 import qualified Data.Map as Map
 import qualified Data.Text as T
 import qualified Data.Yaml as Yaml
-
+import Data.Maybe
 
 import SpaceWeather.DefaultFeatureSchemaPack
 import SpaceWeather.FeaturePack
@@ -58,6 +58,8 @@ instance Format PredictionResult where
   encode = T.pack . BS.unpack . Yaml.encode
   decode = Yaml.decodeEither . BS.pack . T.unpack
 
+
+
 data PredictionSession a = PredictionSession
   { _predictionStrategyUsed  :: PredictionStrategy a
   , _predictionSessionResult :: PredictionResult
@@ -76,3 +78,12 @@ instance (Yaml.ToJSON a, Yaml.FromJSON a) => Format (PredictionSession a) where
 class Predictor a where
   performPrediction :: PredictionStrategy a -> IO (PredictionSession a)
 
+prToDouble :: PredictionResult -> Double
+prToDouble (PredictionFailure _) = 0
+prToDouble (PredictionSuccess m) = 
+  Prelude.sum $
+  map _scoreValue $
+  catMaybes $
+  map (Map.lookup TrueSkillStatistic )$ 
+  map snd $ 
+  Map.toList m

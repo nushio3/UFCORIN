@@ -37,5 +37,23 @@ regressorUsed:
     KernelType: 2
     Type: 3
   tag: LibSVMRegressor
+- contents:
+    AutomationLevel: 0
+    Cost: 10.0
+    Nu: 0.5
+    Epsilon: 1.0e-3
+    Gamma: null
+    KernelType: 2
+    Type: 3
+  tag: LibSVMRegressor
+- contents:
+    AutomationLevel: 0
+    Cost: 100.0
+    Nu: 0.5
+    Epsilon: 1.0e-3
+    Gamma: null
+    KernelType: 2
+    Type: 3
+  tag: LibSVMRegressor
 predictionSessionFile: ''
 predictionTargetFile: /user/nushio/forecast/forecast-goes-24.txt

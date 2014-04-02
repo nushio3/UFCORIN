@@ -1,11 +1,14 @@
 {-# LANGUAGE FlexibleContexts, FlexibleInstances, MultiParamTypeClasses, TemplateHaskell, TupleSections, TypeSynonymInstances #-}
 module SpaceWeather.Regressor.General where
 
-import Paths_spaceweather_wavelet
-import Data.Version (showVersion)
 import Control.Lens
+import Control.Monad
+import Data.Version (showVersion)
+import Data.Function (on)
+import Data.List
 import qualified Data.Aeson.TH as Aeson
 
+import Paths_spaceweather_wavelet
 import SpaceWeather.DefaultFeatureSchemaPack
 import SpaceWeather.FeaturePack
 import SpaceWeather.Regressor.LibSVM
@@ -36,20 +39,41 @@ instance Predictor [GeneralRegressor] where
         rs = ps^.regressorUsed 
         singleStrts :: [PredictionStrategy GeneralRegressor]
         singleStrts = [fmap (const r) ps | r <- rs]
-    pSess <- performPrediction $ head singleStrts
-    return $ fmap (:[]) pSess
+
+        cmp = compare `on` (prToDouble . _predictionSessionResult)
+    sessions <- mapM performPrediction $ singleStrts
+    return $ fmap (:[]) $ last $ sortBy cmp sessions
     
 
 defaultPredictionStrategy :: PredictionStrategy [GeneralRegressor]
 defaultPredictionStrategy = PredictionStrategy 
   { _spaceWeatherLibVersion = "version " ++ showVersion version
-  , _regressorUsed = [LibSVMRegressor defaultLibSVMOption]
+  , _regressorUsed = 
+   [ LibSVMRegressor $ defaultLibSVMOption{_libSVMCost = c} 
+   | c <- [1, 10, 100]]
   , _featureSchemaPackUsed = defaultFeatureSchemaPack
   , _crossValidationStrategy = CVWeekly
   , _predictionTargetSchema = goes24max
   , _predictionTargetFile = "/user/nushio/forecast/forecast-goes-24.txt"
   , _predictionResultFile = ""
   , _predictionSessionFile = ""}
+
+biggerPredictionStrategy :: PredictionStrategy [GeneralRegressor]
+biggerPredictionStrategy = PredictionStrategy 
+  { _spaceWeatherLibVersion = "version " ++ showVersion version
+  , _regressorUsed = 
+   [ LibSVMRegressor $
+       defaultLibSVMOption{
+         _libSVMCost = 10**(c/10) ,
+         _libSVMEpsilon = 10**(e/10) } 
+   | c <- [0..30], e <- [-70.. -30]]
+  , _featureSchemaPackUsed = defaultFeatureSchemaPack
+  , _crossValidationStrategy = CVWeekly
+  , _predictionTargetSchema = goes24max
+  , _predictionTargetFile = "/user/nushio/forecast/forecast-goes-24.txt"
+  , _predictionResultFile = ""
+  , _predictionSessionFile = ""}
+
 
 goes24max :: FeatureSchema
 goes24max = FeatureSchema

@@ -23,6 +23,7 @@ spec = do
   describe "Prediction Pack" $ do
     it "generates Yaml." $ do
       liftIO $ T.writeFile "resource/sample-strategy.yml" $ encode defaultPredictionStrategy
+      liftIO $ T.writeFile "resource/sample-strategy-bigger.yml" $ encode biggerPredictionStrategy
       liftIO $ T.writeFile "resource/big-strategy.yml" $ encode $ 
         defaultPredictionStrategy & featureSchemaPackUsed .~ defaultFeatureSchemaPackBig
       (decode $ encode defaultPredictionStrategy) `shouldBe` Right defaultPredictionStrategy
