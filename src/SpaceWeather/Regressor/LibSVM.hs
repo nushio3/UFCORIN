@@ -152,6 +152,8 @@ libSVMPerformPrediction strategy = do
     evaluate :: LibSVMOption -> IO PredictionResult
     evaluate opt = do
       hPutStrLn stderr $ "testing: " ++ show opt
+      hPutStrLn stderr "ax";  hFlush stderr -- for hadoop log retrieval system
+
       let
           svmTrainCmd = printf "./svm-train %s %s %s"
             (libSVMOptionCmdLine opt) fnTrainSet fnModel
@@ -176,6 +178,8 @@ libSVMPerformPrediction strategy = do
             | flare1 <- defaultFlareClasses]
           ret = PredictionSuccess resultMap0
       hPutStrLn stderr $ "sum TSS : " ++ (show $ prToDouble ret)
+      hPutStr stderr "\n";  hFlush stderr -- for hadoop log retrieval system
+
       return $ ret
 
   let logOpt0 = fmap log (opt0 & libSVMGamma .~ Just 0.01)
@@ -193,16 +197,19 @@ libSVMPerformPrediction strategy = do
           return $ fmap exp logBestOpt
 
     problem = (CMAES.minimizeTIO minimizationTgt logOpt0)
-      { CMAES.sigma0 = 0.25 -- we need big sigma to find out the best config!
-      , CMAES.tolFun = Just 1e-4
-      , CMAES.scaling = Just $ repeat (log 1e4) 
+      { CMAES.sigma0 = 1 -- we need bigger sigma to find out the best config!
+      , CMAES.tolFun = Just 1e-3
+      , CMAES.scaling = Just $ repeat (log 1e2) 
       , CMAES.pythonPath = Just "/usr/bin/python"
       , CMAES.cmaesWrapperPath = Just "./cmaes_wrapper.py"}  
   bestOpt <- liftIO goBestOpt
 
   ret <- liftIO $ evaluate bestOpt
 
-  liftIO $ T.hPutStrLn stderr $ encode ret
+  liftIO $ do
+      T.hPutStrLn stderr $ encode ret
+      hPutStr stderr "\n";  hFlush stderr -- for hadoop log retrieval system
+
   return $ PredictionSession
      (strategy & regressorUsed .~ bestOpt) 
      ret
