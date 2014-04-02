@@ -1,4 +1,4 @@
-spaceWeatherLibVersion: version 1.0.4
+spaceWeatherLibVersion: version 1.1
 crossValidationStrategy:
   contents: []
   tag: CVWeekly
@@ -28,7 +28,7 @@ featureSchemaPackUsed:
   - - f25Log
     - /user/nushio/forecast/backcast-goes-24.txt
 regressorUsed:
-  contents:
+- contents:
     AutomationLevel: 0
     Cost: 1.0
     Nu: 0.5

@@ -24,7 +24,7 @@ process fn = withWorkDir $ do
   case strE of 
     Left msg -> putStrLn msg
     Right strategy -> do
-      res <- performPrediction (strategy :: PredictionStrategyG)
+      res <- performPrediction (strategy :: PredictionStrategyGS)
       let
         candSesFn = strategy ^. predictionSessionFile 
         candResFn = strategy ^. predictionResultFile 

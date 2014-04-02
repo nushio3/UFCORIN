@@ -21,18 +21,29 @@ import SpaceWeather.TimeLine
 data GeneralRegressor = LibSVMRegressor LibSVMOption | LinearRegressor LinearOption deriving (Eq, Ord, Show, Read)
 Aeson.deriveJSON Aeson.defaultOptions ''GeneralRegressor
 
-type PredictionStrategyG = PredictionStrategy GeneralRegressor
-type PredictionSessionG = PredictionSession GeneralRegressor
+type PredictionStrategyGS = PredictionStrategy [GeneralRegressor]
+type PredictionSessionGS = PredictionSession [GeneralRegressor]
 
 instance Predictor GeneralRegressor where
   performPrediction ps = let optG = ps^.regressorUsed in case optG of
     LibSVMRegressor opt -> fmap (fmap LibSVMRegressor) $ performPrediction $ fmap (const opt) ps
     LinearRegressor opt -> fmap (fmap LinearRegressor) $ performPrediction $ fmap (const opt) ps
 
-defaultPredictionStrategy :: PredictionStrategy GeneralRegressor
+instance Predictor [GeneralRegressor] where
+  performPrediction ps = do
+    let 
+        rs :: [GeneralRegressor]
+        rs = ps^.regressorUsed 
+        singleStrts :: [PredictionStrategy GeneralRegressor]
+        singleStrts = [fmap (const r) ps | r <- rs]
+    pSess <- performPrediction $ head singleStrts
+    return $ fmap (:[]) pSess
+    
+
+defaultPredictionStrategy :: PredictionStrategy [GeneralRegressor]
 defaultPredictionStrategy = PredictionStrategy 
   { _spaceWeatherLibVersion = "version " ++ showVersion version
-  , _regressorUsed = LibSVMRegressor defaultLibSVMOption
+  , _regressorUsed = [LibSVMRegressor defaultLibSVMOption]
   , _featureSchemaPackUsed = defaultFeatureSchemaPack
   , _crossValidationStrategy = CVWeekly
   , _predictionTargetSchema = goes24max
