@@ -152,7 +152,9 @@ libSVMPerformPrediction strategy = do
     evaluate :: LibSVMOption -> IO PredictionResult
     evaluate opt = do
       hPutStrLn stderr $ "testing: " ++ show opt
-      hPutStrLn stderr ".";  hFlush stderr -- for hadoop log retrieval system
+      hPutStrLn stderr ".";  hFlush stderr 
+      {- for hadoop log retrieval system tends to replicate the last non-blank line of stderr
+         every one second, this is done to cleanse the error log as good as possible. -}
 
       let
           svmTrainCmd = printf "./svm-train %s %s %s"
