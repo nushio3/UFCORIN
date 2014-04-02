@@ -152,7 +152,7 @@ libSVMPerformPrediction strategy = do
     evaluate :: LibSVMOption -> IO PredictionResult
     evaluate opt = do
       hPutStrLn stderr $ "testing: " ++ show opt
-      hPutStrLn stderr "ax";  hFlush stderr -- for hadoop log retrieval system
+      hPutStrLn stderr ".";  hFlush stderr -- for hadoop log retrieval system
 
       let
           svmTrainCmd = printf "./svm-train %s %s %s"
@@ -178,7 +178,6 @@ libSVMPerformPrediction strategy = do
             | flare1 <- defaultFlareClasses]
           ret = PredictionSuccess resultMap0
       hPutStrLn stderr $ "sum TSS : " ++ (show $ prToDouble ret)
-      hPutStr stderr "\n";  hFlush stderr -- for hadoop log retrieval system
 
       return $ ret
 
@@ -208,7 +207,6 @@ libSVMPerformPrediction strategy = do
 
   liftIO $ do
       T.hPutStrLn stderr $ encode ret
-      hPutStr stderr "\n";  hFlush stderr -- for hadoop log retrieval system
 
   return $ PredictionSession
      (strategy & regressorUsed .~ bestOpt) 
