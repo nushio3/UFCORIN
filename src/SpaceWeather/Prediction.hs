@@ -10,6 +10,7 @@ import qualified Data.Yaml as Yaml
 import Data.Maybe
 
 import SpaceWeather.DefaultFeatureSchemaPack
+import SpaceWeather.Feature
 import SpaceWeather.FeaturePack
 import SpaceWeather.FlareClass
 import SpaceWeather.Format
@@ -74,9 +75,24 @@ instance (Yaml.ToJSON a, Yaml.FromJSON a) => Format (PredictionSession a) where
   encode = T.pack . BS.unpack . Yaml.encode
   decode = Yaml.decodeEither . BS.pack . T.unpack
 
+data LearningInput = LearningInput
+  { _learningTrainSet :: FeatureIOPair
+  , _learningTestSet :: FeatureIOPair
+   }
+makeClassy ''LearningInput
+
+data LearningOutput = LearningOutput
+  { _learningPredictionResults :: [Double]
+  }
+makeClassy ''LearningOutput
+
+
 
 class Predictor a where
   performPrediction :: PredictionStrategy a -> IO (PredictionSession a)
+  preprocessLearning :: PredictionStrategy a -> IO (Either String LearningInput)
+  performLearning :: a -> LearningInput -> LearningOutput
+  postprocessLearning :: PredictionStrategy a -> LearningOutput -> IO (PredictionSession a)
 
 prToDouble :: PredictionResult -> Double
 prToDouble (PredictionFailure _) = 0
