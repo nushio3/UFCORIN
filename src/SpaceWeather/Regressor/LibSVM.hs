@@ -16,6 +16,7 @@ import qualified Data.Text as T
 import qualified Data.Text.IO as T
 import qualified Numeric.Optimization.Algorithms.CMAES as CMAES
 import System.IO
+import qualified System.IO.Hadoop as HFS
 import System.Process
 import Test.QuickCheck.Arbitrary
 import Test.QuickCheck.Gen
@@ -158,8 +159,8 @@ libSVMPerformPrediction strategy = do
     system "hadoop fs -get /user/nushio/executables/cma.py ."
   
   let 
-    evaluate :: LibSVMOption -> IO PredictionResult
-    evaluate opt = do
+    evaluate :: FilePath -> LibSVMOption -> IO PredictionResult
+    evaluate fnDebugFn opt = do
       hPutStrLn stderr $ "testing: " ++ show opt
       hPutStrLn stderr ".";  hFlush stderr 
       {- for hadoop log retrieval system tends to replicate the last non-blank line of stderr
@@ -182,6 +183,11 @@ libSVMPerformPrediction strategy = do
           observations :: [Double]
           observations = map (snd . snd) $ Map.toAscList fioTestSet
     
+          poTimeLine :: TimeLine (Double, Double)
+          poTimeLine = Map.fromList $
+            zipWith (\p (t, (_,o)) -> (t, (p,o)) ) predictions $
+            Map.toList fioTestSet
+
           poTbl = zip predictions observations
     
           resultMap0 = Map.fromList $ 
@@ -190,13 +196,21 @@ libSVMPerformPrediction strategy = do
           ret = PredictionSuccess resultMap0
       hPutStrLn stderr $ "sum TSS : " ++ (show $ prToDouble ret)
 
+      when (fnDebugFn/="") $
+         HFS.writeFile fnDebugFn $ T.unlines $
+           ("time\tprediction\tobservation" :) $
+           map (T.pack) $
+           map (\(t, (p,o)) -> printf "%d\t%f\t%f" t p o) $
+           Map.toList poTimeLine
+
+
       return $ ret
 
   let logOpt0 = fmap log opt0
       minimizationTgt :: LibSVMOption -> IO Double
       minimizationTgt = 
         fmap (negate . prToDouble) .            
-        evaluate .               
+        (evaluate "") .
         fmap exp  
   let 
     lv = opt0 ^. libSVMAutomationLevel
@@ -217,7 +231,7 @@ libSVMPerformPrediction strategy = do
       , CMAES.cmaesWrapperPath = Just "./cmaes_wrapper.py"}  
   bestOpt <- liftIO goBestOpt
 
-  ret <- liftIO $ evaluate bestOpt
+  ret <- liftIO $ evaluate (strategy ^. predictionRegressionFile) bestOpt
 
   liftIO $ do
       T.hPutStrLn stderr $ encode ret

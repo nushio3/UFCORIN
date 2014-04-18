@@ -37,6 +37,7 @@ data PredictionStrategy a = PredictionStrategy
   , _predictionTargetSchema :: FeatureSchema
   , _predictionTargetFile :: FilePath
   , _predictionResultFile :: FilePath
+  , _predictionRegressionFile :: FilePath
   , _predictionSessionFile :: FilePath
   } deriving (Eq, Ord, Show, Read, Functor)
 

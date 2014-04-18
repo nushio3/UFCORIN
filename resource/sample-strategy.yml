@@ -8,6 +8,7 @@ predictionTargetSchema:
   colX: 5
   scaling: 1.0
 predictionResultFile: ''
+predictionRegressionFile: ''
 featureSchemaPackUsed:
   SchemaDefinitions:
     f25Log:

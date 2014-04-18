@@ -24,18 +24,35 @@ process fn = withWorkDir $ do
   case strE of 
     Left msg -> putStrLn msg
     Right strategy -> do
-      res <- performPrediction (strategy :: PredictionStrategyGS)
       let
+        strategy2 = strategy 
+          & predictionSessionFile .~ finalSesFn        
+          & predictionResultFile .~ finalResFn        
+          & predictionRegressionFile .~ finalRegFn        
+
         candSesFn = strategy ^. predictionSessionFile 
         candResFn = strategy ^. predictionResultFile 
+        candRegFn = strategy ^. predictionRegressionFile 
+
         finalSesFn 
           | candSesFn /= "" = candSesFn
           | ".yml" `isSuffixOf` fn = (++"-session.yml") $ reverse $ drop 4 $ reverse fn  
           | otherwise              = fn ++ ".session.yml" 
+
         finalResFn
           | candResFn /= "" = candResFn
           | ".yml" `isSuffixOf` fn = (++"-result.yml") $ reverse $ drop 4 $ reverse fn  
           | otherwise              = fn ++ ".result.yml" 
+
+        finalRegFn
+          | candRegFn /= "" = candRegFn
+          | ".yml" `isSuffixOf` fn = (++"-regres.txt") $ reverse $ drop 4 $ reverse fn  
+          | otherwise              = fn ++ ".regress.txt" 
+
+
+      res <- performPrediction (strategy2 :: PredictionStrategyGS)
+
+
       HFS.writeFile finalResFn $ encode (res ^. predictionResult)
       HFS.writeFile finalSesFn $ encode res
       return ()
