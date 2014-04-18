@@ -111,9 +111,9 @@ makeScoreMap tbl threO = Map.fromList
         , _maximizingThreshold = threP
         , _contingencyTable = 
           Map.fromList
-            [ ("pToT", eSX threP $ ContingencyTableElem True  True )
-            , ("pToF", eSX threP $ ContingencyTableElem True  False)
-            , ("pFoT", eSX threP $ ContingencyTableElem False True )
-            , ("pFoF", eSX threP $ ContingencyTableElem False False)
+            [ ("TP", eSX threP $ ContingencyTableElem True  True )
+            , ("FP", eSX threP $ ContingencyTableElem True  False)
+            , ("FN", eSX threP $ ContingencyTableElem False True )
+            , ("TN", eSX threP $ ContingencyTableElem False False)
             ]
         }
