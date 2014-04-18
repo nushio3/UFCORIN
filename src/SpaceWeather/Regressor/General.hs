@@ -65,8 +65,8 @@ biggerPredictionStrategy = PredictionStrategy
    [ LibSVMRegressor $
        defaultLibSVMOption{
          _libSVMCost = 10**(c/10) ,
-         _libSVMEpsilon = 10**(e/10) } 
-   | c <- [0..30], e <- [-70.. -30]]
+         _libSVMGamma = 10**(g/10) } 
+   | c <- [0..30], g <- [-70.. -30]]
   , _featureSchemaPackUsed = defaultFeatureSchemaPack
   , _crossValidationStrategy = CVWeekly
   , _predictionTargetSchema = goes24max

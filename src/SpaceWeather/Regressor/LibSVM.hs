@@ -34,9 +34,9 @@ data LibSVMOptionOf a = LibSVMOption
   { _libSVMType       :: Int
   , _libSVMKernelType :: Int
   , _libSVMCost       :: a
-  , _libSVMEpsilon    :: a
-  , _libSVMGamma      :: Maybe a
-  , _libSVMNu         :: a
+  , _libSVMEpsilon    :: Maybe a
+  , _libSVMGamma      :: a
+  , _libSVMNu         :: Maybe a
   , _libSVMAutomationLevel :: Int
   } deriving (Eq, Ord, Show, Read, Functor, Foldable, Traversable)
 type LibSVMOption = LibSVMOptionOf Double
@@ -48,20 +48,21 @@ defaultLibSVMOption = LibSVMOption
   { _libSVMType       = 3
   , _libSVMKernelType = 2
   , _libSVMCost       = 1  
-  , _libSVMEpsilon    = 0.001
-  , _libSVMGamma      = Nothing
-  , _libSVMNu         = 0.5
+  , _libSVMEpsilon    = Nothing -- 0.001
+  , _libSVMGamma      = 0.01
+  , _libSVMNu         = Nothing -- 0.5
   , _libSVMAutomationLevel = 0
   }
 
 libSVMOptionCmdLine :: LibSVMOption -> String
 libSVMOptionCmdLine opt = 
-  printf "-s %d -t %d -c %f -e %f %s -n %f"
-    (opt^.libSVMType) (opt^.libSVMKernelType) (opt^.libSVMCost) (opt^.libSVMEpsilon) gammaStr (opt^.libSVMNu)
+  printf "-s %d -t %d -c %f %s %s %s"
+    (opt^.libSVMType) (opt^.libSVMKernelType) (opt^.libSVMCost) epsilonStr gammaStr nuStr
   where
-    gammaStr = case opt ^. libSVMGamma of
-      Nothing -> ""
-      Just x  -> "-g " ++ show x
+    gammaStr = "-g " ++ show (opt ^. libSVMGamma)
+    epsilonStr = maybe "" (\v -> "-e " ++ show v) (opt^.libSVMEpsilon)
+    nuStr = maybe "" (\v -> "-n " ++ show v) (opt^.libSVMNu)
+
 newtype LibSVMFeatures = LibSVMFeatures {
       _libSVMIOPair :: FeatureIOPair
    }
@@ -183,7 +184,7 @@ libSVMPerformPrediction strategy = do
 
       return $ ret
 
-  let logOpt0 = fmap log (opt0 & libSVMGamma .~ Just 0.01)
+  let logOpt0 = fmap log opt0
       minimizationTgt :: LibSVMOption -> IO Double
       minimizationTgt = 
         fmap (negate . prToDouble) .            
