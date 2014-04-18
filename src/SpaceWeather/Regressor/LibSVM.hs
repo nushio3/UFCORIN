@@ -198,7 +198,7 @@ libSVMPerformPrediction strategy = do
 
       when (fnDebugFn/="") $
          HFS.writeFile fnDebugFn $ T.unlines $
-           ("time\tprediction\tobservation" :) $
+           ("#time\tprediction\tobservation" :) $
            map (T.pack) $
            map (\(t, (p,o)) -> printf "%d\t%f\t%f" t p o) $
            Map.toList poTimeLine
