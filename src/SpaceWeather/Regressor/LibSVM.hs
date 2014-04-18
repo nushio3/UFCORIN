@@ -38,6 +38,10 @@ data LibSVMOptionOf a = LibSVMOption
   , _libSVMGamma      :: a
   , _libSVMNu         :: Maybe a
   , _libSVMAutomationLevel :: Int
+  , _libSVMAutomationPopSize :: Int
+  , _libSVMAutomationTolFun :: Double
+  , _libSVMAutomationScaling :: Double
+  , _libSVMAutomationNoise :: Bool
   } deriving (Eq, Ord, Show, Read, Functor, Foldable, Traversable)
 type LibSVMOption = LibSVMOptionOf Double
 makeClassy ''LibSVMOptionOf
@@ -52,6 +56,10 @@ defaultLibSVMOption = LibSVMOption
   , _libSVMGamma      = 0.01
   , _libSVMNu         = Nothing -- 0.5
   , _libSVMAutomationLevel = 0
+  , _libSVMAutomationPopSize = 10
+  , _libSVMAutomationTolFun = 1e-3
+  , _libSVMAutomationScaling = 2
+  , _libSVMAutomationNoise = False
   }
 
 libSVMOptionCmdLine :: LibSVMOption -> String
@@ -199,9 +207,12 @@ libSVMPerformPrediction strategy = do
           return $ fmap exp logBestOpt
 
     problem = (CMAES.minimizeTIO minimizationTgt logOpt0)
-      { CMAES.sigma0 = 1 -- we need bigger sigma to find out the best config!
-      , CMAES.tolFun = Just 1e-3
-      , CMAES.scaling = Just $ repeat (log 1e2) 
+      { CMAES.sigma0 = opt0 ^. libSVMAutomationScaling
+      , CMAES.tolFun = Just $ opt0 ^. libSVMAutomationTolFun
+      , CMAES.scaling = Just $ repeat (log 10) 
+      , CMAES.noiseHandling = opt0 ^. libSVMAutomationNoise
+      , CMAES.otherArgs = 
+          [("popsize", show $ opt0 ^. libSVMAutomationPopSize)]
       , CMAES.pythonPath = Just "/usr/bin/python"
       , CMAES.cmaesWrapperPath = Just "./cmaes_wrapper.py"}  
   bestOpt <- liftIO goBestOpt

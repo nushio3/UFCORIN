@@ -50,7 +50,7 @@ defaultPredictionStrategy = PredictionStrategy
   { _spaceWeatherLibVersion = "version " ++ showVersion version
   , _regressorUsed = 
    [ LibSVMRegressor $ defaultLibSVMOption{_libSVMCost = c} 
-   | c <- [1, 10, 100]]
+   | c <- [1]]
   , _featureSchemaPackUsed = defaultFeatureSchemaPack
   , _crossValidationStrategy = CVWeekly
   , _predictionTargetSchema = goes24max
