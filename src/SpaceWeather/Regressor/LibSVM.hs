@@ -1,4 +1,4 @@
-{-# LANGUAGE DeriveFunctor, DeriveFoldable, DeriveTraversable, FlexibleContexts, FlexibleInstances, FunctionalDependencies, MultiParamTypeClasses, MultiWayIf, OverloadedStrings, TemplateHaskell, TypeSynonymInstances #-}
+{-# LANGUAGE DeriveFunctor, DeriveFoldable, DeriveTraversable, FlexibleContexts, FlexibleInstances, FunctionalDependencies, MultiParamTypeClasses, MultiWayIf, OverloadedStrings, TemplateHaskell, TypeFamilies, TypeSynonymInstances #-}
 module SpaceWeather.Regressor.LibSVM where
 
 import Control.Lens
@@ -134,7 +134,7 @@ libSVMPerformPrediction strategy = do
       fioPair0 = catFeaturePair fs0 tgtFeature
       
       fs0 :: [Feature]
-      fs0 = view unwrapped featurePack0
+      FeaturePack fs0 = featurePack0
 
       pred :: TimeBin -> Bool
       pred = inTrainingSet $ strategy ^. crossValidationStrategy

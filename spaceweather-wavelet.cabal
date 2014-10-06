@@ -35,7 +35,7 @@ library
     Paths_spaceweather_wavelet
 
   build-depends:     
-     base ==4.*
+     base < 6
    , aeson
    , binary 
    , bindings-gsl >= 0.2
@@ -49,8 +49,6 @@ library
    , MissingH
    , process
    , QuickCheck
-   , repa
-   , repa-io
    , safe
    , spoon
    , text >= 0.11.3.1
@@ -83,7 +81,7 @@ executable prediction-main
   main-is:           prediction-main.hs
   hs-source-dirs:    exe-src/
   build-depends:
-     base ==4.6.*
+     base < 6
    , lens
 
    , spaceweather-wavelet
@@ -94,7 +92,7 @@ executable aia2timebin
   main-is:           aia2timebin.hs
   hs-source-dirs:    exe-src/
   build-depends:
-     base ==4.6.*
+     base < 6
    , lens
    , text
    , time
@@ -104,49 +102,50 @@ executable aia2timebin
 
 
 
-executable wavelet-analysis-main
-  main-is:           wavelet-analysis-main.hs
-  hs-source-dirs:    exe-src/
-  build-depends:
-     base ==4.6.*
-   , binary 
-   , bindings-gsl >= 0.2
-   , bytestring >= 0.10.0.2
-   , cpu >= 0.1.1
-   , filepath
-   , text >= 0.11.3.1
-   , MissingH
-   , process
-   , repa
-   , repa-io
-   , unix
-  ghc-options:       -Wall -O2 -threaded
+-- executable wavelet-analysis-main
+--   buildable: False	   
+--   main-is:           wavelet-analysis-main.hs
+--   hs-source-dirs:    exe-src/
+--   build-depends:
+--      base < 6
+--    , binary 
+--    , bindings-gsl >= 0.2
+--    , bytestring >= 0.10.0.2
+--    , cpu >= 0.1.1
+--    , filepath
+--    , text >= 0.11.3.1
+--    , MissingH
+--    , process
+--    , repa
+--    , repa-io
+--    , unix
+--   ghc-options:       -Wall -O2 -threaded
 
 executable make-pdf
   main-is:           make-pdf.hs
   hs-source-dirs:    exe-src/
-  build-depends:     base ==4.6.*
+  build-depends:     base < 6
   ghc-options:       -Wall -O2
 
 executable hs-wordcount-mapper
   main-is:           hs-wordcount-mapper.hs
   hs-source-dirs:    exe-src/
   build-depends:    
-     base ==4.6.*
+     base < 6
   ghc-options:       -Wall -O2
 
 executable hs-wordcount-reducer
   main-is:           hs-wordcount-reducer.hs
   hs-source-dirs:    exe-src/
   build-depends:     
-    base ==4.6.*
+    base < 6
   ghc-options:       -Wall -O2
 
 executable daily-forecast
   main-is:           daily-forecast.hs
   hs-source-dirs:    exe-src/
   build-depends:
-     base ==4.6.*
+     base < 6
    , spaceweather-wavelet
 
    , containers
@@ -160,7 +159,7 @@ executable transpose-wavelet-mapper
   main-is:           transpose-wavelet-mapper.hs
   hs-source-dirs:    exe-src/
   build-depends:    
-     base ==4.6.*
+     base < 6
    , spaceweather-wavelet
 
    , spoon
@@ -171,7 +170,7 @@ executable transpose-wavelet-reducer
   main-is:           transpose-wavelet-reducer.hs
   hs-source-dirs:    exe-src/
   build-depends:    
-     base ==4.6.*
+     base < 6
    , spaceweather-wavelet
 
    , spoon
@@ -182,7 +181,7 @@ executable transpose-wavelet-finalizer
   main-is:           transpose-wavelet-finalizer.hs
   hs-source-dirs:    exe-src/
   build-depends:    
-     base ==4.6.*
+     base < 6
    , spaceweather-wavelet
 
    , containers
@@ -196,7 +195,7 @@ executable linear-regression
   main-is:           linear-regression.hs
   hs-source-dirs:    exe-src/
   build-depends:    
-     base ==4.6.*
+     base < 6
    , spaceweather-wavelet
 
    , cmaes
@@ -211,7 +210,7 @@ executable visualize-feature-vector
   main-is:           visualize-feature-vector.hs
   hs-source-dirs:    exe-src/
   build-depends:    
-     base ==4.6.*
+     base < 6
    , containers
    , process
    , safe

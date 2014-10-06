@@ -1,4 +1,4 @@
-{-# LANGUAGE FlexibleContexts, FlexibleInstances, MultiParamTypeClasses, TemplateHaskell, TupleSections, TypeSynonymInstances #-}
+{-# LANGUAGE FlexibleContexts, FlexibleInstances, MultiParamTypeClasses, TemplateHaskell, TupleSections, TypeFamilies, TypeSynonymInstances #-}
 module SpaceWeather.FeaturePack where
 
 import Control.Lens
@@ -71,6 +71,7 @@ loadFeatureWithSchemaT schema0 fp = do
       parseLine :: (Int, T.Text) -> Either String (TimeBin, Double)
       parseLine (lineNum, txt) = do
           let wtxt = T.words txt
+              m2e :: Maybe a -> Either String a
               m2e Nothing =  Left $ printf "file %s line %d: parse error" fp lineNum
               m2e (Just x) = Right $ x
           t <- m2e $ readAt wtxt (schema0 ^. colT - 1)
@@ -95,5 +96,5 @@ loadFeatureSchemaPack fsp = do
         id (Map.lookup fmtName scMap)  
   list1 <- runEitherT $ mapM (uncurry loadFeatureWithSchemaT) $ 
     map (_1 %~ name2map) list0 
-  return $ fmap (view wrapped) list1
+  return $ fmap FeaturePack list1
 
