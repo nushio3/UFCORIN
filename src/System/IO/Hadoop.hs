@@ -17,14 +17,14 @@ makeClassy ''FSOption
 
 readFile :: FilePath -> IO T.Text 
 readFile fp = do
-  (_,Just hout,_,hproc) <- createProcess (shell $ printf "hadoop fs -cat %s" fp){std_out = CreatePipe}
+  (_,Just hout,_,hproc) <- createProcess (shell $ printf "aws s3 cp %s -" fp){std_out = CreatePipe}
   ret <- T.hGetContents hout
   _ <- waitForProcess hproc
   return ret
 
 writeFile :: FilePath -> T.Text -> IO ()
 writeFile fp txt = do
-  (Just hin,_,_,hproc) <- createProcess (shell $ printf "hadoop fs -put -f - %s" fp){std_in = CreatePipe}
+  (Just hin,_,_,hproc) <- createProcess (shell $ printf "aws s3 cp - %s" fp){std_in = CreatePipe}
   T.hPutStr hin txt
   hClose hin
   _ <- waitForProcess hproc
