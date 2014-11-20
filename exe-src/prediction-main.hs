@@ -11,6 +11,7 @@ import SpaceWeather.Format
 import SpaceWeather.Prediction
 import SpaceWeather.Regressor.General
 import qualified System.IO.Hadoop as HFS
+import qualified Data.Text.IO as T
 
 main :: IO ()
 main = do
@@ -20,7 +21,7 @@ main = do
 
 process :: FilePath -> IO () 
 process fn = withWorkDir $ do
-  strE <- fmap decode $ HFS.readFile fn
+  strE <- fmap decode $ T.readFile fn
   case strE of 
     Left msg -> putStrLn msg
     Right strategy -> do
@@ -53,7 +54,8 @@ process fn = withWorkDir $ do
       res <- performPrediction (strategy2 :: PredictionStrategyGS)
 
 
-      HFS.writeFile finalResFn $ encode (res ^. predictionResult)
-      HFS.writeFile finalSesFn $ encode res
+
+      T.writeFile finalResFn $ encode (res ^. predictionResult)
+      T.writeFile finalSesFn $ encode res
       return ()
   
