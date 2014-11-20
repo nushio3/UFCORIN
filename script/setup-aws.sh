@@ -7,3 +7,4 @@ cabal update
 wget https://github.com/nushio3/UFCORIN/archive/master.zip -O ufcorin.zip
 unzip ufcorin.zip
 (cd UFCORIN-master; cabal install)
+echo 'PATH=$PATH:/home/ubuntu/.cabal/bin' >> .bashrc
