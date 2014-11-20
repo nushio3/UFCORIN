@@ -153,10 +153,10 @@ libSVMPerformPrediction strategy = do
     encodeFile fnTrainSet svmTrainSet
     encodeFile fnTestSet svmTestSet
 
-    system "hadoop fs -get /user/nushio/libsvm-3.17/svm-train ."
-    system "hadoop fs -get /user/nushio/libsvm-3.17/svm-predict ."
-    system "hadoop fs -get /user/nushio/executables/cmaes_wrapper.py ."
-    system "hadoop fs -get /user/nushio/executables/cma.py ."
+--     system "hadoop fs -get /user/nushio/libsvm-3.17/svm-train ."
+--     system "hadoop fs -get /user/nushio/libsvm-3.17/svm-predict ."
+--     system "hadoop fs -get /user/nushio/executables/cmaes_wrapper.py ."
+--     system "hadoop fs -get /user/nushio/executables/cma.py ."
   
   let 
     evaluate :: FilePath -> LibSVMOption -> IO PredictionResult
@@ -167,10 +167,10 @@ libSVMPerformPrediction strategy = do
          every one second, this is done to cleanse the error log as good as possible. -}
 
       let
-          svmTrainCmd = printf "./svm-train %s %s %s"
+          svmTrainCmd = printf "svm-train %s %s %s"
             (libSVMOptionCmdLine opt) fnTrainSet fnModel
     
-          svmPredictCmd = printf "./svm-predict %s %s %s"
+          svmPredictCmd = printf "svm-predict %s %s %s"
             fnTestSet fnModel fnPrediction
       system $ svmTrainCmd
       system $ svmPredictCmd
