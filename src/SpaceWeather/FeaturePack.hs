@@ -65,7 +65,7 @@ loadFeatureWithSchemaT schema0 fp = do
 
   let 
       convert :: Double -> Double
-      convert x = if schema0^.isLog then log x / log 10 else x
+      convert x = if schema0^.isLog then (if x <= 0 then 0 else log x / log 10) else x
 
 
       parseLine :: (Int, T.Text) -> Either String (TimeBin, Double)
@@ -76,9 +76,11 @@ loadFeatureWithSchemaT schema0 fp = do
               m2e (Just x) = Right $ x
           t <- m2e $ readAt wtxt (schema0 ^. colT - 1)
           a <- m2e $ readAt wtxt (schema0 ^. colX - 1)
-          if (schema0^.isLog && a <= 0) 
-             then Left $ printf "file %s line %d:  logscale specified but non-positive colX value: %s" fp lineNum (show a)
-             else return (t,(schema0^.scaling) * convert a)
+--           if (schema0^.isLog && a <= 0) 
+--              then Left $ printf "file %s line %d:  logscale specified but non-positive colX value: %s" fp lineNum (show a)
+--              else return (t,(schema0^.scaling) * convert a)
+          return (t,(schema0^.scaling) * convert a)
+
 
       ret :: Either String Feature
       ret = fmap Map.fromList $ mapM parseLine $ linesWithComment txt0
