@@ -197,7 +197,7 @@ libSVMPerformPrediction strategy = do
       hPutStrLn stderr $ "sum TSS : " ++ (show $ prToDouble ret)
 
       when (fnDebugFn/="") $
-         HFS.writeFile fnDebugFn $ T.unlines $
+         T.writeFile fnDebugFn $ T.unlines $
            ("#time\tprediction\tobservation" :) $
            map (T.pack) $
            map (\(t, (p,o)) -> printf "%d\t%f\t%f" t p o) $

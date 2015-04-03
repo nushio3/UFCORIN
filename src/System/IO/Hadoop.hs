@@ -40,7 +40,9 @@ readFile = memcached readFile'
 
 readFile' :: FilePath -> IO T.Text 
 readFile' fp = do
-  (_,Just hout,_,hproc) <- createProcess (shell $ printf "aws s3 cp --region us-west-2 %s -" (compatibleFilePath fp)){std_out = CreatePipe}
+  let cmd =  printf "aws s3 cp --region ap-northeast-1 %s -" (compatibleFilePath fp)
+  putStrLn cmd
+  (_,Just hout,_,hproc) <- createProcess (shell cmd){std_out = CreatePipe}
   ret <- T.hGetContents hout
   _ <- waitForProcess hproc
   return ret
