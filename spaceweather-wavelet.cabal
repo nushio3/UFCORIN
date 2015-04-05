@@ -87,6 +87,15 @@ executable prediction-main
    , spaceweather-wavelet
   ghc-options:       -Wall -O2 
 
+executable generate-survey
+  main-is: generate-survey.hs
+  hs-source-dirs: exe-src/
+  build-depends:
+       base < 6
+     , lens
+     , text
+     , spaceweather-wavelet   
+
 
 executable aia2timebin
   main-is:           aia2timebin.hs
