@@ -1,7 +1,7 @@
 {-# LANGUAGE DeriveFunctor, FlexibleContexts, FlexibleInstances, FunctionalDependencies, MultiParamTypeClasses, TemplateHaskell, TupleSections, TypeSynonymInstances #-}
 module SpaceWeather.Prediction where
 
-import Control.Lens 
+import Control.Lens
 import qualified Data.ByteString.Char8 as BS
 import qualified Data.Aeson.TH as Aeson
 import qualified Data.Map as Map
@@ -14,7 +14,7 @@ import SpaceWeather.Feature
 import SpaceWeather.FeaturePack
 import SpaceWeather.FlareClass
 import SpaceWeather.Format
-import SpaceWeather.SkillScore       
+import SpaceWeather.SkillScore
 import SpaceWeather.TimeLine
 
 data CrossValidationStrategy = CVWeekly | CVMonthly | CVYearly  | CVNegate CrossValidationStrategy
@@ -29,7 +29,7 @@ inTrainingSet CVYearly n = even (n `div` (24*366))
 
 -- | Using the functor instance you can change the regressor to other types.
 
-data PredictionStrategy a = PredictionStrategy 
+data PredictionStrategy a = PredictionStrategy
   { _spaceWeatherLibVersion :: String
   , _regressorUsed :: a
   , _featureSchemaPackUsed  :: FeatureSchemaPack
@@ -49,9 +49,9 @@ instance (Yaml.ToJSON a, Yaml.FromJSON a) => Format (PredictionStrategy a) where
   decode = Yaml.decodeEither . BS.pack . T.unpack
 
 
-data PredictionResult 
+data PredictionResult
   = PredictionFailure { _predictionFailureMessage :: String }
-  | PredictionSuccess 
+  | PredictionSuccess
     { _predictionResultMap :: Map.Map FlareClass ScoreMap
     }deriving (Eq, Ord, Show, Read)
 makeClassy ''PredictionResult
@@ -97,10 +97,10 @@ class Predictor a where
 
 prToDouble :: PredictionResult -> Double
 prToDouble (PredictionFailure _) = 0
-prToDouble (PredictionSuccess m) = 
+prToDouble (PredictionSuccess m) =
   Prelude.sum $
   map _scoreValue $
   catMaybes $
-  map (Map.lookup TrueSkillStatistic )$ 
-  map snd $ 
+  map (Map.lookup TrueSkillStatistic )$
+  map snd $
   Map.toList m
