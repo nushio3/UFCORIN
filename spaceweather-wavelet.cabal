@@ -43,12 +43,15 @@ library
    , cmaes >= 0.2.2
    , containers
    , cpu >= 0.1.1
+   , directory
    , either
    , filepath
+   , HTTP
    , lens
    , MissingH
    , process
    , QuickCheck
+   , random
    , safe
    , spoon
    , text >= 0.11.3.1
@@ -95,12 +98,14 @@ executable generate-survey
      , lens
      , text
      , spaceweather-wavelet
+     , process
 
 executable scan-survey-results
   main-is: scan-survey-results.hs
   hs-source-dirs: exe-src/
   build-depends:
        base < 6
+     , containers
      , lens
      , text
      , spaceweather-wavelet
