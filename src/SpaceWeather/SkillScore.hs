@@ -7,8 +7,8 @@ import qualified Data.Aeson.TH as Aeson
 import           Data.List
 import qualified Data.Map as Map
 
-data ScoreMode 
-  = HeidkeSkillScore 
+data ScoreMode
+  = HeidkeSkillScore
   | TrueSkillStatistic
   | ContingencyTableElem Bool Bool
 
@@ -21,7 +21,7 @@ instance Aeson.ToJSON a => Aeson.ToJSON (Map.Map ScoreMode a) where
 instance Aeson.FromJSON a => Aeson.FromJSON (Map.Map ScoreMode a) where
   parseJSON = fmap go . Aeson.parseJSON
     where
-      go :: Map.Map String a -> Map.Map ScoreMode a  
+      go :: Map.Map String a -> Map.Map ScoreMode a
       go = Map.fromList . (map (_1 %~ read)) . Map.toList
 
 
@@ -32,6 +32,7 @@ data ScoreReport = ScoreReport
   , _contingencyTable :: Map.Map String Double
   }
   deriving (Eq, Ord, Show, Read)
+makeClassy ''ScoreReport
 Aeson.deriveJSON Aeson.defaultOptions{Aeson.fieldLabelModifier = drop 1} ''ScoreReport
 
 type ScoreMap = Map.Map ScoreMode ScoreReport
@@ -42,7 +43,7 @@ type ScoreMap = Map.Map ScoreMode ScoreReport
 type BinaryPredictorScore =  [(Bool, Bool)] -> Double
 
 evalScore :: ScoreMode -> BinaryPredictorScore
-evalScore mode arg = 
+evalScore mode arg =
   case mode of
     HeidkeSkillScore -> hss
     TrueSkillStatistic -> tss
@@ -53,36 +54,36 @@ evalScore mode arg =
       observations = map snd arg
 
       count :: Bool -> Bool -> Double
-      count bx by = 
+      count bx by =
         fromIntegral $
-        length $ 
+        length $
         filter (\(x,y) -> x==bx && y==by) $
         arg
-      
+
       nTP = count True  True
-      nFN = count False True            
+      nFN = count False True
       nFP = count True  False
       nTN = count False False
-      
+
       hss = 2*(nTP*nTN - nFN*nFP) //
             ((nTP+nFN)*(nFN+nTN) + (nTP+nFP)*(nFP+nTN))
 
       tss = nTP//(nTP+nFN) - nFP//(nFP+nTN)
 
-      x//y 
+      x//y
         | y==0 = 0
         | otherwise = x/y
 
 
 poTblToBools :: Double -> Double -> [(Double, Double)] -> [(Bool,Bool)]
-poTblToBools threP threO tbl = 
+poTblToBools threP threO tbl =
   [(xp > threP, xo > threO) | (xp, xo) <- tbl]
 
 
 -- | Returns the pair of the maximum found and the threshold
 searchThreshold :: [(Double,Double)] -> BinaryPredictorScore -> Double -> (Double, Double)
-searchThreshold tbl score threO = 
-  maximum $ take (length thres0 + 50) stPairs 
+searchThreshold tbl score threO =
+  maximum $ take (length thres0 + 50) stPairs
   where
     scoreOf threP = score $ poTblToBools threP threO tbl
 
@@ -92,7 +93,7 @@ searchThreshold tbl score threO =
     thres0 = [threO + dt | dt <- [-2, -1.99 .. 2]]
 
     mkThre i = [tbsf-dt,tbsf+dt]
-      where 
+      where
         (_, tbsf) = maximum $ take (i+length thres0) stPairs
         dt = 0.02 * exp (negate $ fromIntegral i / 5)
 
@@ -100,7 +101,7 @@ makeScoreMap :: [(Double,Double)] -> Double -> ScoreMap
 makeScoreMap tbl threO = Map.fromList
   [ (mode1, go mode1)
   | mode1 <- [HeidkeSkillScore, TrueSkillStatistic]]
-  where 
+  where
     eSX threP mode = evalScore mode $ poTblToBools threP threO tbl
 
     go :: ScoreMode -> ScoreReport
@@ -109,7 +110,7 @@ makeScoreMap tbl threO = Map.fromList
       in ScoreReport
         { _scoreValue = val
         , _maximizingThreshold = threP
-        , _contingencyTable = 
+        , _contingencyTable =
           Map.fromList
             [ ("TP", eSX threP $ ContingencyTableElem True  True )
             , ("FP", eSX threP $ ContingencyTableElem True  False)

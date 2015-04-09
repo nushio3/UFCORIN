@@ -1,0 +1,48 @@
+spaceWeatherLibVersion: version 1.1
+crossValidationStrategy:
+  contents: []
+  tag: CVWeekly
+predictionTargetSchema:
+  colT: 2
+  isLog: true
+  colX: 5
+  scaling: 1.0
+predictionResultFile: ''
+predictionRegressionFile: ''
+featureSchemaPackUsed:
+  SchemaDefinitions:
+    f25Log:
+      colT: 2
+      isLog: true
+      colX: 5
+      scaling: 1.0
+    f35Log:
+      colT: 3
+      isLog: true
+      colX: 5
+      scaling: 1.0
+  FilenamePairs:
+  - - f35Log
+    - /user/shibayama/sdo/hmi/hmi_totalflux.txt
+  - - f25Log
+    - /user/nushio/forecast/backcast-goes-24.txt
+  - - f25Log
+    - /user/nushio/forecast/backcast-goes-48.txt
+  - - f25Log
+    - /user/nushio/forecast/backcast-goes-72.txt
+regressorUsed:
+- contents:
+    AutomationLevel: 3
+    Cost: 1.0
+    Nu: null
+    AutomationTolFun: 1.0e-2
+    Epsilon: null
+    Gamma: 1.0e-2
+    AutomationNoise: false
+    KernelType: 2
+    Type: 3
+    AutomationPopSize: 10
+    AutomationScaling: 2.0
+  tag: LibSVMRegressor
+predictionSessionFile: ''
+predictionTargetFile: /user/nushio/forecast/forecast-goes-24.txt

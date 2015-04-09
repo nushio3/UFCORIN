@@ -1,35 +1,47 @@
 {-# LANGUAGE DeriveFunctor, FlexibleContexts, FlexibleInstances, FunctionalDependencies, MultiParamTypeClasses, TemplateHaskell, TupleSections, TypeSynonymInstances #-}
 module SpaceWeather.Prediction where
 
-import Control.Lens 
+import Control.Lens
 import qualified Data.ByteString.Char8 as BS
 import qualified Data.Aeson.TH as Aeson
 import qualified Data.Map as Map
 import qualified Data.Text as T
 import qualified Data.Yaml as Yaml
+import Data.Bits (xor)
 import Data.Maybe
+import System.Random
 
 import SpaceWeather.DefaultFeatureSchemaPack
 import SpaceWeather.Feature
 import SpaceWeather.FeaturePack
 import SpaceWeather.FlareClass
 import SpaceWeather.Format
-import SpaceWeather.SkillScore       
+import SpaceWeather.SkillScore
 import SpaceWeather.TimeLine
 
-data CrossValidationStrategy = CVWeekly | CVMonthly | CVYearly  | CVNegate CrossValidationStrategy
+
+data CrossValidationStrategy = CVWeekly | CVMonthly | CVYearly  | CVNegate CrossValidationStrategy | CVShuffled Int CrossValidationStrategy
   deriving (Eq, Ord, Show, Read)
 Aeson.deriveJSON Aeson.defaultOptions ''CrossValidationStrategy
 
-inTrainingSet :: CrossValidationStrategy -> TimeBin -> Bool
-inTrainingSet CVWeekly n = even (n `div` (24*7))
-inTrainingSet CVMonthly n = even (n `div` (24*31))
-inTrainingSet CVYearly n = even (n `div` (24*366))
 
+inTrainingSet :: CrossValidationStrategy -> TimeBin -> Bool
+inTrainingSet s n = inTrainingSetInner (repeat False) s n
+
+inTrainingSetInner :: [Bool] -> CrossValidationStrategy -> TimeBin -> Bool
+inTrainingSetInner shuffler CVWeekly  n = let i = (n `div` (24*7))   in even i `xor` (shuffler !! fromIntegral i)
+inTrainingSetInner shuffler CVMonthly n = let i = (n `div` (24*31))  in even i `xor` (shuffler !! fromIntegral i)
+inTrainingSetInner shuffler CVYearly  n = let i = (n `div` (24*366)) in even i `xor` (shuffler !! fromIntegral i)
+inTrainingSetInner shuffler (CVNegate s) n = not $ inTrainingSetInner shuffler s n
+inTrainingSetInner _ (CVShuffled seed s) n = inTrainingSetInner newShuffler s n
+  where
+    newShuffler = map fst $ drop 1 $ iterate f (False, mkStdGen seed)
+    f :: (Bool, StdGen) -> (Bool,StdGen)
+    f (_, g) = random g
 
 -- | Using the functor instance you can change the regressor to other types.
 
-data PredictionStrategy a = PredictionStrategy 
+data PredictionStrategy a = PredictionStrategy
   { _spaceWeatherLibVersion :: String
   , _regressorUsed :: a
   , _featureSchemaPackUsed  :: FeatureSchemaPack
@@ -49,9 +61,9 @@ instance (Yaml.ToJSON a, Yaml.FromJSON a) => Format (PredictionStrategy a) where
   decode = Yaml.decodeEither . BS.pack . T.unpack
 
 
-data PredictionResult 
+data PredictionResult
   = PredictionFailure { _predictionFailureMessage :: String }
-  | PredictionSuccess 
+  | PredictionSuccess
     { _predictionResultMap :: Map.Map FlareClass ScoreMap
     }deriving (Eq, Ord, Show, Read)
 makeClassy ''PredictionResult
@@ -95,12 +107,17 @@ class Predictor a where
   performLearning :: a -> LearningInput -> LearningOutput
   postprocessLearning :: PredictionStrategy a -> LearningOutput -> IO (PredictionSession a)
 
+
+
 prToDouble :: PredictionResult -> Double
-prToDouble (PredictionFailure _) = 0
-prToDouble (PredictionSuccess m) = 
-  Prelude.sum $
-  map _scoreValue $
-  catMaybes $
-  map (Map.lookup TrueSkillStatistic )$ 
-  map snd $ 
-  Map.toList m
+prToDouble = prToDoubleWith f where
+  f _ TrueSkillStatistic = 1
+  f _ _                  = 0
+
+
+prToDoubleWith :: (FlareClass -> ScoreMode -> Double) -> PredictionResult -> Double
+prToDoubleWith _  (PredictionFailure _) = 0
+prToDoubleWith wf (PredictionSuccess m) = Prelude.sum $ do -- List Monad
+  (fc, prmap) <- Map.toList m
+  (sm, sr) <- Map.toList prmap
+  return $ wf fc sm * _scoreValue sr

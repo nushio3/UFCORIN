@@ -54,7 +54,7 @@ process fn = withWorkDir $ do
       res <- performPrediction (strategy2 :: PredictionStrategyGS)
 
 
-
+      putStrLn $ "FN: " ++ finalResFn
       T.writeFile finalResFn $ encode (res ^. predictionResult)
       T.writeFile finalSesFn $ encode res
       return ()

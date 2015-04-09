@@ -17,7 +17,7 @@ instance Aeson.ToJSON a => Aeson.ToJSON (Map.Map FlareClass a) where
 instance Aeson.FromJSON a => Aeson.FromJSON (Map.Map FlareClass a) where
   parseJSON = fmap go . Aeson.parseJSON
     where
-      go :: Map.Map String a -> Map.Map FlareClass a  
+      go :: Map.Map String a -> Map.Map FlareClass a
       go = Map.fromList . (map (_1 %~ read)) . Map.toList
 
 xRayFlux :: FlareClass -> Double
@@ -27,4 +27,3 @@ xRayFlux XClassFlare = 1e-4
 
 defaultFlareClasses :: [FlareClass]
 defaultFlareClasses = [CClassFlare, MClassFlare, XClassFlare]
-

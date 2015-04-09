@@ -13,20 +13,20 @@ import Text.Printf
 type Feature = TimeLine Double
 
 type Features = TimeLine [Double]
- 
+
 type FeatureIOPair = TimeLine ([Double], Double)
 
 instance Format Feature where
-  encode = 
+  encode =
     T.unlines .
     map (\(t,a) -> T.unwords [showT t, showT a] ) .
-    Map.toAscList 
+    Map.toAscList
 
   decode txt0 = do
     -- (Either String) monad
     let xs = linesWithComment txt0
         parseLine :: (Int, T.Text) -> Either String (TimeBin, Double)
-        parseLine (lineNum, txt) = 
+        parseLine (lineNum, txt) =
           maybe (Left $ printf "parse error on line %d" lineNum) Right $ do
             -- maybe monad here
             let wtxt = T.words txt
@@ -36,7 +36,7 @@ instance Format Feature where
     fmap Map.fromList $ mapM parseLine xs
 
 instance Format FeatureIOPair where
-  encode = 
+  encode =
     T.unlines .
     map (\(t,(xi,xo)) -> T.unwords (showT t: showT xo : map showT xi) ) .
     Map.toAscList
@@ -45,7 +45,7 @@ instance Format FeatureIOPair where
     -- (Either String) monad
     let xs = linesWithComment txt0
         parseLine :: (Int, T.Text) -> Either String (TimeBin, ([Double],Double))
-        parseLine (lineNum, txt) = 
+        parseLine (lineNum, txt) =
           maybe (Left $ printf "parse error on line %d" lineNum) Right $ do
             -- maybe monad here
             let wtxt = T.words txt
@@ -58,8 +58,8 @@ instance Format FeatureIOPair where
 
 catFeatures :: [Feature] -> Features
 catFeatures [] = Map.empty
-catFeatures xs = 
-  let (fs1: fss) = reverse xs 
+catFeatures xs =
+  let (fs1: fss) = reverse xs
   in foldr (Map.intersectionWith (:)) (Map.map (:[]) fs1) fss
 
 catFeaturePair :: [Feature] -> Feature -> FeatureIOPair
