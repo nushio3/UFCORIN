@@ -95,12 +95,17 @@ class Predictor a where
   performLearning :: a -> LearningInput -> LearningOutput
   postprocessLearning :: PredictionStrategy a -> LearningOutput -> IO (PredictionSession a)
 
+
+
 prToDouble :: PredictionResult -> Double
-prToDouble (PredictionFailure _) = 0
-prToDouble (PredictionSuccess m) =
-  Prelude.sum $
-  map _scoreValue $
-  catMaybes $
-  map (Map.lookup TrueSkillStatistic )$
-  map snd $
-  Map.toList m
+prToDouble = prToDoubleWith f where
+  f _ TrueSkillStatistic = 1
+  f _ _                  = 0
+
+
+prToDoubleWith :: (FlareClass -> ScoreMode -> Double) -> PredictionResult -> Double
+prToDoubleWith _  (PredictionFailure _) = 0
+prToDoubleWith wf (PredictionSuccess m) = Prelude.sum $ do -- List Monad
+  (fc, prmap) <- Map.toList m
+  (sm, sr) <- Map.toList prmap
+  return $ wf fc sm * _scoreValue sr

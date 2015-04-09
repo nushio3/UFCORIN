@@ -31,7 +31,8 @@ import SpaceWeather.FeaturePack
 import SpaceWeather.SkillScore
 import SpaceWeather.Prediction
 
-data LibSVMOptionOf a = LibSVMOption 
+-- | record field marked by `a' are subject to machine-learning parameter tuning.
+data LibSVMOptionOf a = LibSVMOption
   { _libSVMType       :: Int
   , _libSVMKernelType :: Int
   , _libSVMCost       :: a
@@ -52,7 +53,7 @@ defaultLibSVMOption :: LibSVMOption
 defaultLibSVMOption = LibSVMOption
   { _libSVMType       = 3
   , _libSVMKernelType = 2
-  , _libSVMCost       = 1  
+  , _libSVMCost       = 1
   , _libSVMEpsilon    = Nothing -- 0.001
   , _libSVMGamma      = 0.01
   , _libSVMNu         = Nothing -- 0.5
@@ -64,7 +65,7 @@ defaultLibSVMOption = LibSVMOption
   }
 
 libSVMOptionCmdLine :: LibSVMOption -> String
-libSVMOptionCmdLine opt = 
+libSVMOptionCmdLine opt =
   printf "-s %d -t %d -c %f %s %s %s"
     (opt^.libSVMType) (opt^.libSVMKernelType) (opt^.libSVMCost) epsilonStr gammaStr nuStr
   where
@@ -79,7 +80,7 @@ makeClassy  ''LibSVMFeatures
 makeWrapped ''LibSVMFeatures
 
 instance Arbitrary LibSVMFeatures where
-  arbitrary = 
+  arbitrary =
     sized $ \sz -> do
       nrow <- fmap abs arbitrary
       let ncol :: Int
@@ -97,9 +98,9 @@ instance Format LibSVMFeatures where
   encode lf = T.unlines $ map mkLibSVMLine $ Map.toAscList $ lf ^. libSVMIOPair
     where
       mkLibSVMLine :: (TimeBin,  ([Double],Double)) -> T.Text
-      mkLibSVMLine (_, (xis,xo)) = 
-        ((showT xo <> " ") <> ) $ 
-        T.unwords $ 
+      mkLibSVMLine (_, (xis,xo)) =
+        ((showT xo <> " ") <> ) $
+        T.unwords $
         zipWith (\i x -> showT i <> ":" <> showT x) [1..] $ xis
 
 
@@ -108,7 +109,7 @@ instance Predictor LibSVMOption where
     e <- runEitherT $ libSVMPerformPrediction strategy
     return $ case e of
       Right x  -> x
-      Left msg -> 
+      Left msg ->
         PredictionSession {
           _predictionStrategyUsed = strategy
         , _predictionSessionResult = PredictionFailure msg
@@ -132,7 +133,7 @@ libSVMPerformPrediction strategy = do
 
   let fioPair0 :: FeatureIOPair
       fioPair0 = catFeaturePair fs0 tgtFeature
-      
+
       fs0 :: [Feature]
       FeaturePack fs0 = featurePack0
 
@@ -144,11 +145,11 @@ libSVMPerformPrediction strategy = do
       svmTrainSet = LibSVMFeatures fioTrainSet
       svmTestSet = LibSVMFeatures fioTestSet
 
-      fnTrainSet = workDir ++ "/train.txt" 
-      fnModel =  workDir ++ "/train.txt.model" 
-      fnTestSet = workDir ++ "/test.txt" 
-      fnPrediction = workDir ++ "/test.txt.prediction" 
- 
+      fnTrainSet = workDir ++ "/train.txt"
+      fnModel =  workDir ++ "/train.txt.model"
+      fnTestSet = workDir ++ "/test.txt"
+      fnPrediction = workDir ++ "/test.txt.prediction"
+
   liftIO $ do
     encodeFile fnTrainSet svmTrainSet
     encodeFile fnTestSet svmTestSet
@@ -157,40 +158,40 @@ libSVMPerformPrediction strategy = do
 --     system "hadoop fs -get /user/nushio/libsvm-3.17/svm-predict ."
 --     system "hadoop fs -get /user/nushio/executables/cmaes_wrapper.py ."
 --     system "hadoop fs -get /user/nushio/executables/cma.py ."
-  
-  let 
+
+  let
     evaluate :: FilePath -> LibSVMOption -> IO PredictionResult
     evaluate fnDebugFn opt = do
       hPutStrLn stderr $ "testing: " ++ show opt
-      hPutStrLn stderr ".";  hFlush stderr 
+      hPutStrLn stderr ".";  hFlush stderr
       {- for hadoop log retrieval system tends to replicate the last non-blank line of stderr
          every one second, this is done to cleanse the error log as good as possible. -}
 
       let
-          svmTrainCmd = printf "svm-train %s %s %s"
+          svmTrainCmd = printf "svm-train -h 0 %s %s %s"
             (libSVMOptionCmdLine opt) fnTrainSet fnModel
-    
+
           svmPredictCmd = printf "svm-predict %s %s %s"
             fnTestSet fnModel fnPrediction
       system $ svmTrainCmd
       system $ svmPredictCmd
 
-      predictionStr <- readFile fnPrediction  
+      predictionStr <- readFile fnPrediction
 
       let predictions :: [Double]
           predictions = map read $ lines predictionStr
-    
+
           observations :: [Double]
           observations = map (snd . snd) $ Map.toAscList fioTestSet
-    
+
           poTimeLine :: TimeLine (Double, Double)
           poTimeLine = Map.fromList $
             zipWith (\p (t, (_,o)) -> (t, (p,o)) ) predictions $
             Map.toList fioTestSet
 
           poTbl = zip predictions observations
-    
-          resultMap0 = Map.fromList $ 
+
+          resultMap0 = Map.fromList $
             [ let logXRF = log (xRayFlux flare1) / log 10 in (flare1 , makeScoreMap poTbl logXRF)
             | flare1 <- defaultFlareClasses]
           ret = PredictionSuccess resultMap0
@@ -207,13 +208,24 @@ libSVMPerformPrediction strategy = do
       return $ ret
 
   let logOpt0 = fmap log opt0
+      lv = opt0 ^. libSVMAutomationLevel
       minimizationTgt :: LibSVMOption -> IO Double
-      minimizationTgt = 
-        fmap (negate . prToDouble) .            
+      minimizationTgt =
+        fmap (negate . prToDoubleWith (wf lv)) .
         (evaluate "") .
-        fmap exp  
-  let 
-    lv = opt0 ^. libSVMAutomationLevel
+        fmap exp
+
+      wf :: Int -> FlareClass -> ScoreMode -> Double
+      wf 2 XClassFlare TrueSkillStatistic = 1
+      wf 2 _           _                  = 0
+      wf 3 MClassFlare TrueSkillStatistic = 1
+      wf 3 _           _                  = 0
+      wf 4 CClassFlare TrueSkillStatistic = 1
+      wf 4 _           _                  = 0
+      wf _ _           TrueSkillStatistic = 1
+      wf _ _           _                  = 0
+
+  let
     goBestOpt
       | lv <= 0 = return $ opt0
       | lv >= 1 = do
@@ -223,12 +235,12 @@ libSVMPerformPrediction strategy = do
     problem = (CMAES.minimizeTIO minimizationTgt logOpt0)
       { CMAES.sigma0 = opt0 ^. libSVMAutomationScaling
       , CMAES.tolFun = Just $ opt0 ^. libSVMAutomationTolFun
-      , CMAES.scaling = Just $ repeat (log 10) 
+      , CMAES.scaling = Just $ repeat (log 10)
       , CMAES.noiseHandling = opt0 ^. libSVMAutomationNoise
-      , CMAES.otherArgs = 
+      , CMAES.otherArgs =
           [("popsize", show $ opt0 ^. libSVMAutomationPopSize)]
       , CMAES.pythonPath = Just "/usr/bin/python"
-      , CMAES.cmaesWrapperPath = Just "./cmaes_wrapper.py"}  
+      , CMAES.cmaesWrapperPath = Just "./cmaes_wrapper.py"}
   bestOpt <- liftIO goBestOpt
 
   ret <- liftIO $ evaluate (strategy ^. predictionRegressionFile) bestOpt
@@ -237,8 +249,5 @@ libSVMPerformPrediction strategy = do
       T.hPutStrLn stderr $ encode ret
 
   return $ PredictionSession
-     (strategy & regressorUsed .~ bestOpt) 
+     (strategy & regressorUsed .~ bestOpt)
      ret
-
-
-

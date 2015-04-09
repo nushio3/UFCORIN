@@ -15,19 +15,21 @@ import SpaceWeather.Prediction
 import SpaceWeather.Regressor.General
 import qualified System.IO.Hadoop as HFS
 
-surveyDir = "survey3"
+surveyDir = "survey-auto-M"
 
 main :: IO ()
 main = do
   system $ "mkdir -p " ++ surveyDir
+  {-
   sequence_ [process "bsplC-301" True (2^i) (2^j) (2^iy) (2^jy) | i <- [0..9], j <- [i..9],  iy <- [0..9], jy <- [iy..9] ]
   sequence_ [process "bsplC-301" False (2^i) (2^j) (2^iy) (2^jy) | i <- [0..9], j <- [i..9],  iy <- [0..9], jy <- [iy..9] ]
   sequence_ [process "haarC-2" True (2^i) (2^j) (2^iy) (2^jy) | i <- [0..9], j <- [i..9],  iy <- [0..9], jy <- [iy..9] ]
+-}
   sequence_ [process "haarC-2" False (2^i) (2^j) (2^iy) (2^jy) | i <- [0..9], j <- [i..9],  iy <- [0..9], jy <- [iy..9] ]
 
 process :: String -> Bool -> Int -> Int -> Int -> Int -> IO ()
 process basisName isStd lower upper lowerY0 upperY0 = withWorkDir $ do
-  strE <- fmap decode $ T.readFile "resource/strategy-template.yml"
+  strE <- fmap decode $ T.readFile "resource/strategy-template-auto.yml"
   case strE of
     Left msg -> putStrLn msg
     Right strategy -> do

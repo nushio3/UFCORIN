@@ -32,7 +32,7 @@ featureSchemaPackUsed:
     - /user/nushio/forecast/backcast-goes-72.txt
 regressorUsed:
 - contents:
-    AutomationLevel: 0
+    AutomationLevel: 3
     Cost: 1.0
     Nu: null
     AutomationTolFun: 1.0e-2
@@ -41,8 +41,8 @@ regressorUsed:
     AutomationNoise: false
     KernelType: 2
     Type: 3
-    AutomationPopSize: 10
-    AutomationScaling: 2.0
+    AutomationPopSize: 40
+    AutomationScaling: 4.0
   tag: LibSVMRegressor
 predictionSessionFile: ''
 predictionTargetFile: /user/nushio/forecast/forecast-goes-24.txt
