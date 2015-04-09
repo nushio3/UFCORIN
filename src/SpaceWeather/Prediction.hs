@@ -7,7 +7,9 @@ import qualified Data.Aeson.TH as Aeson
 import qualified Data.Map as Map
 import qualified Data.Text as T
 import qualified Data.Yaml as Yaml
+import Data.Bits (xor)
 import Data.Maybe
+import System.Random
 
 import SpaceWeather.DefaultFeatureSchemaPack
 import SpaceWeather.Feature
@@ -17,15 +19,25 @@ import SpaceWeather.Format
 import SpaceWeather.SkillScore
 import SpaceWeather.TimeLine
 
-data CrossValidationStrategy = CVWeekly | CVMonthly | CVYearly  | CVNegate CrossValidationStrategy
+
+data CrossValidationStrategy = CVWeekly | CVMonthly | CVYearly  | CVNegate CrossValidationStrategy | CVShuffled Int CrossValidationStrategy
   deriving (Eq, Ord, Show, Read)
 Aeson.deriveJSON Aeson.defaultOptions ''CrossValidationStrategy
 
-inTrainingSet :: CrossValidationStrategy -> TimeBin -> Bool
-inTrainingSet CVWeekly n = even (n `div` (24*7))
-inTrainingSet CVMonthly n = even (n `div` (24*31))
-inTrainingSet CVYearly n = even (n `div` (24*366))
 
+inTrainingSet :: CrossValidationStrategy -> TimeBin -> Bool
+inTrainingSet s n = inTrainingSetInner (repeat False) s n
+
+inTrainingSetInner :: [Bool] -> CrossValidationStrategy -> TimeBin -> Bool
+inTrainingSetInner shuffler CVWeekly  n = let i = (n `div` (24*7))   in even i `xor` (shuffler !! fromIntegral i)
+inTrainingSetInner shuffler CVMonthly n = let i = (n `div` (24*31))  in even i `xor` (shuffler !! fromIntegral i)
+inTrainingSetInner shuffler CVYearly  n = let i = (n `div` (24*366)) in even i `xor` (shuffler !! fromIntegral i)
+inTrainingSetInner shuffler (CVNegate s) n = not $ inTrainingSetInner shuffler s n
+inTrainingSetInner _ (CVShuffled seed s) n = inTrainingSetInner newShuffler s n
+  where
+    newShuffler = map fst $ drop 1 $ iterate f (False, mkStdGen seed)
+    f :: (Bool, StdGen) -> (Bool,StdGen)
+    f (_, g) = random g
 
 -- | Using the functor instance you can change the regressor to other types.
 

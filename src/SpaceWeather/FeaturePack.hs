@@ -20,8 +20,8 @@ import SpaceWeather.Feature
 import SpaceWeather.Format
 import SpaceWeather.TimeLine
 
-data FeatureSchema 
-  = FeatureSchema 
+data FeatureSchema
+  = FeatureSchema
   { _colT           :: Int
   , _colX           :: Int
   , _scaling         :: Double
@@ -36,15 +36,15 @@ defaultFeatureSchema = FeatureSchema
   , _colX = 2
   , _scaling = 1
   , _isLog = False
-  } 
+  }
 
 newtype FeaturePack
-  = FeaturePack [Feature] 
+  = FeaturePack [Feature]
 makeWrapped ''FeaturePack
 makeClassy  ''FeaturePack
 
 data FeatureSchemaPack
-  = FeatureSchemaPack 
+  = FeatureSchemaPack
   { _fspSchemaDefinitions :: Map.Map String FeatureSchema
   , _fspFilenamePairs :: [(String, FilePath)]
   } deriving (Eq, Ord, Show, Read)
@@ -63,7 +63,7 @@ loadFeatureWithSchemaT schema0 fp = do
     hPutStrLn stderr $ "loading: " ++ fp
     HFS.readFile $ fp
 
-  let 
+  let
       convert :: Double -> Double
       convert x = if schema0^.isLog then (if x <= 0 then 0 else log x / log 10) else x
 
@@ -76,7 +76,7 @@ loadFeatureWithSchemaT schema0 fp = do
               m2e (Just x) = Right $ x
           t <- m2e $ readAt wtxt (schema0 ^. colT - 1)
           a <- m2e $ readAt wtxt (schema0 ^. colX - 1)
---           if (schema0^.isLog && a <= 0) 
+--           if (schema0^.isLog && a <= 0)
 --              then Left $ printf "file %s line %d:  logscale specified but non-positive colX value: %s" fp lineNum (show a)
 --              else return (t,(schema0^.scaling) * convert a)
           return (t,(schema0^.scaling) * convert a)
@@ -88,15 +88,14 @@ loadFeatureWithSchemaT schema0 fp = do
 
 
 loadFeatureSchemaPack :: FeatureSchemaPack -> IO (Either String FeaturePack)
-loadFeatureSchemaPack fsp = do 
-  let 
+loadFeatureSchemaPack fsp = do
+  let
       list0 = fsp ^. fspFilenamePairs
       scMap = fsp ^. fspSchemaDefinitions
 
       name2map :: String -> FeatureSchema
       name2map fmtName = maybe defaultFeatureSchema
-        id (Map.lookup fmtName scMap)  
-  list1 <- runEitherT $ mapM (uncurry loadFeatureWithSchemaT) $ 
-    map (_1 %~ name2map) list0 
+        id (Map.lookup fmtName scMap)
+  list1 <- runEitherT $ mapM (uncurry loadFeatureWithSchemaT) $
+    map (_1 %~ name2map) list0
   return $ fmap FeaturePack list1
-

@@ -30,7 +30,9 @@ library
     SpaceWeather.SkillScore
     SpaceWeather.TimeLine
     SpaceWeather.Wavelet
-    System.IO.Hadoop
+                  System.IO.Hadoop
+                  System.System
+
   other-modules:
     Paths_spaceweather_wavelet
 
@@ -48,7 +50,8 @@ library
    , filepath
    , HTTP
    , lens
-   , MissingH
+              , MissingH
+                , mtl
    , process
    , QuickCheck
    , random
