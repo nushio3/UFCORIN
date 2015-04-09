@@ -18,6 +18,7 @@ import qualified Numeric.Optimization.Algorithms.CMAES as CMAES
 import System.IO
 import qualified System.IO.Hadoop as HFS
 import System.Process
+import System.Timeout
 import Test.QuickCheck.Arbitrary
 import Test.QuickCheck.Gen
 import Text.Printf
@@ -173,9 +174,16 @@ libSVMPerformPrediction strategy = do
 
           svmPredictCmd = printf "svm-predict %s %s %s"
             fnTestSet fnModel fnPrediction
-      system $ svmTrainCmd
-      system $ svmPredictCmd
+      isSuccess <- timeout (30 * 60 * 1000000) $ do
+        system $ svmTrainCmd
+        system $ svmPredictCmd
+        return True
+      case isSuccess of
+        Nothing -> return $ PredictionFailure "LibSVM timeout"
+        _ -> evaluateCont fnDebugFn opt
 
+    evaluateCont :: FilePath -> LibSVMOption -> IO PredictionResult
+    evaluateCont fnDebugFn opt = do
       predictionStr <- readFile fnPrediction
 
       let predictions :: [Double]

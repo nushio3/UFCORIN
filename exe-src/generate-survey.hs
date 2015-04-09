@@ -20,11 +20,9 @@ surveyDir = "survey-auto-M"
 main :: IO ()
 main = do
   system $ "mkdir -p " ++ surveyDir
-  {-
   sequence_ [process "bsplC-301" True (2^i) (2^j) (2^iy) (2^jy) | i <- [0..9], j <- [i..9],  iy <- [0..9], jy <- [iy..9] ]
   sequence_ [process "bsplC-301" False (2^i) (2^j) (2^iy) (2^jy) | i <- [0..9], j <- [i..9],  iy <- [0..9], jy <- [iy..9] ]
   sequence_ [process "haarC-2" True (2^i) (2^j) (2^iy) (2^jy) | i <- [0..9], j <- [i..9],  iy <- [0..9], jy <- [iy..9] ]
--}
   sequence_ [process "haarC-2" False (2^i) (2^j) (2^iy) (2^jy) | i <- [0..9], j <- [i..9],  iy <- [0..9], jy <- [iy..9] ]
 
 process :: String -> Bool -> Int -> Int -> Int -> Int -> IO ()
