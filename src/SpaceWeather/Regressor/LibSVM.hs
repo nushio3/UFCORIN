@@ -16,6 +16,7 @@ import qualified Data.Text as T
 import qualified Data.Text.IO as T
 import qualified Numeric.Optimization.Algorithms.CMAES as CMAES
 import System.IO
+import System.Random
 import qualified System.IO.Hadoop as HFS
 import System.Process
 import System.Timeout
@@ -131,6 +132,7 @@ libSVMPerformPrediction strategy = do
 
   tgtFeature <- loadFeatureWithSchemaT tgtSchema tgtFn
 
+  cvstrSeed <- liftIO randomIO
 
   let fioPair0 :: FeatureIOPair
       fioPair0 = catFeaturePair fs0 tgtFeature
@@ -138,8 +140,15 @@ libSVMPerformPrediction strategy = do
       fs0 :: [Feature]
       FeaturePack fs0 = featurePack0
 
+      cvstr0 = strategy ^. crossValidationStrategy
+
+      cvstr :: CrossValidationStrategy
+      cvstr
+        | crossValidationNoise = CVShuffled cvstrSeed cvstr0
+        | otherwise            = cvstr0
+
       pred :: TimeBin -> Bool
-      pred = inTrainingSet $ strategy ^. crossValidationStrategy
+      pred = inTrainingSet cvstr0
 
       (fioTrainSet, fioTestSet) = Map.partitionWithKey (\k _ -> pred k) fioPair0
 

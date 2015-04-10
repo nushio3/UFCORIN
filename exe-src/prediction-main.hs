@@ -5,7 +5,7 @@ import Control.Lens
 import Control.Monad
 import Data.List
 import System.Environment
-       
+
 import SpaceWeather.CmdArgs
 import SpaceWeather.Format
 import SpaceWeather.Prediction
@@ -16,39 +16,38 @@ import qualified Data.Text.IO as T
 main :: IO ()
 main = do
   fns <- getArgs
-  mapM_ process fns 
+  mapM_ process fns
 
-
-process :: FilePath -> IO () 
+process :: FilePath -> IO ()
 process fn = withWorkDir $ do
   strE <- fmap decode $ T.readFile fn
-  case strE of 
+  case strE of
     Left msg -> putStrLn msg
     Right strategy -> do
       let
-        strategy2 = strategy 
-          & predictionSessionFile .~ finalSesFn        
-          & predictionResultFile .~ finalResFn        
-          & predictionRegressionFile .~ finalRegFn        
+        strategy2 = strategy
+          & predictionSessionFile .~ finalSesFn
+          & predictionResultFile .~ finalResFn
+          & predictionRegressionFile .~ finalRegFn
 
-        candSesFn = strategy ^. predictionSessionFile 
-        candResFn = strategy ^. predictionResultFile 
-        candRegFn = strategy ^. predictionRegressionFile 
+        candSesFn = strategy ^. predictionSessionFile
+        candResFn = strategy ^. predictionResultFile
+        candRegFn = strategy ^. predictionRegressionFile
 
-        finalSesFn 
+        finalSesFn
           | candSesFn /= "" = candSesFn
-          | ".yml" `isSuffixOf` fn = (++"-session.yml") $ reverse $ drop 4 $ reverse fn  
-          | otherwise              = fn ++ ".session.yml" 
+          | ".yml" `isSuffixOf` fn = (++"-session.yml") $ reverse $ drop 4 $ reverse fn
+          | otherwise              = fn ++ ".session.yml"
 
         finalResFn
           | candResFn /= "" = candResFn
-          | ".yml" `isSuffixOf` fn = (++"-result.yml") $ reverse $ drop 4 $ reverse fn  
-          | otherwise              = fn ++ ".result.yml" 
+          | ".yml" `isSuffixOf` fn = (++"-result.yml") $ reverse $ drop 4 $ reverse fn
+          | otherwise              = fn ++ ".result.yml"
 
         finalRegFn
           | candRegFn /= "" = candRegFn
-          | ".yml" `isSuffixOf` fn = (++"-regres.txt") $ reverse $ drop 4 $ reverse fn  
-          | otherwise              = fn ++ ".regress.txt" 
+          | ".yml" `isSuffixOf` fn = (++"-regres.txt") $ reverse $ drop 4 $ reverse fn
+          | otherwise              = fn ++ ".regress.txt"
 
 
       res <- performPrediction (strategy2 :: PredictionStrategyGS)
@@ -58,4 +57,3 @@ process fn = withWorkDir $ do
       T.writeFile finalResFn $ encode (res ^. predictionResult)
       T.writeFile finalSesFn $ encode res
       return ()
-  
