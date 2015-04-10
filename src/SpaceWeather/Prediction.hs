@@ -7,7 +7,6 @@ import qualified Data.Aeson.TH as Aeson
 import qualified Data.Map as Map
 import qualified Data.Text as T
 import qualified Data.Yaml as Yaml
-import Data.Bits (xor)
 import Data.Maybe
 import System.Random
 
@@ -19,8 +18,14 @@ import SpaceWeather.Format
 import SpaceWeather.SkillScore
 import SpaceWeather.TimeLine
 
+xor = (/=)
 
-data CrossValidationStrategy = CVWeekly | CVMonthly | CVYearly  | CVNegate CrossValidationStrategy | CVShuffled Int CrossValidationStrategy
+data CrossValidationStrategy
+  = CVWeekly
+  | CVMonthly
+  | CVYearly
+  | CVNegate CrossValidationStrategy
+  | CVShuffled Int CrossValidationStrategy
   deriving (Eq, Ord, Show, Read)
 Aeson.deriveJSON Aeson.defaultOptions ''CrossValidationStrategy
 

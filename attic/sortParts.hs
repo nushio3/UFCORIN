@@ -1,5 +1,6 @@
 import Control.Lens
 import Control.Monad
+import qualified Data.Map as M
 import Data.Function (on)
 import Data.List (sortBy)
 import System.Random
@@ -20,8 +21,8 @@ main :: IO ()
 main = do
   seed <- randomIO
   let gen = mkStdGen seed
-      xs = zip [1..] ['a'..'z']
-  print $ xs & partsOf (each._2) %~ (randSort 1 gen)
-  replicateM_ 100 $ do
+      xs = M.fromList $ zip [1..] ['a'..'z']
+  print $ xs & partsOf each %~ (randSort 1 gen)
+  replicateM_ 10 $ do
     seed <- randomIO
     putStrLn $ randSort 10 (mkStdGen seed) (replicate 30 ' ' ++ "#" ++ replicate 30 '.')

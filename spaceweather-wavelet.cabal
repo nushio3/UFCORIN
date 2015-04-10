@@ -89,7 +89,8 @@ executable prediction-main
   build-depends:
      base < 6
    , lens
-   , text
+              , text
+                , random
    , spaceweather-wavelet
   ghc-options:       -Wall -O2
 
