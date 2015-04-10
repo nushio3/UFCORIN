@@ -113,6 +113,15 @@ executable scan-survey-results
      , text
      , spaceweather-wavelet
 
+executable conduct-noise-survey
+  main-is: conduct-noise-survey.hs
+  hs-source-dirs: exe-src/
+  build-depends:
+       base < 6
+     , lens
+     , text
+     , spaceweather-wavelet
+     , process
 
 
 executable aia2timebin
