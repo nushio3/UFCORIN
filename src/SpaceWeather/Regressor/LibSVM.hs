@@ -148,7 +148,7 @@ libSVMPerformPrediction strategy = do
         | otherwise            = cvstr0
 
       pred :: TimeBin -> Bool
-      pred = inTrainingSet cvstr0
+      pred = inTrainingSet cvstr
 
       (fioTrainSet, fioTestSet) = Map.partitionWithKey (\k _ -> pred k) fioPair0
 
@@ -161,6 +161,7 @@ libSVMPerformPrediction strategy = do
       fnPrediction = workDir ++ "/test.txt.prediction"
 
   liftIO $ do
+    print cvstr
     encodeFile fnTrainSet svmTrainSet
     encodeFile fnTestSet svmTestSet
 

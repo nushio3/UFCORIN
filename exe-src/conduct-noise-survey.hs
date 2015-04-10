@@ -18,29 +18,34 @@ import qualified System.IO.Hadoop as HFS
 
 surveyDir = "survey-noise"
 
+pprClass :: FlareClass -> String
+pprClass = take 6 . show
+
 main :: IO ()
 main = do
   system $ "mkdir -p " ++ surveyDir
-  process defaultFlareClasses
+  mapM_ process defaultFlareClasses
 
-process :: FlareClass -> IO ()
+process :: FlareClass -> IO [FilePath]
 process className = do
-  strE <- fmap decode $ T.readFile $ printf "resource/best-strategy/%s.yml" className
+  strE <- fmap decode $ T.readFile $ printf "resource/best-strategies-3/%s.yml" (pprClass className)
   case strE of
-    Left msg -> putStrLn msg
-    Right strategy -> do
+    Left msg -> putStrLn msg >> return []
+    Right strategy -> sequence $
+      [genStrategy className strategy i | i <- [0..9]]
 
-genStrategy :: FlareClass -> PredictionStrategyGS -> Int -> IO ()
+genStrategy :: FlareClass -> PredictionStrategyGS -> Int -> IO FilePath
 genStrategy className strategy0 iterNum = do
   let
     strategy2 :: PredictionStrategyGS
     strategy2 = strategy0
-      & featureSchemaPackUsed . fspFilenamePairs %~ (++ fnPairs)
-
+          & predictionSessionFile .~ ""
+          & predictionResultFile .~ ""
+          & predictionRegressionFile .~ ""
 
     fn :: String
-    fn = printf "%s/%s-%02d-strategy.yml" surveyDir className iterNum
+    fn = printf "%s/%s-%02d-strategy.yml" surveyDir (pprClass className) iterNum
 
   T.writeFile fn $ encode (strategy2)
 
-  return ()
+  return fn
