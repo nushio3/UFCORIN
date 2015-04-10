@@ -22,7 +22,7 @@ main = do
   fns <- getArgs
 
   seedStr <- readSystem0 "cat /dev/urandom | base64 | head -n 100"
-  setStdGen $ mkStdGen $ read $ filter isDigit seedStr
+  setStdGen $ mkStdGen $ read $ filter isDigit $ workDir ++ seedStr
 
   mapM_ process $ filter ((/= '-') . head) fns
 
@@ -46,16 +46,19 @@ process fn = withWorkDir $ do
 
         finalSesFn
           | candSesFn /= "" = candSesFn
+          | "-strategy.yml" `isSuffixOf` fn = (++"-session.yml") $ reverse $ drop 13 $ reverse fn
           | ".yml" `isSuffixOf` fn = (++"-session.yml") $ reverse $ drop 4 $ reverse fn
           | otherwise              = fn ++ ".session.yml"
 
         finalResFn
           | candResFn /= "" = candResFn
+          | "-strategy.yml" `isSuffixOf` fn = (++"-result.yml") $ reverse $ drop 13 $ reverse fn
           | ".yml" `isSuffixOf` fn = (++"-result.yml") $ reverse $ drop 4 $ reverse fn
           | otherwise              = fn ++ ".result.yml"
 
         finalRegFn
           | candRegFn /= "" = candRegFn
+          | "-strategy.yml" `isSuffixOf` fn = (++"-regres.txt") $ reverse $ drop 13 $ reverse fn
           | ".yml" `isSuffixOf` fn = (++"-regres.txt") $ reverse $ drop 4 $ reverse fn
           | otherwise              = fn ++ ".regress.txt"
 
