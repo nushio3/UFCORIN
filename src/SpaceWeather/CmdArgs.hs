@@ -1,10 +1,14 @@
 module SpaceWeather.CmdArgs where
 
 import Control.Exception (bracket_)
+import Data.Maybe
+import Data.List
 import System.Process
 import System.Posix.Process
 import System.IO
 import System.IO.Unsafe
+import System.Environment
+import Safe (readMay)
 
 {-# NOINLINE workDir #-}
 workDir :: FilePath
@@ -15,7 +19,32 @@ workDir = unsafePerformIO $ do
   hPutStrLn stderr $ "using workdir: " ++ ret
   return ret
 
-withWorkDir = bracket_ 
+withWorkDir = bracket_
   (system $ "mkdir -p " ++ workDir)
   (system $ "rm -fr " ++ workDir)
-  
+
+spacialNoise :: Double
+spacialNoise = fromMaybe 0 $ listToMaybe $ catMaybes $ map mkCand unsafeArgv
+  where
+    mkCand str = case splitAt 4 str of
+      ("--sn", rest) -> readMay rest
+      _              -> Nothing
+
+temporalNoise :: Double
+temporalNoise = fromMaybe 0 $ listToMaybe $ catMaybes $ map mkCand unsafeArgv
+  where
+    mkCand str = case splitAt 4 str of
+      ("--tn", rest) -> readMay rest
+      _              -> Nothing
+
+crossValidationNoise :: Bool
+crossValidationNoise = fromMaybe False $ listToMaybe $ catMaybes $ map mkCand unsafeArgv
+  where
+    mkCand str = case str of
+      "--cvn" -> Just True
+      _       -> Nothing
+
+
+{-# NOINLINE unsafeArgv #-}
+unsafeArgv :: [String]
+unsafeArgv = unsafePerformIO getArgs

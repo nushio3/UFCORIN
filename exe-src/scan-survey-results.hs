@@ -7,6 +7,7 @@ import Data.Char
 import Data.List
 import qualified Data.Map as M
 import System.Environment
+import System.IO
 import Text.Printf
 
 import SpaceWeather.CmdArgs
@@ -28,33 +29,51 @@ imgPerSolarDiameter = 1.144
 main :: IO ()
 main = do
   (dirName: _)  <- getArgs
-  sequence_ $ do
+  sequence_ $ do -- List monad
     waveletNames <- ["bsplC-301", "haarC-2"]
-    [   study dirName waveletNames 'S' 'x'
-      , study dirName waveletNames 'S' 'y'
-      , study dirName waveletNames 'N' 'x'
+    fc <- defaultFlareClasses
+    [   study dirName waveletNames 'S' fc 'x'
+      , study dirName waveletNames 'S' fc 'y'
+      , study dirName waveletNames 'N' fc 'x'
       ]
+  sequence_ $ do -- List monad
+    fc <- defaultFlareClasses
+    dc <- ['x', 'y']
+    [study dirName "*" '*' fc dc]
 
-{-
--}
 
-study :: String -> String -> Char -> Char -> IO ()
-study dirName waveletName stdChar directionChar = do
+study :: String -> String -> Char -> FlareClass -> Char -> IO ()
+study dirName waveletName stdChar fc directionChar = do
   lsRet <- readSystem0 $ printf "ls %s/%s-%c*-result.yml" dirName waveletName stdChar
-  bars <- mapM (process directionChar) $ lines lsRet
+  let matchedFns = lines lsRet
+
+  bars <- mapM (process fc directionChar) $ matchedFns
 
   let nm = foldr (\(k,v) -> M.insertWith max k v) M.empty bars
 
       tmpFn = "tmp.dat"
       ppr (k,v) = printf "%s %f\n" (unwords $ map show k) v :: String
 
+      changeAsterisk :: Char -> String
+      changeAsterisk '*' = "all"
+      changeAsterisk c = [c]
+
       figFn :: FilePath
-      figFn = printf "figure/%s-%s-%c-%c.eps" (filter (/='/') dirName) waveletName stdChar directionChar
+      figFn = printf "figure/%s-%s-%s-%s-%c.eps" (filter (/='/') dirName)
+              (concat $ map changeAsterisk waveletName)
+              (changeAsterisk stdChar) (take 6 $ show fc) directionChar
 
       xlabel = case (stdChar, directionChar) of
-        ('S', 'x') -> "Horizontal scale of the feature"
-        ('S', 'y') -> "Vertical scale of the feature"
         ('N', _) -> "Scale of the feature"
+        (_  , 'x') -> "Horizontal scale of the feature"
+        (_  , 'y') -> "Vertical scale of the feature"
+        x          -> error $ "Unknown xlabel: " ++ show x
+
+  hPutStrLn stderr figFn
+
+  let bestFn = snd $ maximum $ zip (map snd bars) matchedFns
+
+  hPutStrLn stderr $ "best fn: " ++ bestFn
 
   writeFile tmpFn $ unlines $
      map ppr $ M.toList nm
@@ -71,13 +90,13 @@ study dirName waveletName stdChar directionChar = do
         ]
   return ()
 
-process :: Char -> FilePath -> IO ([Double], Double)
-process keyword fn = do
+process :: FlareClass -> Char -> FilePath -> IO ([Double], Double)
+process fc keyword fn = do
   Right result0 <- fmap decode $ T.readFile fn
   let result :: PredictionResult
       result = result0
       prm = result ^. predictionResultMap
-      xcm = prm M.! MClassFlare M.! TrueSkillStatistic
+      xcm = prm M.! fc M.! TrueSkillStatistic
       xcsv = xcm ^. scoreValue
 
       nums0 :: [Int]
@@ -89,6 +108,6 @@ process keyword fn = do
       filter0 = case keyword of
         'x' -> take 2
         'y' -> drop 2
-        _   -> error "undefined filtering direction"
+        d   -> error $ "undefined filtering direction: " ++ show d
 
   return (nums, xcsv)

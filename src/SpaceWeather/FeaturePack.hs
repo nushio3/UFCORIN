@@ -7,15 +7,19 @@ import Control.Monad.IO.Class
 import qualified Data.Aeson.TH as Aeson
 import qualified Data.ByteString.Char8 as BS
 import Data.Char
+import Data.Function(on)
+import Data.List (sortBy)
 import qualified Data.Map.Strict as Map
 import qualified Data.Text as T
 import qualified Data.Text.IO as T
 import qualified Data.Yaml as Yaml
 import           System.IO
 import qualified System.IO.Hadoop as HFS
+import System.Random
 import           Test.QuickCheck.Arbitrary
 import           Text.Printf
 
+import SpaceWeather.CmdArgs
 import SpaceWeather.Feature
 import SpaceWeather.Format
 import SpaceWeather.TimeLine
@@ -57,11 +61,14 @@ instance Format FeatureSchemaPack where
 loadFeatureWithSchema :: FeatureSchema -> FilePath -> IO (Either String Feature)
 loadFeatureWithSchema schema0 fp = runEitherT $ loadFeatureWithSchemaT schema0 fp
 
+
 loadFeatureWithSchemaT :: FeatureSchema -> FilePath -> EitherT String IO Feature
 loadFeatureWithSchemaT schema0 fp = do
   txt0 <- liftIO $ do
     hPutStrLn stderr $ "loading: " ++ fp
     HFS.readFile $ fp
+  gen0 <- liftIO $ newStdGen
+  gen1 <- liftIO $ newStdGen
 
   let
       convert :: Double -> Double
@@ -83,7 +90,21 @@ loadFeatureWithSchemaT schema0 fp = do
 
 
       ret :: Either String Feature
-      ret = fmap Map.fromList $ mapM parseLine $ linesWithComment txt0
+      ret = fmap fluctuate $
+            fmap Map.fromList $ mapM parseLine $ linesWithComment txt0
+
+      fluctuate :: Feature -> Feature
+      fluctuate f = f & partsOf each %~ (fluctuateSpace . fluctuateTime)
+
+      fluctuateSpace :: [Double] -> [Double]
+      fluctuateSpace xs = zipWith (\x f -> 10**f * x) xs $ randomRs (-spacialNoise, spacialNoise) gen0
+
+      fluctuateTime :: [Double] -> [Double]
+      fluctuateTime xs = map fst $ sortBy (compare `on` snd) $ zip xs $
+                         zipWith (+) [0..] $ randomRs (0,1 + temporalNoise) gen1
+
+
+
   hoistEither ret
 
 

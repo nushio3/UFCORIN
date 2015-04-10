@@ -20,7 +20,12 @@ import SpaceWeather.TimeLine
 
 xor = (/=)
 
-data CrossValidationStrategy = CVWeekly | CVMonthly | CVYearly  | CVNegate CrossValidationStrategy | CVShuffled Int CrossValidationStrategy
+data CrossValidationStrategy
+  = CVWeekly
+  | CVMonthly
+  | CVYearly
+  | CVNegate CrossValidationStrategy
+  | CVShuffled Int CrossValidationStrategy
   deriving (Eq, Ord, Show, Read)
 Aeson.deriveJSON Aeson.defaultOptions ''CrossValidationStrategy
 
