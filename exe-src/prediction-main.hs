@@ -3,8 +3,10 @@ module Main where
 
 import Control.Lens
 import Control.Monad
+import Data.Char
 import Data.List
 import System.Environment
+import System.Random
 
 import SpaceWeather.CmdArgs
 import SpaceWeather.Format
@@ -12,11 +14,19 @@ import SpaceWeather.Prediction
 import SpaceWeather.Regressor.General
 import qualified System.IO.Hadoop as HFS
 import qualified Data.Text.IO as T
+import System.System
+
 
 main :: IO ()
 main = do
   fns <- getArgs
-  mapM_ process fns
+
+  seedStr <- readSystem0 "cat /dev/urandom | base64 | head -n 100"
+  setStdGen $ mkStdGen $ read $ filter isDigit seedStr
+
+  mapM_ process $ filter ((/= '-') . head) fns
+
+
 
 process :: FilePath -> IO ()
 process fn = withWorkDir $ do
