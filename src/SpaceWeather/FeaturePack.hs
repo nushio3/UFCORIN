@@ -97,7 +97,7 @@ loadFeatureWithSchemaT schema0 fp = do
       fluctuate f = f & partsOf each %~ (fluctuateSpace . fluctuateTime)
 
       fluctuateSpace :: [Double] -> [Double]
-      fluctuateSpace xs = zipWith (\x f -> 10**f * x) xs $ randomRs (-spacialNoise, spacialNoise) gen0
+      fluctuateSpace xs = zipWith (\x f -> exp f * x) xs $ randomRs (-spacialNoise, spacialNoise) gen0
 
       fluctuateTime :: [Double] -> [Double]
       fluctuateTime xs = map fst $ sortBy (compare `on` snd) $ zip xs $

@@ -120,6 +120,9 @@ executable conduct-noise-survey
   build-depends:
        base < 6
      , lens
+     , containers
+     , vector
+     , statistics
      , text
      , spaceweather-wavelet
      , process

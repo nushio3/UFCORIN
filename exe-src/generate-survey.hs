@@ -15,28 +15,29 @@ import SpaceWeather.Prediction
 import SpaceWeather.Regressor.General
 import qualified System.IO.Hadoop as HFS
 
-surveyDir = "survey-2M"
+surveyDir = "survey-cvn"
 
 main :: IO ()
-main = do
+main = withWorkDir $ do
+  let perfLimit = 99
   system $ "mkdir -p " ++ surveyDir
-  sequence_ [process "bsplC-301" True (2^i) (2^j) (2^iy) (2^jy) | i <- [0..9], j <- [i..9],  iy <- [0..9], jy <- [iy..9], (jy-iy)*(j-i)<20 ]
-  sequence_ [process "bsplC-301" False (2^i) (2^j) (2^iy) (2^jy) | i <- [0..9], j <- [i..9],  iy <- [0..9], jy <- [iy..9] , (jy-iy)*(j-i)<20]
-  sequence_ [process "haarC-2" True (2^i) (2^j) (2^iy) (2^jy) | i <- [0..9], j <- [i..9],  iy <- [0..9], jy <- [iy..9] , (jy-iy)*(j-i)<20]
-  sequence_ [process "haarC-2" False (2^i) (2^j) (2^iy) (2^jy) | i <- [0..9], j <- [i..9],  iy <- [0..9], jy <- [iy..9] , (jy-iy)*(j-i)<20]
+  sequence_ [process "bsplC-301" True (2^i) (2^j) (2^iy) (2^jy) | i <- [0..9], j <- [i..9],  iy <- [0..9], jy <- [iy..9], (jy-iy)*(j-i)<perfLimit ]
+  sequence_ [process "bsplC-301" False (2^i) (2^j) (2^iy) (2^jy) | i <- [0..9], j <- [i..9],  iy <- [0..9], jy <- [iy..9] , (jy-iy)*(j-i)<perfLimit]
+  sequence_ [process "haarC-2" True (2^i) (2^j) (2^iy) (2^jy) | i <- [0..9], j <- [i..9],  iy <- [0..9], jy <- [iy..9] , (jy-iy)*(j-i)<perfLimit]
+  sequence_ [process "haarC-2" False (2^i) (2^j) (2^iy) (2^jy) | i <- [0..9], j <- [i..9],  iy <- [0..9], jy <- [iy..9] , (jy-iy)*(j-i)<perfLimit]
 
 process :: String -> Bool -> Int -> Int -> Int -> Int -> IO ()
-process basisName isStd lower upper lowerY0 upperY0 = withWorkDir $ do
+process basisName isStd lower upper lowerY0 upperY0 =
   strE <- fmap decode $ T.readFile "resource/strategy-template-auto.yml"
   case strE of
     Left msg -> putStrLn msg
-    Right strategy -> do
+    Right strategy -> forM_ [0..9 :: Int] $\iterID -> do5D
       let
         strategy2 :: PredictionStrategyGS
         strategy2 = strategy
-          & predictionSessionFile .~ finalSesFn
-          & predictionResultFile .~ finalResFn
-          & predictionRegressionFile .~ finalRegFn
+          & predictionSessionFile .~ ""
+          & predictionResultFile .~ ""
+          & predictionRegressionFile .~ ""
           & featureSchemaPackUsed . fspFilenamePairs %~ (++ fnPairs)
 
         lowerY = if isStd then lowerY0 else lower
@@ -68,24 +69,10 @@ process basisName isStd lower upper lowerY0 upperY0 = withWorkDir $ do
         candRegFn = strategy ^. predictionRegressionFile
 
         fn :: String
-        fn = printf "%s/%s-%04d-%04d-%04d-%04d.yml"
+        fn = printf "%s/%s-%04d-%04d-%04d-%04d-[%02d]-strategy.yml"
           surveyDir basisString
-          (lower :: Int) (upper :: Int) lowerY upperY
+          (lower :: Int) (upper :: Int) lowerY upperY iterID
 
-        finalSesFn
-          | candSesFn /= "" = candSesFn
-          | ".yml" `isSuffixOf` fn = (++"-session.yml") $ reverse $ drop 4 $ reverse fn
-          | otherwise              = fn ++ ".session.yml"
-
-        finalResFn
-          | candResFn /= "" = candResFn
-          | ".yml" `isSuffixOf` fn = (++"-result.yml") $ reverse $ drop 4 $ reverse fn
-          | otherwise              = fn ++ ".result.yml"
-
-        finalRegFn
-          | candRegFn /= "" = candRegFn
-          | ".yml" `isSuffixOf` fn = (++"-regres.txt") $ reverse $ drop 4 $ reverse fn
-          | otherwise              = fn ++ ".regress.txt"
 
       T.writeFile fn $ encode (strategy2)
 
