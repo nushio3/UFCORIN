@@ -15,7 +15,7 @@ import SpaceWeather.Prediction
 import SpaceWeather.Regressor.General
 import qualified System.IO.Hadoop as HFS
 
-surveyDir = "survey-cvn"
+surveyDir = "survey-cvn-2"
 
 main :: IO ()
 main = withWorkDir $ do
@@ -27,17 +27,17 @@ main = withWorkDir $ do
   sequence_ [process "haarC-2" False (2^i) (2^j) (2^iy) (2^jy) | i <- [0..9], j <- [i..9],  iy <- [0..9], jy <- [iy..9] , (jy-iy)*(j-i)<perfLimit]
 
 process :: String -> Bool -> Int -> Int -> Int -> Int -> IO ()
-process basisName isStd lower upper lowerY0 upperY0 =
-  strE <- fmap decode $ T.readFile "resource/strategy-template-auto.yml"
+process basisName isStd lower upper lowerY0 upperY0 = do
+  strE <- fmap decode $ T.readFile "resource/strategy-template.yml"
   case strE of
     Left msg -> putStrLn msg
-    Right strategy -> forM_ [0..9 :: Int] $\iterID -> do5D
+    Right strategy -> forM_ [0..4 :: Int] $ \iterID -> do
       let
         strategy2 :: PredictionStrategyGS
         strategy2 = strategy
           & predictionSessionFile .~ ""
           & predictionResultFile .~ ""
-          & predictionRegressionFile .~ ""
+          & predictionRegressionFile .~ "/dev/null"
           & featureSchemaPackUsed . fspFilenamePairs %~ (++ fnPairs)
 
         lowerY = if isStd then lowerY0 else lower
