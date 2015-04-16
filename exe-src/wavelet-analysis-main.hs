@@ -50,17 +50,17 @@ wavelets :: [(String, Wavelet, Int)]
 wavelets =
   [
     ("haarC", p'gsl_wavelet_haar_centered , 2)
-  , ("bsplC", p'gsl_wavelet_bspline_centered ,301 )    
+  , ("bsplC", p'gsl_wavelet_bspline_centered ,301 )
 --  , ("daubC", p'gsl_wavelet_daubechies_centered , 20)
   ]
-  
+
 
 
 --   , ("daubC", p'gsl_wavelet_daubechies_centered , 20)
---   , ("bsplC", p'gsl_wavelet_bspline_centered ,103 )    
---   , ("bsplC", p'gsl_wavelet_bspline_centered ,202 )    
---   , ("bsplC", p'gsl_wavelet_bspline_centered ,208 )    
---   , ("bsplC", p'gsl_wavelet_bspline_centered ,303 )    
+--   , ("bsplC", p'gsl_wavelet_bspline_centered ,103 )
+--   , ("bsplC", p'gsl_wavelet_bspline_centered ,202 )
+--   , ("bsplC", p'gsl_wavelet_bspline_centered ,208 )
+--   , ("bsplC", p'gsl_wavelet_bspline_centered ,303 )
 
   -- [
   --   ("haar0", p'gsl_wavelet_haar , 2)
@@ -97,18 +97,18 @@ testWavelet    (wlabel, wptr   , waveletK) isStd sourcePath = do
   let fnBase :: String
       fnBase = printf "%s-%s-%d-%s"
                sourceFnBody
-               wlabel waveletK (if isStd then "S" else "N" :: String) 
-               
+               wlabel waveletK (if isStd then "S" else "N" :: String)
+
       (sourceDir, sourceFn) = splitFileName sourcePath
       (sourceFnBody, _) = splitExtension sourceFn
-      
+
       localFitsFn :: String
       localBmpFn :: String
       localFitsFn = printf "tmp-%s.fits" (show myUnixPid)
       localBmpFn = printf "tmp-%s.bmp" (show myUnixPid)
-      
+
       destinationFn = (replace "/shibayama/" "/nushio/" sourceDir) </> (fnBase++".bmp")
-                      
+
       (destinationDir,_) = splitFileName destinationFn
 
       timeWaveletTag :: String
@@ -139,7 +139,7 @@ testWavelet    (wlabel, wptr   , waveletK) isStd sourcePath = do
         c'gsl_wavelet_workspace_free pWork
         free pData
         free pDataN
-  
+
 
 
   -- zero initialize the data
@@ -179,14 +179,14 @@ testWavelet    (wlabel, wptr   , waveletK) isStd sourcePath = do
 
         ix' = ix `div` (nOfInput `div`n)
         iy' = iy `div` (nOfInput `div`n)
-      val0 <- peekElemOff pData (iy'*n+ix') 
-      valN0 <- peekElemOff pDataN (iy'*n+ix') 
+      val0 <- peekElemOff pData (iy'*n+ix')
+      valN0 <- peekElemOff pDataN (iy'*n+ix')
       pokeElemOff pData (iy'*n+ix') (val0 + val)
       pokeElemOff pDataN (iy'*n+ix') (valN0 + 1)
- 
+
   -- divide the data to compute the average
   forM_ [0..n*n-1] $ \i -> do
-    nume <- peekElemOff pData  i 
+    nume <- peekElemOff pData  i
     deno <- peekElemOff pDataN i
     pokeElemOff pData i (nume/deno)
 
@@ -204,9 +204,9 @@ testWavelet    (wlabel, wptr   , waveletK) isStd sourcePath = do
 
   let bmpShape = R.ix2 n n
 
-  let 
+  let
     rects :: [Rect]
-    rects 
+    rects
       | isStd     = rsS
       | otherwise = rsN
 
@@ -214,25 +214,25 @@ testWavelet    (wlabel, wptr   , waveletK) isStd sourcePath = do
     stdSizes  = takeWhile (<n) $ iterate (*2) 1
     stdRanges = zip (0:stdSizes) (1:stdSizes)
     rsS = [ ((x,y), (w,h)) | (x,w) <- stdRanges, (y,h) <- stdRanges]
-    
+
     rsN = ((0,0),(1,1)) : concat
       [[((0,x),(x,x)), ((x,0),(x,x)), ((x,x),(x,x))] | x <- stdSizes]
 
     onEdge :: R.DIM2 -> Rect -> Bool
     onEdge pt ((x,y),(w,h)) = go
       where
-        [py,px] = R.listOfShape pt 
-        go | px == x     && py >= y && py < y+h = True   
-           | px == x+w-1 && py >= y && py < y+h = True   
-           | py == y     && px >= x && px < x+w = True   
-           | py == y+h-1 && px >= x && px < x+w = True   
+        [py,px] = R.listOfShape pt
+        go | px == x     && py >= y && py < y+h = True
+           | px == x+w-1 && py >= y && py < y+h = True
+           | py == y     && px >= x && px < x+w = True
+           | py == y+h-1 && px >= x && px < x+w = True
            | otherwise                          = False
-     
+
     inRect :: R.DIM2 -> Rect -> Bool
-    inRect pt ((x,y),(w,h)) = 
+    inRect pt ((x,y),(w,h)) =
       px >= x && py >= y && px < x+w && py < y+h
       where
-        [py,px] = R.listOfShape pt 
+        [py,px] = R.listOfShape pt
 
     paintEdge :: R.DIM2 -> RGB -> RGB
     paintEdge pt orig
@@ -242,7 +242,7 @@ testWavelet    (wlabel, wptr   , waveletK) isStd sourcePath = do
 
 
   let toRGB :: Double -> RGB
-      toRGB x = 
+      toRGB x =
         let red   = rb (x/10)
             green = min red blue
             blue  = rb (negate $ x/10)
@@ -256,7 +256,7 @@ testWavelet    (wlabel, wptr   , waveletK) isStd sourcePath = do
     R.map realToFrac $
     R.fromForeignPtr bmpShape fgnPData
 
-  bmpData <- R.computeUnboxedP $ 
+  bmpData <- R.computeUnboxedP $
     R.zipWith paintEdge (R.fromFunction bmpShape id) $
     R.map toRGB waveletSpace
 
@@ -264,17 +264,16 @@ testWavelet    (wlabel, wptr   , waveletK) isStd sourcePath = do
     R.writeImageToBMP localBmpFn  bmpData
     system $ printf "hadoop fs -put -f %s %s" localBmpFn destinationFn
     return ()
-  
+
   forM_ [("id"::String,id),("sq",sq)] $ \(tag,func) -> do
     forM_ rects $ \theRect@((rx,ry),(rw,rh)) -> do
       sumInRect  <-
         R.sumAllP $
         R.zipWith (\pt x-> if (inRect pt theRect) then func x else 0) (R.fromFunction bmpShape id) $
         waveletSpace
-  
+
       printf "%s:%s:%s\t%e\n" timeWaveletTag (show (rx,ry)) tag sumInRect
   hFlush stdout
 
 
   finalizer
-
