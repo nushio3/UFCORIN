@@ -28,7 +28,7 @@ main (int argc, char **argv) {
     for (i = 0; i < n; i++)  {
       data[j*n+i] = 0;
       if ((i-n/2)*(i-n/2) + (j-n/2)*(j-n/2) < n*n/4)
-        data[j*n+i] = double(rand())/INT_MAX;
+        data[j*n+i] = double(rand())/INT_MAX-double(rand())/INT_MAX;
     }
   }
   //data[7*n+7] = 1;
