@@ -81,18 +81,18 @@ parseTimeBin :: [Text.Text] -> Maybe TimeBin
 parseTimeBin ws = do
   dayStr <- ws `atMay` 0
 
-  let dayParts = Text.splitOn "-" dayStr 
+  let dayParts = Text.splitOn "-" dayStr
 
   yearVal <- dayParts `readAt` 0
   monthVal <- dayParts `readAt` 1
   dayVal <- dayParts `readAt` 2
 
   hourVal <- ws `readAt` 1
-  
+
   let day = fromGregorian yearVal monthVal dayVal
       sec = secondsToDiffTime $ hourVal * 3600
       t = UTCTime day sec
-      
+
   return $ t ^. discreteTime
 
 parseTimeBin2 :: Text.Text -> Maybe TimeBin
@@ -104,11 +104,11 @@ parseTimeBin2 inputStr = do
   dayVal <- dayParts `readAt` 2
 
   hourVal <- dayParts `readAt` 3
-  
+
   let day = fromGregorian yearVal monthVal dayVal
       sec = secondsToDiffTime $ hourVal * 3600
       t = UTCTime day sec
-      
+
   return $ t ^. discreteTime
 
 
@@ -117,9 +117,9 @@ parseGoesLine str = do -- maybe monad
   let ws = Text.words str
 
   t <- parseTimeBin ws
-  
-  avgXray0 <- ws `readAt` 2 
-  maxXray0 <- ws `readAt` 3 
+
+  avgXray0 <- ws `readAt` 2
+  maxXray0 <- ws `readAt` 3
 
   guard $ avgXray0 > 1e-8
   guard $ maxXray0 > 1e-8
@@ -131,9 +131,9 @@ parseHmiLine str = do -- maybe monad
   let ws = Text.words str
 
   t <- parseTimeBin ws
-  
-  avgXray0 <- ws `readAt` 2 
-  absSum0 <- ws `readAt` 3 
+
+  avgXray0 <- ws `readAt` 2
+  absSum0 <- ws `readAt` 3
 
   guard $ abs avgXray0 < 1.5e7
   guard $ absSum0  < 3e8
@@ -144,15 +144,15 @@ parseHmiLine str = do -- maybe monad
 -- Create forecasting data
 ----------------------------------------------------
 
-forecast :: Int -> ([a]->a) -> Map.Map TimeBin a -> Map.Map TimeBin a 
+forecast :: Int -> ([a]->a) -> Map.Map TimeBin a -> Map.Map TimeBin a
 forecast span f src = ret
   where
     ts = Map.keys src
     ret = Map.fromList $ catMaybes $ map go ts
 
     go t = do -- maybe monad
-      let 
-        futureTs 
+      let
+        futureTs
           | span == 0 = [t]
           | span > 0  = [t..t+fromIntegral span -1]
           | span < 0  = [t+fromIntegral span .. t -1]
@@ -162,7 +162,7 @@ forecast span f src = ret
       -- require some of the data to be present.
       let vals = catMaybes $ map (\t -> Map.lookup t src) futureTs
       guard $ length vals > 0
-      
+
       return (t,f vals)
 
 catGoesFeatures :: [GoesFeature] -> GoesFeature
@@ -170,7 +170,7 @@ catGoesFeatures xs =
   GoesFeature
   { _avgXray = average $ map (^. avgXray) xs
   , _avgLogXray = average $ map (^. avgLogXray) xs
-  , _maxXray = maximum $ map (^. maxXray) xs             
+  , _maxXray = maximum $ map (^. maxXray) xs
   }
 
 catHmiFeatures :: [HmiFeature] -> HmiFeature
@@ -179,7 +179,6 @@ catHmiFeatures xs =
   { _sphereAvg = average $ map (^. sphereAvg) xs
   , _sphereAbsSum = average $ map (^. sphereAbsSum) xs
   }
-
 
 
 ----------------------------------------------------
@@ -192,7 +191,7 @@ pprintTime t = unwords
   , printf "%8d" t]
 
 pprintGoes :: (TimeBin, GoesFeature) -> String
-pprintGoes (t,gd) = printf "%s\t%e\t%e\t%e" (pprintTime t) (gd ^. avgXray) (exp $ gd ^. avgLogXray)  (gd ^. maxXray) 
+pprintGoes (t,gd) = printf "%s\t%e\t%e\t%e" (pprintTime t) (gd ^. avgXray) (exp $ gd ^. avgLogXray)  (gd ^. maxXray)
 
 pprintHmi :: (TimeBin, HmiFeature) -> String
 pprintHmi (t,hd) = printf "%s\t%e\t%en" (pprintTime t) (hd ^. sphereAvg) (hd ^. sphereAbsSum)

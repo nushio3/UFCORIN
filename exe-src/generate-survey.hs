@@ -15,7 +15,7 @@ import SpaceWeather.Prediction
 import SpaceWeather.Regressor.General
 import qualified System.IO.Hadoop as HFS
 
-surveyDir = "survey-cvn-2"
+surveyDir = "survey-cvn-3"
 
 main :: IO ()
 main = withWorkDir $ do
@@ -31,7 +31,7 @@ process basisName isStd lower upper lowerY0 upperY0 = do
   strE <- fmap decode $ T.readFile "resource/strategy-template.yml"
   case strE of
     Left msg -> putStrLn msg
-    Right strategy -> forM_ [0..4 :: Int] $ \iterID -> do
+    Right strategy -> forM_ [0..9 :: Int] $ \iterID -> do
       let
         strategy2 :: PredictionStrategyGS
         strategy2 = strategy
@@ -68,12 +68,18 @@ process basisName isStd lower upper lowerY0 upperY0 = do
         candResFn = strategy ^. predictionResultFile
         candRegFn = strategy ^. predictionRegressionFile
 
+        surveySubDirID :: Integer
+        surveySubDirID = (read $ concat $ map show [lower,upper,lowerY,upperY,iterID]) `mod` 997
+        surveySubDir = printf "%03d" surveySubDirID
+
+        surveyDir2 = surveyDir ++ "/" ++ surveySubDir
+
         fn :: String
         fn = printf "%s/%s-%04d-%04d-%04d-%04d-[%02d]-strategy.yml"
-          surveyDir basisString
+          surveyDir2 basisString
           (lower :: Int) (upper :: Int) lowerY upperY iterID
 
-
+      system $ printf "mkdir -p %s" surveyDir2
       T.writeFile fn $ encode (strategy2)
 
       return ()
