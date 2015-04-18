@@ -6,6 +6,7 @@ import Data.List
 import qualified Data.Text.IO as T
 import System.Environment
 import System.Process
+import System.Random
 import Text.Printf
 
 import SpaceWeather.CmdArgs
@@ -15,7 +16,10 @@ import SpaceWeather.Prediction
 import SpaceWeather.Regressor.General
 import qualified System.IO.Hadoop as HFS
 
-surveyDir = "survey-cvn-3"
+surveyDir = "survey-cvn-4"
+
+testStrategy :: PredictionStrategyGS
+testStrategy = defaultPredictionStrategy  & crossValidationStrategy .~ CVShuffled 12345 CVWeekly
 
 main :: IO ()
 main = withWorkDir $ do
@@ -29,16 +33,23 @@ main = withWorkDir $ do
 process :: String -> Bool -> Int -> Int -> Int -> Int -> IO ()
 process basisName isStd lower upper lowerY0 upperY0 = do
   strE <- fmap decode $ T.readFile "resource/strategy-template.yml"
+  seeds <- replicateM 5 randomIO
   case strE of
     Left msg -> putStrLn msg
     Right strategy -> forM_ [0..9 :: Int] $ \iterID -> do
       let
+        (iterIDDiv, iterIDMod) = divMod iterID 2
+        seedParity = case iterIDMod of
+          0 -> id
+          1 -> CVNegate
+
         strategy2 :: PredictionStrategyGS
         strategy2 = strategy
           & predictionSessionFile .~ ""
           & predictionResultFile .~ ""
           & predictionRegressionFile .~ "/dev/null"
           & featureSchemaPackUsed . fspFilenamePairs %~ (++ fnPairs)
+          & crossValidationStrategy .~ seedParity (CVShuffled (seeds !! iterIDDiv) CVWeekly)
 
         lowerY = if isStd then lowerY0 else lower
         upperY = if isStd then upperY0 else upper
@@ -70,9 +81,11 @@ process basisName isStd lower upper lowerY0 upperY0 = do
 
         surveySubDirID :: Integer
         surveySubDirID = (read $ concat $ map show [lower,upper,lowerY,upperY,iterID]) `mod` 997
+        surveySubDir :: String
         surveySubDir = printf "%03d" surveySubDirID
 
-        surveyDir2 = surveyDir ++ "/" ++ surveySubDir
+        surveyDir2 :: String
+        surveyDir2 = surveyDir -- ++ "/" ++ surveySubDir
 
         fn :: String
         fn = printf "%s/%s-%04d-%04d-%04d-%04d-[%02d]-strategy.yml"

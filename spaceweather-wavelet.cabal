@@ -103,6 +103,7 @@ executable generate-survey
      , text
      , spaceweather-wavelet
      , process
+     , random
 
 executable scan-survey-results
   main-is: scan-survey-results.hs
