@@ -3,6 +3,7 @@ import Control.Applicative
 import Control.Lens
 import Control.Monad
 import Data.List
+import qualified Data.Map as M
 import qualified Data.Text.IO as T
 import System.Environment
 import System.Process
@@ -10,30 +11,37 @@ import System.Random
 import Text.Printf
 
 import SpaceWeather.CmdArgs
+import SpaceWeather.TimeLine
+import SpaceWeather.FlareClass
+import SpaceWeather.Feature
 import SpaceWeather.FeaturePack
 import SpaceWeather.Format
 import SpaceWeather.Prediction
 import SpaceWeather.Regressor.General
 import qualified System.IO.Hadoop as HFS
 
-surveyDir = "survey-cvn-4"
+surveyDir = "survey-cvn-5"
 
 testStrategy :: PredictionStrategyGS
 testStrategy = defaultPredictionStrategy  & crossValidationStrategy .~ CVShuffled 12345 CVWeekly
 
 main :: IO ()
 main = withWorkDir $ do
+  seeds <- goodSeeds
   let perfLimit = 99
   system $ "mkdir -p " ++ surveyDir
-  sequence_ [process "bsplC-301" True (2^i) (2^j) (2^iy) (2^jy) | i <- [0..9], j <- [i..9],  iy <- [0..9], jy <- [iy..9], (jy-iy)*(j-i)<perfLimit ]
-  sequence_ [process "bsplC-301" False (2^i) (2^j) (2^iy) (2^jy) | i <- [0..9], j <- [i..9],  iy <- [0..9], jy <- [iy..9] , (jy-iy)*(j-i)<perfLimit]
-  sequence_ [process "haarC-2" True (2^i) (2^j) (2^iy) (2^jy) | i <- [0..9], j <- [i..9],  iy <- [0..9], jy <- [iy..9] , (jy-iy)*(j-i)<perfLimit]
-  sequence_ [process "haarC-2" False (2^i) (2^j) (2^iy) (2^jy) | i <- [0..9], j <- [i..9],  iy <- [0..9], jy <- [iy..9] , (jy-iy)*(j-i)<perfLimit]
+  sequence_ [process seeds "bsplC-301" True (2^i) (2^j) (2^iy) (2^jy)
+            | i <- [0..9], j <- [i..9],  iy <- [0..9], jy <- [iy..9], (jy-iy)*(j-i)<perfLimit ]
+  sequence_ [process seeds "bsplC-301" False (2^i) (2^j) (2^iy) (2^jy)
+            | i <- [0..9], j <- [i..9],  iy <- [0..9], jy <- [iy..9] , (jy-iy)*(j-i)<perfLimit]
+  sequence_ [process seeds "haarC-2" True (2^i) (2^j) (2^iy) (2^jy)
+            | i <- [0..9], j <- [i..9],  iy <- [0..9], jy <- [iy..9] , (jy-iy)*(j-i)<perfLimit]
+  sequence_ [process seeds "haarC-2" False (2^i) (2^j) (2^iy) (2^jy)
+            | i <- [0..9], j <- [i..9],  iy <- [0..9], jy <- [iy..9] , (jy-iy)*(j-i)<perfLimit]
 
-process :: String -> Bool -> Int -> Int -> Int -> Int -> IO ()
-process basisName isStd lower upper lowerY0 upperY0 = do
+process :: [Int] -> String -> Bool -> Int -> Int -> Int -> Int -> IO ()
+process seeds basisName isStd lower upper lowerY0 upperY0 = do
   strE <- fmap decode $ T.readFile "resource/strategy-template.yml"
-  seeds <- replicateM 5 randomIO
   case strE of
     Left msg -> putStrLn msg
     Right strategy -> forM_ [0..9 :: Int] $ \iterID -> do
@@ -97,10 +105,34 @@ process basisName isStd lower upper lowerY0 upperY0 = do
 
       return ()
 
-goodSeed :: IO [Int]
-goodSeed = return 42
-  where
+goodSeeds :: IO [Int]
+goodSeeds = do
+  Right strategy <- fmap decode $ T.readFile "resource/strategy-template.yml"
+  Right goesFeature <- loadFeatureWithSchema
+                       (strategy ^. predictionTargetSchema)
+                       (strategy ^. predictionTargetFile)
+  return (strategy :: PredictionStrategyGS)
+  collectIO 5 $ getGoodSeed goesFeature
+
+collectIO :: Int -> IO [a] -> IO [a]
+collectIO n m
+  | n <= 0    = return []
+  | otherwise = do
+      xs <- m
+      ys <- collectIO (n - length xs) m
+      return $ xs ++ ys
+
+getGoodSeed :: Feature -> IO [Int]
+getGoodSeed goesFeature = do
+  seed <- randomIO
+  let
+    cvstr = CVShuffled seed CVWeekly
     pred :: TimeBin -> Bool
     pred = inTrainingSet cvstr
 
-    (fioTrainSet, fioInrTestSet) = Map.partitionWithKey (\k _ -> pred k) fioPair0
+    (trainSet, testSet) = M.partitionWithKey (\k _ -> pred k) goesFeature
+
+    countX = length . filter (\v -> v >= log (xRayFlux XClassFlare) / log 10) . map snd . M.toList
+  print $ take 10 $ M.toList trainSet
+  print (countX trainSet, countX testSet)
+  return []

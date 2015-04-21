@@ -17,51 +17,51 @@ cabal-version:       >=1.8
 library
   hs-source-dirs:    src/
   exposed-modules:
-    SpaceWeather.CmdArgs
-    SpaceWeather.DefaultFeatureSchemaPack
-    SpaceWeather.FlareClass
-    SpaceWeather.Feature
-    SpaceWeather.FeaturePack
-    SpaceWeather.Format
-    SpaceWeather.Prediction
-    SpaceWeather.Regressor.General
-    SpaceWeather.Regressor.Linear
-    SpaceWeather.Regressor.LibSVM
-    SpaceWeather.SkillScore
-    SpaceWeather.TimeLine
-    SpaceWeather.Wavelet
+                  SpaceWeather.CmdArgs
+                  SpaceWeather.DefaultFeatureSchemaPack
+                  SpaceWeather.FlareClass
+                  SpaceWeather.Feature
+                  SpaceWeather.FeaturePack
+                  SpaceWeather.Format
+                  SpaceWeather.Prediction
+                  SpaceWeather.Regressor.General
+                  SpaceWeather.Regressor.Linear
+                  SpaceWeather.Regressor.LibSVM
+                  SpaceWeather.SkillScore
+                  SpaceWeather.TimeLine
+                  SpaceWeather.Wavelet
                   System.IO.Hadoop
                   System.System
 
   other-modules:
-    Paths_spaceweather_wavelet
+                Paths_spaceweather_wavelet
 
   build-depends:
-     base < 6
-   , aeson
-   , binary
-   , bindings-gsl >= 0.2
-   , bytestring >= 0.10.0.2
-   , cmaes >= 0.2.2
-   , containers
-   , cpu >= 0.1.1
-   , directory
-   , either
-   , filepath
-   , HTTP
-   , lens
+                base < 6
+              , aeson
+              , binary
+              , bindings-gsl >= 0.2
+              , bytestring >= 0.10.0.2
+              , cmaes >= 0.2.2
+              , containers
+              , cpu >= 0.1.1
+              , directory
+              , either
+              , filepath
+              , HTTP
+              , lens
               , MissingH
-                , mtl
-   , process
-   , QuickCheck
-   , random
-   , safe
-   , spoon
-   , text >= 0.11.3.1
-   , time
-   , transformers
-   , unix
-   , yaml
+              , mtl
+              , process
+              , QuickCheck
+              , random
+              , safe
+              , spoon
+              , text >= 0.11.3.1
+              , time
+              , transformers
+              , unix
+              , yaml
 
 
 Test-Suite spec
@@ -72,87 +72,88 @@ Test-Suite spec
   Other-Modules:
 
   Build-Depends:
-      base
-    , containers
-    , hspec >= 1.3
-    , lens
-    , QuickCheck
-    , text
-    , transformers
+                base
+              , containers
+              , hspec >= 1.3
+              , lens
+              , QuickCheck
+              , text
+              , transformers
 
 
-    , spaceweather-wavelet
+              , spaceweather-wavelet
 
 executable prediction-main
   main-is:           prediction-main.hs
   hs-source-dirs:    exe-src/
   build-depends:
-     base < 6
-   , lens
+                base < 6
+              , lens
               , text
-                , random
-   , spaceweather-wavelet
+              , random
+              , spaceweather-wavelet
   ghc-options:       -Wall -O2
 
 executable generate-survey
   main-is: generate-survey.hs
   hs-source-dirs: exe-src/
   build-depends:
-       base < 6
-     , lens
-     , text
-     , spaceweather-wavelet
-     , process
-     , random
+                base < 6
+              , lens
+              , containers
+              , text
+              , spaceweather-wavelet
+              , process
+              , random
 
 executable scan-survey-results
   main-is: scan-survey-results.hs
   hs-source-dirs: exe-src/
   build-depends:
-       base < 6
-     , containers
-     , lens
-     , text
-     , spaceweather-wavelet
+                base < 6
+              , containers
+              , lens
+              , text
+              , spaceweather-wavelet
 
 executable scan-survey-4
   main-is: scan-survey-4.hs
   hs-source-dirs: exe-src/
   build-depends:
-       base < 6
-     , containers
+                base < 6
+              , containers
               , lens
               , statistics
               , vector
               , split
-     , text
-     , spaceweather-wavelet
+              , text
+              , spaceweather-wavelet
 
 
 executable conduct-noise-survey
   main-is: conduct-noise-survey.hs
   hs-source-dirs: exe-src/
   build-depends:
-       base < 6
-     , lens
-     , containers
-     , vector
-     , statistics
-     , text
-     , spaceweather-wavelet
-     , process
+                base < 6
+              , lens
+              , containers
+              , vector
+              , statistics
+              , text
+              , spaceweather-wavelet
+              , process
 
 
 executable aia2timebin
   main-is:           aia2timebin.hs
   hs-source-dirs:    exe-src/
   build-depends:
-     base < 6
-   , lens
-   , text
-   , time
+                base < 6
+              , lens
+              , text
+              , time
 
-   , spaceweather-wavelet
+              , spaceweather-wavelet
   ghc-options:       -Wall -O2
 
 
@@ -186,63 +187,63 @@ executable hs-wordcount-mapper
   main-is:           hs-wordcount-mapper.hs
   hs-source-dirs:    exe-src/
   build-depends:
-     base < 6
+                base < 6
   ghc-options:       -Wall -O2
 
 executable hs-wordcount-reducer
   main-is:           hs-wordcount-reducer.hs
   hs-source-dirs:    exe-src/
   build-depends:
-    base < 6
+                base < 6
   ghc-options:       -Wall -O2
 
 executable daily-forecast
   main-is:           daily-forecast.hs
   hs-source-dirs:    exe-src/
   build-depends:
-     base < 6
-   , spaceweather-wavelet
+                base < 6
+              , spaceweather-wavelet
 
-   , containers
-   , lens
-   , safe
-   , text
-   , time
+              , containers
+              , lens
+              , safe
+              , text
+              , time
   ghc-options:       -Wall -O2
 
 executable transpose-wavelet-mapper
   main-is:           transpose-wavelet-mapper.hs
   hs-source-dirs:    exe-src/
   build-depends:
-     base < 6
-   , spaceweather-wavelet
+                base < 6
+              , spaceweather-wavelet
 
-   , spoon
-   , text
+              , spoon
+              , text
   ghc-options:       -Wall -O2
 
 executable transpose-wavelet-reducer
   main-is:           transpose-wavelet-reducer.hs
   hs-source-dirs:    exe-src/
   build-depends:
-     base < 6
-   , spaceweather-wavelet
+                base < 6
+              , spaceweather-wavelet
 
-   , spoon
-   , text
+              , spoon
+              , text
   ghc-options:       -Wall -O2
 
 executable transpose-wavelet-finalizer
   main-is:           transpose-wavelet-finalizer.hs
   hs-source-dirs:    exe-src/
   build-depends:
-     base < 6
-   , spaceweather-wavelet
+                base < 6
+              , spaceweather-wavelet
 
-   , containers
-   , process
-   , spoon
-   , text
+              , containers
+              , process
+              , spoon
+              , text
 
   ghc-options:       -Wall -O2
 
@@ -250,14 +251,14 @@ executable linear-regression
   main-is:           linear-regression.hs
   hs-source-dirs:    exe-src/
   build-depends:
-     base < 6
-   , spaceweather-wavelet
+                base < 6
+              , spaceweather-wavelet
 
-   , cmaes
-   , containers
-   , spoon
-   , process
-   , random
+              , cmaes
+              , containers
+              , spoon
+              , process
+              , random
   ghc-options:       -Wall -O2
 
 
@@ -265,10 +266,10 @@ executable visualize-feature-vector
   main-is:           visualize-feature-vector.hs
   hs-source-dirs:    exe-src/
   build-depends:
-     base < 6
-   , containers
-   , process
-   , safe
-   , spaceweather-wavelet
-   , text
+                base < 6
+              , containers
+              , process
+              , safe
+              , spaceweather-wavelet
+              , text
   ghc-options:       -Wall -O2
