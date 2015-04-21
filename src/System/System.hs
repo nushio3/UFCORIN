@@ -41,5 +41,5 @@ readSystem cmd input = do
     case ex of
      ExitSuccess   -> return output
      ExitFailure r ->
-      error ("readProcess: " ++ cmd ++
+      error ("readSystem: " ++ cmd ++
                                      " (exit " ++ show r ++ ")")

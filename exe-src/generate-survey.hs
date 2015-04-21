@@ -6,6 +6,7 @@ import Data.List
 import qualified Data.Text.IO as T
 import System.Environment
 import System.Process
+import System.Random
 import Text.Printf
 
 import SpaceWeather.CmdArgs
@@ -15,29 +16,40 @@ import SpaceWeather.Prediction
 import SpaceWeather.Regressor.General
 import qualified System.IO.Hadoop as HFS
 
-surveyDir = "survey-2M"
+surveyDir = "survey-cvn-4"
+
+testStrategy :: PredictionStrategyGS
+testStrategy = defaultPredictionStrategy  & crossValidationStrategy .~ CVShuffled 12345 CVWeekly
 
 main :: IO ()
-main = do
+main = withWorkDir $ do
+  let perfLimit = 99
   system $ "mkdir -p " ++ surveyDir
-  sequence_ [process "bsplC-301" True (2^i) (2^j) (2^iy) (2^jy) | i <- [0..9], j <- [i..9],  iy <- [0..9], jy <- [iy..9], (jy-iy)*(j-i)<20 ]
-  sequence_ [process "bsplC-301" False (2^i) (2^j) (2^iy) (2^jy) | i <- [0..9], j <- [i..9],  iy <- [0..9], jy <- [iy..9] , (jy-iy)*(j-i)<20]
-  sequence_ [process "haarC-2" True (2^i) (2^j) (2^iy) (2^jy) | i <- [0..9], j <- [i..9],  iy <- [0..9], jy <- [iy..9] , (jy-iy)*(j-i)<20]
-  sequence_ [process "haarC-2" False (2^i) (2^j) (2^iy) (2^jy) | i <- [0..9], j <- [i..9],  iy <- [0..9], jy <- [iy..9] , (jy-iy)*(j-i)<20]
+  sequence_ [process "bsplC-301" True (2^i) (2^j) (2^iy) (2^jy) | i <- [0..9], j <- [i..9],  iy <- [0..9], jy <- [iy..9], (jy-iy)*(j-i)<perfLimit ]
+  sequence_ [process "bsplC-301" False (2^i) (2^j) (2^iy) (2^jy) | i <- [0..9], j <- [i..9],  iy <- [0..9], jy <- [iy..9] , (jy-iy)*(j-i)<perfLimit]
+  sequence_ [process "haarC-2" True (2^i) (2^j) (2^iy) (2^jy) | i <- [0..9], j <- [i..9],  iy <- [0..9], jy <- [iy..9] , (jy-iy)*(j-i)<perfLimit]
+  sequence_ [process "haarC-2" False (2^i) (2^j) (2^iy) (2^jy) | i <- [0..9], j <- [i..9],  iy <- [0..9], jy <- [iy..9] , (jy-iy)*(j-i)<perfLimit]
 
 process :: String -> Bool -> Int -> Int -> Int -> Int -> IO ()
-process basisName isStd lower upper lowerY0 upperY0 = withWorkDir $ do
-  strE <- fmap decode $ T.readFile "resource/strategy-template-auto.yml"
+process basisName isStd lower upper lowerY0 upperY0 = do
+  strE <- fmap decode $ T.readFile "resource/strategy-template.yml"
+  seeds <- replicateM 5 randomIO
   case strE of
     Left msg -> putStrLn msg
-    Right strategy -> do
+    Right strategy -> forM_ [0..9 :: Int] $ \iterID -> do
       let
+        (iterIDDiv, iterIDMod) = divMod iterID 2
+        seedParity = case iterIDMod of
+          0 -> id
+          1 -> CVNegate
+
         strategy2 :: PredictionStrategyGS
         strategy2 = strategy
-          & predictionSessionFile .~ finalSesFn
-          & predictionResultFile .~ finalResFn
-          & predictionRegressionFile .~ finalRegFn
+          & predictionSessionFile .~ ""
+          & predictionResultFile .~ ""
+          & predictionRegressionFile .~ "/dev/null"
           & featureSchemaPackUsed . fspFilenamePairs %~ (++ fnPairs)
+          & crossValidationStrategy .~ seedParity (CVShuffled (seeds !! iterIDDiv) CVWeekly)
 
         lowerY = if isStd then lowerY0 else lower
         upperY = if isStd then upperY0 else upper
@@ -67,26 +79,20 @@ process basisName isStd lower upper lowerY0 upperY0 = withWorkDir $ do
         candResFn = strategy ^. predictionResultFile
         candRegFn = strategy ^. predictionRegressionFile
 
+        surveySubDirID :: Integer
+        surveySubDirID = (read $ concat $ map show [lower,upper,lowerY,upperY,iterID]) `mod` 997
+        surveySubDir :: String
+        surveySubDir = printf "%03d" surveySubDirID
+
+        surveyDir2 :: String
+        surveyDir2 = surveyDir -- ++ "/" ++ surveySubDir
+
         fn :: String
-        fn = printf "%s/%s-%04d-%04d-%04d-%04d.yml"
-          surveyDir basisString
-          (lower :: Int) (upper :: Int) lowerY upperY
+        fn = printf "%s/%s-%04d-%04d-%04d-%04d-[%02d]-strategy.yml"
+          surveyDir2 basisString
+          (lower :: Int) (upper :: Int) lowerY upperY iterID
 
-        finalSesFn
-          | candSesFn /= "" = candSesFn
-          | ".yml" `isSuffixOf` fn = (++"-session.yml") $ reverse $ drop 4 $ reverse fn
-          | otherwise              = fn ++ ".session.yml"
-
-        finalResFn
-          | candResFn /= "" = candResFn
-          | ".yml" `isSuffixOf` fn = (++"-result.yml") $ reverse $ drop 4 $ reverse fn
-          | otherwise              = fn ++ ".result.yml"
-
-        finalRegFn
-          | candRegFn /= "" = candRegFn
-          | ".yml" `isSuffixOf` fn = (++"-regres.txt") $ reverse $ drop 4 $ reverse fn
-          | otherwise              = fn ++ ".regress.txt"
-
+      system $ printf "mkdir -p %s" surveyDir2
       T.writeFile fn $ encode (strategy2)
 
       return ()

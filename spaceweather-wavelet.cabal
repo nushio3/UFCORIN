@@ -103,6 +103,7 @@ executable generate-survey
      , text
      , spaceweather-wavelet
      , process
+     , random
 
 executable scan-survey-results
   main-is: scan-survey-results.hs
@@ -114,12 +115,29 @@ executable scan-survey-results
      , text
      , spaceweather-wavelet
 
+executable scan-survey-4
+  main-is: scan-survey-4.hs
+  hs-source-dirs: exe-src/
+  build-depends:
+       base < 6
+     , containers
+              , lens
+              , statistics
+              , vector
+              , split
+     , text
+     , spaceweather-wavelet
+
+
 executable conduct-noise-survey
   main-is: conduct-noise-survey.hs
   hs-source-dirs: exe-src/
   build-depends:
        base < 6
      , lens
+     , containers
+     , vector
+     , statistics
      , text
      , spaceweather-wavelet
      , process

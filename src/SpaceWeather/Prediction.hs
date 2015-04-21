@@ -40,9 +40,13 @@ inTrainingSetInner shuffler CVYearly  n = let i = (n `div` (24*366)) in even i `
 inTrainingSetInner shuffler (CVNegate s) n = not $ inTrainingSetInner shuffler s n
 inTrainingSetInner _ (CVShuffled seed s) n = inTrainingSetInner newShuffler s n
   where
-    newShuffler = map fst $ drop 1 $ iterate f (False, mkStdGen seed)
+    newShuffler = duplicate $ map fst $ drop 1 $ iterate f (False, mkStdGen seed)
     f :: (Bool, StdGen) -> (Bool,StdGen)
     f (_, g) = random g
+
+    duplicate :: [a] -> [a]
+    duplicate [] = []
+    duplicate (x:xs) = x:x:duplicate xs
 
 -- | Using the functor instance you can change the regressor to other types.
 
