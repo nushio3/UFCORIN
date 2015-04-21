@@ -90,3 +90,11 @@ process basisName isStd lower upper lowerY0 upperY0 = withWorkDir $ do
       T.writeFile fn $ encode (strategy2)
 
       return ()
+
+goodSeed :: IO [Int]
+goodSeed = return 42
+  where
+    pred :: TimeBin -> Bool
+    pred = inTrainingSet cvstr
+
+    (fioTrainSet, fioInrTestSet) = Map.partitionWithKey (\k _ -> pred k) fioPair0

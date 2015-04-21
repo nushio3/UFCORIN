@@ -6,7 +6,7 @@ set ylabel "True Skill Statistics"
 
 set xlabel "Time Noise"
 
-set out 'survey-noise/XClass--tn-summary.eps'
+set out 'survey-noise/tn-summary.eps'
 plot \
    'survey-noise/XClass[--tn-summary]-00.txt' w line t "X Class"   lw 4 , \
    'survey-noise/MClass[--tn-summary]-00.txt' w line t ">=M Class" lw 4 , \
@@ -17,7 +17,7 @@ plot \
 
 set xlabel "Amplitude Noise"
 
-set out 'survey-noise/XClass--sn-summary.eps'
+set out 'survey-noise/sn-summary.eps'
 plot \
    'survey-noise/XClass[--sn-summary]-00.txt' w line t "X Class"   lw 4 , \
    'survey-noise/MClass[--sn-summary]-00.txt' w line t ">=M Class" lw 4 , \
