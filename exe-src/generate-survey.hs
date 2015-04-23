@@ -133,6 +133,8 @@ getGoodSeed goesFeature = do
     (trainSet, testSet) = M.partitionWithKey (\k _ -> pred k) goesFeature
 
     countX = length . filter (\v -> v >= log (xRayFlux XClassFlare) / log 10) . map snd . M.toList
-  print $ take 10 $ M.toList trainSet
-  print (countX trainSet, countX testSet)
-  return []
+    n1 = fromIntegral $ countX trainSet
+    n2 = fromIntegral $ countX testSet
+  print (n1,n2)
+  if n1 < 1.23 * n2 && n2 < 1.23 * n1 then print seed >> return [seed]
+    else return []
