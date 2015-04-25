@@ -20,7 +20,7 @@ import SpaceWeather.Prediction
 import SpaceWeather.Regressor.General
 import qualified System.IO.Hadoop as HFS
 
-surveyDir = "survey-cvn-5"
+surveyDir = "survey-cvn-6"
 
 testStrategy :: PredictionStrategyGS
 testStrategy = defaultPredictionStrategy  & crossValidationStrategy .~ CVShuffled 12345 CVWeekly
@@ -132,9 +132,14 @@ getGoodSeed goesFeature = do
 
     (trainSet, testSet) = M.partitionWithKey (\k _ -> pred k) goesFeature
 
-    countX = length . filter (\v -> v >= log (xRayFlux XClassFlare) / log 10) . map snd . M.toList
-    n1 = fromIntegral $ countX trainSet
-    n2 = fromIntegral $ countX testSet
-  print (n1,n2)
-  if n1 < 1.23 * n2 && n2 < 1.23 * n1 then print seed >> return [seed]
+    countBalance :: FlareClass -> (Double, Double)
+    countBalance fc = (n1,n2) where
+      countX = length . filter (\v -> v >= log (xRayFlux fc) / log 10) . map snd . M.toList
+      n1 = fromIntegral $ countX trainSet
+      n2 = fromIntegral $ countX testSet
+
+    isBalanced (n1,n2) = n1 < 1.1 * n2 && n2 < 1.1 * n1
+
+    balances = fmap countBalance defaultFlareClasses
+  if all isBalanced balances then print balances >> print seed >> return [seed]
     else return []
