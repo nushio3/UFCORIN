@@ -38,8 +38,8 @@ data Sample = Sample
     upperX :: Int,
     lowerY :: Int,
     upperY :: Int,
-    scoreMap :: M.Map FlareClass (Double, Double)}
-
+    scoreMap :: M.Map FlareClass [Double]}
+            deriving Show
 
 
 imgPerSolarDiameter :: Double
@@ -60,14 +60,23 @@ main = do
       fileSet = M.toList $ M.map sort $ M.unionsWith (++) $ map setKey fns
   dataSet <- forM fileSet $ analyze
 
+  let chosens :: Char -> FlareClass -> M.Map Category Sample
+      chosens dirChar fc = M.unionsWith (better fc) $ map (makeCand dirChar) dataSet
+
+
   forM_ "xy" $ \dirChar -> do
     forM_ defaultFlareClasses $ \fc -> do
-      let chosens :: M.Map Category Sample
-          chosens = M.unionsWith (better fc) $ map (makeCand dirChar) dataSet
+      let theBest = foldr1 (better fc)  dataSet
+      print theBest
 
+      let bothChosens = concat [M.elems $ chosens d0 fc | d0 <- "xy"]
+          scoreStat = [meanDevi$  scoreMap sample M.! fc| sample <- bothChosens]
+          yrangeLo = minimum [m-d | (m,d) <- scoreStat] - 0.002
+          yrangeUp = maximum [m+d | (m,d) <- scoreStat] + 0.002
+      let
           ppr :: (Category,Sample) -> String
           ppr ((lo,hi),s) =
-            let (m,d) = scoreMap s M.! fc
+            let (m,d) = meanDevi $ scoreMap s M.! fc
             in printf "%f %f %f %f" (inS lo) (inS hi) m d
 
           inS :: Int -> Double
@@ -82,16 +91,30 @@ main = do
           figFn :: FilePath
           figFn = printf "figure/wavelet-range-%s-%c.eps" (show fc) dirChar
 
-      writeFile tmpFn $ unlines $ map ppr $ M.toList chosens
+      writeFile tmpFn $ unlines $ map ppr $ M.toList (chosens dirChar fc)
+
+      let plot1 :: String
+          plot1 = printf "'%s' u (($1+$2)/2):3:($3-$4):($3+$4) w yerr t '' pt 0 lw 2 lt 2 lc rgb '%s'" tmpFn lcstr
+          lcstr = case fc of
+            XClassFlare -> "#FF8080"
+            MClassFlare -> "#80FF80"
+            CClassFlare -> "#8080FF"
+      let plot2 :: String
+          plot2 = printf "'%s' u (($1+$2)/2):3:(0.99*$1):(1.01*$2) w xerr t '' pt 0 lt 1 lw 4 lc rgb '%s'" tmpFn lcstr
+          lcstr = case fc of
+            XClassFlare -> "#FF0000"
+            MClassFlare -> "#008000"
+            CClassFlare -> "#0000FF"
 
       _ <- readSystem "gnuplot" $ unlines
-           [ "set term postscript landscape enhanced color 20"
+           [ "set term postscript landscape enhanced color 25"
            , printf "set out '%s'" figFn
            , "set log x; set grid "
            , "set xrange [0.001:1]"
+           , printf "set yrange [%f:%f]" yrangeLo yrangeUp
            , printf "set xlabel '%s'" xlabel
            , "set ylabel 'True Skill Statistic'"
-           , printf "plot '%s' u (($1+$2)/2):3:(0.99*$1):(1.01*$2):($3-$4):($3+$4) w xyerr t '' pt 0 lw 3" tmpFn
+           , printf "plot %s, %s" plot1 plot2
            ]
       return ()
   where
@@ -107,7 +130,7 @@ main = do
     better fc a b
       | s a > s b = a
       | otherwise = b
-      where s x = fst (scoreMap x M.! fc)
+      where s x = fst $ meanDevi $ scoreMap x M.! fc
 
 analyze :: FileSet -> IO Sample
 analyze (keyStr, fns) = do
@@ -127,10 +150,11 @@ analyze (keyStr, fns) = do
 
   prs <- mapM fn2pr fns
   let pRets :: M.Map FlareClass [Double]
-      pRets = M.map couple $ M.unionsWith (++) (map mRet prs)
-      couple (a:b:rest) = ((a+b)/2):couple rest
-      couple rest = rest
+      pRets = -- M.map couple $
+        M.unionsWith (++) (map mRet prs)
+--       couple (a:b:rest) = ((a+b)/2):couple rest
+--       couple rest = rest
 
 
   return Sample{key = keyStr, lowerX = lx, upperX = ux, lowerY = ly, upperY = uy,
-                scoreMap = M.map meanDevi pRets}
+                scoreMap = pRets}
