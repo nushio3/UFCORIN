@@ -117,6 +117,7 @@ main = do
       chosens d0 fc =
         M.mapKeysWith better1 (\(s,f) -> makeCat d0 $ s) $
         M.mapWithKey (\(s,f) md -> (s , md)) $
+        M.filterWithKey (\(_,f) _ -> f==fc) $
         statBySFB
 
   forM_ "xy" $ \dirChar -> do
