@@ -6,6 +6,7 @@ import Control.Monad
 import Data.Char
 import Data.Function (on)
 import Data.List
+import Data.Maybe
 import Data.List.Split
 import qualified Data.Text as T
 import qualified Data.Text.IO as T
@@ -92,26 +93,43 @@ main = do
 
       dataBySFA :: M.Map (Strategy,FlareClass) [Double]
       dataBySFA = M.fromList
-        [((s,f), [x - meanFC f c | c <- cvSet, x <- dataSet  M.! Key s f c] )
+        [((s,f), [x - meanFC f c | c <- cvSet, x <- fromMaybe [] (M.lookup (Key s f c) dataSet )])
         | s <- strategySet, f <- defaultFlareClasses]
 
+      statBySFA :: M.Map (Strategy, FlareClass) (Double,Double)
+      statBySFA = M.map meanDevi dataBySFA
+
+      statBySFB :: M.Map (Strategy,FlareClass) (Double, Double)
+      statBySFB = M.fromList
+        [((s,f), (m,d))
+        | s <- strategySet, f <- defaultFlareClasses,
+          (m,_) <- maybeToList $ M.lookup (s,f) statBySF,
+          (_,d) <- maybeToList $ M.lookup (s,f) statBySFA
+          ]
+
+
+  let theBest :: M.Map FlareClass (Strategy, [Double])
+      theBest = M.mapKeysWith better2 flareClass $
+                M.mapWithKey (\k xs -> (strategy k, xs)) dataSet
+  mapM_ print $ M.toList theBest
+
+  let chosens :: Char -> FlareClass -> M.Map Category (Strategy, (Double,Double))
+      chosens d0 fc =
+        M.mapKeysWith better1 (\(s,f) -> makeCat d0 $ s) $
+        M.mapWithKey (\(s,f) md -> (s , md)) $
+        statBySFB
 
   forM_ "xy" $ \dirChar -> do
     forM_ defaultFlareClasses $ \fc -> do
-      let theBest :: M.Map FlareClass (Strategy, [Double])
-          theBest = M.mapKeysWith better2 flareClass $
-                    M.mapWithKey (\k xs -> (strategy k, xs)) dataSet
-      print theBest
-{-
-      let bothChosens = concat [M.elems $ chosens d0 fc | d0 <- "xy"]
-          scoreStat = [meanDevi$  scoreMap sample M.! fc| sample <- bothChosens]
-          yrangeLo = minimum [m-d | (m,d) <- scoreStat] - 0.002
-          yrangeUp = maximum [m+d | (m,d) <- scoreStat] + 0.002
+      let mds :: [(Double, Double)]
+          mds = concat [map snd $ M.elems $ chosens d0 fc | d0 <- "xy"]
+          yrangeLo = minimum [m-d | (m,d) <- mds] - 0.002
+          yrangeUp = maximum [m+d | (m,d) <- mds] + 0.002
+
       let
-          ppr :: (Category,Sample) -> String
-          ppr ((lo,hi),s) =
-            let (m,d) = meanDevi $ scoreMap s M.! fc
-            in printf "%f %f %f %f" (inS lo) (inS hi) m d
+          ppr :: (Category,(Double,Double)) -> String
+          ppr ((lo,hi),(m,d)) =
+             printf "%f %f %f %f" (inS lo) (inS hi) m d
 
           inS :: Int -> Double
           inS x = imgPerSolarDiameter / fromIntegral x
@@ -125,7 +143,7 @@ main = do
           figFn :: FilePath
           figFn = printf "figure/wavelet-range-%s-%c.eps" (show fc) dirChar
 
-      writeFile tmpFn $ unlines $ map ppr $ M.toList (chosens dirChar fc)
+      writeFile tmpFn $ unlines $ map ppr $ M.toList $ M.map snd (chosens dirChar fc)
 
       let plot1 :: String
           plot1 = printf "'%s' u (($1+$2)/2):3:($3-$4):($3+$4) w yerr t '' pt 0 lw 2 lt 2 lc rgb '%s'" tmpFn lcstr
@@ -152,7 +170,7 @@ main = do
            ]
       return ()
 
--}
+
   where
 
     makeCat :: Char -> Strategy -> Category
@@ -169,6 +187,12 @@ main = do
     better2 a b
       | mean (snd a) > mean (snd b) = a
       | otherwise                   = b
+
+    better1 :: (a, (Double, Double)) -> (a, (Double, Double)) -> (a, (Double, Double))
+    better1 a b
+      | fst (snd a) > fst (snd b) = a
+      | otherwise                 = b
+
 
 
 analyze :: FilePath -> IO (M.Map Key [Double])
