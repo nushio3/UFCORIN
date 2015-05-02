@@ -54,7 +54,7 @@ data Strategy = Strategy
             deriving (Eq, Ord, Show)
 
 type CV = Int
-cvSet = [1..10] :: [CV]
+cvSet = [0..9] :: [CV]
 
 imgPerSolarDiameter :: Double
 imgPerSolarDiameter = 1024/959
@@ -91,21 +91,26 @@ main = do
       statBySF :: M.Map (Strategy, FlareClass) (Double,Double)
       statBySF = M.map meanDevi dataBySF
 
+      meanSF :: Strategy -> FlareClass -> Double
+      meanSF s f  = snd $ statBySF M.! (s,f)
+
       dataBySFA :: M.Map (Strategy,FlareClass) [Double]
       dataBySFA = M.fromList
-        [((s,f), [x - meanFC f c | c <- cvSet, x <- fromMaybe [] (M.lookup (Key s f c) dataSet )])
+        [((s,f), [meanSF s f - meanFC f c | c <- cvSet, x <- fromMaybe [] (M.lookup (Key s f c) dataSet )])
         | s <- strategySet, f <- defaultFlareClasses]
 
       statBySFA :: M.Map (Strategy, FlareClass) (Double,Double)
       statBySFA = M.map meanDevi dataBySFA
 
+  let
       statBySFB :: M.Map (Strategy,FlareClass) (Double, Double)
-      statBySFB = M.fromList
-        [((s,f), (m,d))
-        | s <- strategySet, f <- defaultFlareClasses,
-          (m,_) <- maybeToList $ M.lookup (s,f) statBySF,
-          (_,d) <- maybeToList $ M.lookup (s,f) statBySFA
-          ]
+      statBySFB =
+        M.fromList
+          [ ((s,f), (m,d))
+          | s <- strategySet, f <- defaultFlareClasses,
+            (m,_) <- maybeToList $ M.lookup (s,f) statBySF,
+            (_,d) <- maybeToList $ M.lookup (s,f) statBySFA
+            ]
 
 
   let theBest :: M.Map FlareClass (Strategy, [Double])
@@ -113,12 +118,38 @@ main = do
                 M.mapWithKey (\k xs -> (strategy k, xs)) dataSet
   mapM_ print $ M.toList theBest
 
+
   let chosens :: Char -> FlareClass -> M.Map Category (Strategy, (Double,Double))
       chosens d0 fc =
         M.mapKeysWith better1 (\(s,f) -> makeCat d0 $ s) $
         M.mapWithKey (\(s,f) md -> (s , md)) $
         M.filterWithKey (\(_,f) _ -> f==fc) $
         statBySFB
+
+  forM_ defaultFlareClasses $ \fc -> do
+    let tmpFn = "tmp.txt" :: FilePath
+    writeFile tmpFn $ unlines
+      [ printf "%d %f %f" c m d
+      | c <- cvSet, let (m,d) = statByFC M.! (fc,c)
+      ]
+
+    let figFn = printf "figure/CV-dependency-%s.txt" (show fc) :: FilePath
+        lcstr = case fc of
+          XClassFlare -> "#FF0000"
+          MClassFlare -> "#008000"
+          CClassFlare -> "#0000FF"
+
+    _ <- readSystem "gnuplot" $ unlines
+       [ "set term postscript landscape enhanced color 25"
+       , printf "set out '%s'" figFn
+       , "set xrange [0.5:10.5]"
+       , "set xlabel 'CV Data Index'"
+       , "set ylabel 'True Skill Statistic'"
+       , printf "plot '%s' u ($1+1):2:3 w yerr t '' pt 0 lw 4 lc rgb '%s'" tmpFn  lcstr
+       ]
+    return ()
+
+
 
   forM_ "xy" $ \dirChar -> do
     forM_ defaultFlareClasses $ \fc -> do
