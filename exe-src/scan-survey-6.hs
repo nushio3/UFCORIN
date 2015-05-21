@@ -10,7 +10,7 @@ import Data.Maybe
 import Data.List.Split
 import qualified Data.Text as T
 import qualified Data.Text.IO as T
-import qualified Data.Map as M
+import qualified Data.Map.Strict as M
 import qualified Data.Set as S
 import System.Environment
 import System.IO
@@ -83,7 +83,10 @@ main = do
       statByFC = M.map meanDevi dataByFC
 
       meanFC :: FlareClass -> CV -> Double
-      meanFC f c = snd $ statByFC M.! (f,c)
+      meanFC f c = fst $ statByFC M.! (f,c)
+
+      meanF :: FlareClass -> Double
+      meanF f  = mean [meanFC f c | c <- cvSet]
 
   let dataBySF :: M.Map (Strategy, FlareClass) [Double]
       dataBySF = M.mapKeysWith (++) (\k -> (strategy k, flareClass k)) dataSet
@@ -92,39 +95,42 @@ main = do
       statBySF = M.map meanDevi dataBySF
 
       meanSF :: Strategy -> FlareClass -> Double
-      meanSF s f  = snd $ statBySF M.! (s,f)
+      meanSF s f  = fst $ statBySF M.! (s,f)
 
       dataBySFA :: M.Map (Strategy,FlareClass) [Double]
       dataBySFA = M.fromList
-        [((s,f), [meanSF s f - meanFC f c | c <- cvSet, x <- fromMaybe [] (M.lookup (Key s f c) dataSet )])
+        [((s,f), [x - meanFC f c {- + meanF f-} | c <- cvSet, x <- fromMaybe [] (M.lookup (Key s f c) dataSet )])
         | s <- strategySet, f <- defaultFlareClasses]
 
       statBySFA :: M.Map (Strategy, FlareClass) (Double,Double)
       statBySFA = M.map meanDevi dataBySFA
 
-  let
-      statBySFB :: M.Map (Strategy,FlareClass) (Double, Double)
-      statBySFB =
-        M.fromList
-          [ ((s,f), (m,d))
-          | s <- strategySet, f <- defaultFlareClasses,
-            (m,_) <- maybeToList $ M.lookup (s,f) statBySF,
-            (_,d) <- maybeToList $ M.lookup (s,f) statBySFA
-            ]
 
-
-  let theBest :: M.Map FlareClass (Strategy, [Double])
+  putStrLn "**** By Single Round ****"
+  let theBest :: M.Map FlareClass ((String, CV), [Double])
       theBest = M.mapKeysWith better2 flareClass $
-                M.mapWithKey (\k xs -> (strategy k, xs)) dataSet
+                M.mapWithKey (\k xs -> ((strategyStr $ strategy k, cvIndex k), xs)) dataSet
   mapM_ print $ M.toList theBest
 
+
+  putStrLn "**** By Calibrated TSS Distribution ****"
+  let theBest :: M.Map FlareClass (Strategy, (Double,Double))
+      theBest = M.mapKeysWith better1 snd $
+                M.mapWithKey (\(s,f) md -> (s, md)) statBySFA
+  mapM_ print $ M.toList theBest
+
+  putStrLn "**** By Raw TSS Distribution ****"
+  let theBest :: M.Map FlareClass (Strategy, (Double,Double))
+      theBest = M.mapKeysWith better1 snd $
+                M.mapWithKey (\(s,f) md -> (s, md)) statBySF
+  mapM_ print $ M.toList theBest
 
   let chosens :: Char -> FlareClass -> M.Map Category (Strategy, (Double,Double))
       chosens d0 fc =
         M.mapKeysWith better1 (\(s,f) -> makeCat d0 $ s) $
         M.mapWithKey (\(s,f) md -> (s , md)) $
         M.filterWithKey (\(_,f) _ -> f==fc) $
-        statBySFB
+        statBySFA
 
   forM_ defaultFlareClasses $ \fc -> do
     let tmpFn = "tmp.txt" :: FilePath
@@ -133,19 +139,21 @@ main = do
       | c <- cvSet, let (m,d) = statByFC M.! (fc,c)
       ]
 
-    let figFn = printf "figure/CV-dependency-%s.txt" (show fc) :: FilePath
+    let figFn = printf "figure/CV-dependency-%s.eps" (show fc) :: FilePath
         lcstr = case fc of
           XClassFlare -> "#FF0000"
           MClassFlare -> "#008000"
           CClassFlare -> "#0000FF"
 
     _ <- readSystem "gnuplot" $ unlines
-       [ "set term postscript landscape enhanced color 25"
+       [ "set term postscript landscape enhanced color 35"
        , printf "set out '%s'" figFn
+       , "set grid"
+       , "set xtics 1,1,10"
        , "set xrange [0.5:10.5]"
        , "set xlabel 'CV Data Index'"
        , "set ylabel 'True Skill Statistic'"
-       , printf "plot '%s' u ($1+1):2:3 w yerr t '' pt 0 lw 4 lc rgb '%s'" tmpFn  lcstr
+       , printf "plot '%s' u ($1+1):2:3 w yerr t '' pt 1 lw 12 lc rgb '%s'" tmpFn  lcstr
        ]
     return ()
 
@@ -155,7 +163,7 @@ main = do
     forM_ defaultFlareClasses $ \fc -> do
       let mds :: [(Double, Double)]
           mds = concat [map snd $ M.elems $ chosens d0 fc | d0 <- "xy"]
-          yrangeLo = minimum [m-d | (m,d) <- mds] - 0.002
+          yrangeLo = minimum (0:[m-d | (m,d) <- mds]) - 0.002
           yrangeUp = maximum [m+d | (m,d) <- mds] + 0.002
 
       let
@@ -164,13 +172,13 @@ main = do
              printf "%f %f %f %f" (inS lo) (inS hi) m d
 
           inS :: Int -> Double
-          inS x = imgPerSolarDiameter / fromIntegral x
+          inS x = min 0.9999 $ imgPerSolarDiameter / fromIntegral x
 
           tmpFn = "tmp.txt"
 
           xlabel = case dirChar of
-            'x' -> "Horizontal Scale"
-            'y' -> "Vertical Scale"
+            'x' -> "Horizontal Scale ({r_l}, {r_u})"
+            'y' -> "Vertical Scale ({r_l}, {r_u})"
 
           figFn :: FilePath
           figFn = printf "figure/wavelet-range-%s-%c.eps" (show fc) dirChar
@@ -178,26 +186,26 @@ main = do
       writeFile tmpFn $ unlines $ map ppr $ M.toList $ M.map snd (chosens dirChar fc)
 
       let plot1 :: String
-          plot1 = printf "'%s' u (($1+$2)/2):3:($3-$4):($3+$4) w yerr t '' pt 0 lw 2 lt 2 lc rgb '%s'" tmpFn lcstr
+          plot1 = printf "'%s' u (($1+$2)/2):3:($3-$4):($3+$4) w yerr t '' pt 0 lt 4 lw 3 lc rgb '%s'" tmpFn lcstr
           lcstr = case fc of
             XClassFlare -> "#FF8080"
-            MClassFlare -> "#80FF80"
+            MClassFlare -> "#00FF00"
             CClassFlare -> "#8080FF"
       let plot2 :: String
-          plot2 = printf "'%s' u (($1+$2)/2):3:(0.99*$1):(1.01*$2) w xerr t '' pt 0 lt 1 lw 4 lc rgb '%s'" tmpFn lcstr
+          plot2 = printf "'%s' u (($1+$2)/2):3:(0.99*$1):(1.01*$2) w xerr t '' pt 0 lt 1 lw 6 lc rgb '%s'" tmpFn lcstr
           lcstr = case fc of
             XClassFlare -> "#FF0000"
             MClassFlare -> "#008000"
             CClassFlare -> "#0000FF"
 
       _ <- readSystem "gnuplot" $ unlines
-           [ "set term postscript landscape enhanced color 25"
+           [ "set term postscript landscape enhanced color 35"
            , printf "set out '%s'" figFn
            , "set log x; set grid "
            , "set xrange [0.001:1]"
            , printf "set yrange [%f:%f]" yrangeLo yrangeUp
            , printf "set xlabel '%s'" xlabel
-           , "set ylabel 'True Skill Statistic'"
+           , "set ylabel '{/Symbol D}TSS'"
            , printf "plot %s, %s" plot1 plot2
            ]
       return ()
