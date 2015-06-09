@@ -3,7 +3,7 @@ set out 'demo.eps'
 set grid
 #   set xrange [10000:12000]
 #
-set xrange [3500:4500]
+set xrange [3800:4200]
 # set xrange [0:17544]
 # set xtics 0,5000
 
