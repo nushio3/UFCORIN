@@ -84,6 +84,8 @@ main = do
 
       meanFC :: FlareClass -> CV -> Double
       meanFC f c = fst $ statByFC M.! (f,c)
+      sigmaFC :: FlareClass -> CV -> Double
+      sigmaFC f c = snd $ statByFC M.! (f,c)
 
       meanF :: FlareClass -> Double
       meanF f  = mean [meanFC f c | c <- cvSet]
@@ -99,7 +101,7 @@ main = do
 
       dataBySFA :: M.Map (Strategy,FlareClass) [Double]
       dataBySFA = M.fromList
-        [((s,f), [x - meanFC f c {- + meanF f-} | c <- cvSet, x <- fromMaybe [] (M.lookup (Key s f c) dataSet )])
+        [((s,f), [ (x - meanFC f c)/ sigmaFC f c  | c <- cvSet, x <- fromMaybe [] (M.lookup (Key s f c) dataSet )])
         | s <- strategySet, f <- defaultFlareClasses]
 
       statBySFA :: M.Map (Strategy, FlareClass) (Double,Double)
@@ -163,8 +165,8 @@ main = do
     forM_ defaultFlareClasses $ \fc -> do
       let mds :: [(Double, Double)]
           mds = concat [map snd $ M.elems $ chosens d0 fc | d0 <- "xy"]
-          yrangeLo = minimum (0:[m-d | (m,d) <- mds]) - 0.002
-          yrangeUp = maximum [m+d | (m,d) <- mds] + 0.002
+          yrangeLo = minimum (0:[m-d | (m,d) <- mds]) - 0.02
+          yrangeUp = maximum [m+d | (m,d) <- mds] + 0.02
 
       let
           ppr :: (Category,(Double,Double)) -> String
@@ -203,9 +205,11 @@ main = do
            , printf "set out '%s'" figFn
            , "set log x; set grid "
            , "set xrange [0.001:1]"
+           , "set format y '%.1f'"
            , printf "set yrange [%f:%f]" yrangeLo yrangeUp
            , printf "set xlabel '%s'" xlabel
-           , "set ylabel '{/Symbol D}TSS'"
+--           , "set ylabel 'Standard Score of TSS'"
+           , "set ylabel 'z'"
            , printf "plot %s, %s" plot1 plot2
            ]
       return ()

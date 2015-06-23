@@ -1,4 +1,4 @@
-predictionResultFile: survey3/haarC-2-S-0008-0016-0008-0128-result.yml
+predictionResultFile: ''
 featureSchemaPackUsed:
   FilenamePairs:
   - - f35Log
@@ -10,25 +10,9 @@ featureSchemaPackUsed:
   - - f25Log
     - /user/nushio/forecast/backcast-goes-72.txt
   - - f35Log
-    - /user/nushio/wavelet-features/haarC-2-S-0008-0008.txt
+    - /user/nushio/wavelet-features/haarC-2-S-0032-0001.txt
   - - f35Log
-    - /user/nushio/wavelet-features/haarC-2-S-0008-0016.txt
-  - - f35Log
-    - /user/nushio/wavelet-features/haarC-2-S-0008-0032.txt
-  - - f35Log
-    - /user/nushio/wavelet-features/haarC-2-S-0008-0064.txt
-  - - f35Log
-    - /user/nushio/wavelet-features/haarC-2-S-0008-0128.txt
-  - - f35Log
-    - /user/nushio/wavelet-features/haarC-2-S-0016-0008.txt
-  - - f35Log
-    - /user/nushio/wavelet-features/haarC-2-S-0016-0016.txt
-  - - f35Log
-    - /user/nushio/wavelet-features/haarC-2-S-0016-0032.txt
-  - - f35Log
-    - /user/nushio/wavelet-features/haarC-2-S-0016-0064.txt
-  - - f35Log
-    - /user/nushio/wavelet-features/haarC-2-S-0016-0128.txt
+    - /user/nushio/wavelet-features/haarC-2-S-0064-0001.txt
   SchemaDefinitions:
     f35Log:
       colT: 3
@@ -44,9 +28,9 @@ crossValidationStrategy:
   tag: CVWeekly
   contents: []
 spaceWeatherLibVersion: version 1.1
-predictionRegressionFile: survey3/haarC-2-S-0008-0016-0008-0128-regres.txt
+predictionRegressionFile: /dev/null
 predictionTargetFile: /user/nushio/forecast/forecast-goes-24.txt
-predictionSessionFile: survey3/haarC-2-S-0008-0016-0008-0128-session.yml
+predictionSessionFile: ''
 regressorUsed:
 - tag: LibSVMRegressor
   contents:
@@ -56,7 +40,7 @@ regressorUsed:
     Nu: null
     AutomationNoise: false
     Epsilon: null
-    AutomationTolFun: 1.0e-3
+    AutomationTolFun: 1.0e-2
     AutomationPopSize: 10
     Type: 3
     KernelType: 2

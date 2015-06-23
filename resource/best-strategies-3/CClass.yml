@@ -10,41 +10,21 @@ featureSchemaPackUsed:
   - - f25Log
     - /user/nushio/forecast/backcast-goes-72.txt
   - - f35Log
-    - /user/nushio/wavelet-features/haarC-2-S-0001-0004.txt
+    - /user/nushio/wavelet-features/haarC-2-S-0064-0256.txt
   - - f35Log
-    - /user/nushio/wavelet-features/haarC-2-S-0001-0008.txt
+    - /user/nushio/wavelet-features/haarC-2-S-0064-0512.txt
   - - f35Log
-    - /user/nushio/wavelet-features/haarC-2-S-0002-0004.txt
+    - /user/nushio/wavelet-features/haarC-2-S-0128-0256.txt
   - - f35Log
-    - /user/nushio/wavelet-features/haarC-2-S-0002-0008.txt
+    - /user/nushio/wavelet-features/haarC-2-S-0128-0512.txt
   - - f35Log
-    - /user/nushio/wavelet-features/haarC-2-S-0004-0004.txt
+    - /user/nushio/wavelet-features/haarC-2-S-0256-0256.txt
   - - f35Log
-    - /user/nushio/wavelet-features/haarC-2-S-0004-0008.txt
+    - /user/nushio/wavelet-features/haarC-2-S-0256-0512.txt
   - - f35Log
-    - /user/nushio/wavelet-features/haarC-2-S-0008-0004.txt
+    - /user/nushio/wavelet-features/haarC-2-S-0512-0256.txt
   - - f35Log
-    - /user/nushio/wavelet-features/haarC-2-S-0008-0008.txt
-  - - f35Log
-    - /user/nushio/wavelet-features/haarC-2-S-0016-0004.txt
-  - - f35Log
-    - /user/nushio/wavelet-features/haarC-2-S-0016-0008.txt
-  - - f35Log
-    - /user/nushio/wavelet-features/haarC-2-S-0032-0004.txt
-  - - f35Log
-    - /user/nushio/wavelet-features/haarC-2-S-0032-0008.txt
-  - - f35Log
-    - /user/nushio/wavelet-features/haarC-2-S-0064-0004.txt
-  - - f35Log
-    - /user/nushio/wavelet-features/haarC-2-S-0064-0008.txt
-  - - f35Log
-    - /user/nushio/wavelet-features/haarC-2-S-0128-0004.txt
-  - - f35Log
-    - /user/nushio/wavelet-features/haarC-2-S-0128-0008.txt
-  - - f35Log
-    - /user/nushio/wavelet-features/haarC-2-S-0256-0004.txt
-  - - f35Log
-    - /user/nushio/wavelet-features/haarC-2-S-0256-0008.txt
+    - /user/nushio/wavelet-features/haarC-2-S-0512-0512.txt
   SchemaDefinitions:
     f35Log:
       colT: 3
@@ -60,7 +40,7 @@ crossValidationStrategy:
   tag: CVWeekly
   contents: []
 spaceWeatherLibVersion: version 1.1
-predictionRegressionFile: ''
+predictionRegressionFile: /dev/null
 predictionTargetFile: /user/nushio/forecast/forecast-goes-24.txt
 predictionSessionFile: ''
 regressorUsed:
@@ -72,7 +52,7 @@ regressorUsed:
     Nu: null
     AutomationNoise: false
     Epsilon: null
-    AutomationTolFun: 1.0e-3
+    AutomationTolFun: 1.0e-2
     AutomationPopSize: 10
     Type: 3
     KernelType: 2
