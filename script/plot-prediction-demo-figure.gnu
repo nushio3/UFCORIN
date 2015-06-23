@@ -7,6 +7,9 @@ set grid
 #set xrange [4850:5050]
 #set xrange [0:17544]
 #set xtics 0,2400
+#set xrange [3800:4200]
+# set xrange [0:17544]
+# set xtics 0,5000
 
 # f(-5.2) -> -4
 # f(-5.45) -> -5

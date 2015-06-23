@@ -48,7 +48,10 @@ memcached prog input = do
 
 
 readFile :: FilePath -> IO T.Text
-readFile = memcached readFile'
+readFile fp =
+  case localProtocol `isPrefixOf` fp of
+   True  -> T.readFile $ drop (length localProtocol) fp
+   False -> memcached readFile' fp
 
 readFile' :: FilePath -> IO T.Text
 readFile' fp = do
@@ -70,5 +73,10 @@ writeFile fp txt = do
 
 compatibleFilePath :: FilePath -> FilePath
 compatibleFilePath fp
-  | "s3://" `isPrefixOf` fp = fp
-  | otherwise               = "s3://bbt.hdfs.backup" ++ fp
+  | "s3://" `isPrefixOf` fp       = fp
+  | localProtocol `isPrefixOf` fp = drop (length localProtocol) fp
+  | otherwise                     = "s3://bbt.hdfs.backup" ++ fp
+
+
+localProtocol :: FilePath
+localProtocol = "file://"

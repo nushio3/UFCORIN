@@ -1,0 +1,20 @@
+# This is a sample strategy written by hand.
+spaceWeatherLibVersion: version 1.1
+crossValidationStrategy: {tag: CVWeekly, contents: []}
+predictionTargetSchema: {colT: 2, colX: 5, isLog: true, scaling: 1.0}
+predictionTargetFile: 'file://./forecast-features/forecast-goes-24.txt'
+predictionSessionFile: ''
+predictionRegressionFile: ''
+predictionResultFile: ''
+regressorUsed:
+  - tag: LibSVMRegressor
+    contents: {  KernelType: 2, Type: 3, Cost: 1.0, Nu: null, Epsilon: null, Gamma: 1.0e-2, AutomationLevel: 0, AutomationTolFun: 1.0e-3, AutomationNoise: false, AutomationPopSize: 10, AutomationScaling: 2.0}
+featureSchemaPackUsed:
+  SchemaDefinitions:
+    f25Log: { colT: 2, colX: 5, isLog: true, scaling: 1.0}
+    f35Log: { colT: 3, colX: 5, isLog: true, scaling: 1.0}
+  FilenamePairs:
+  - [f25Log, 'file://./forecast-features/backcast-goes-24.txt']
+  - [f25Log, 'file://./forecast-features/backcast-goes-48.txt']
+  - [f25Log, 'file://./forecast-features/backcast-goes-72.txt']
+  - [f35Log, 'file://./wavelet-features/haarC-2-S-0016-0016.txt']

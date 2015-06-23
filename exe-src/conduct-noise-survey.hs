@@ -1,3 +1,12 @@
+{-
+./conduct-noise-survey -G  to generate the strategy scripts for the survey.
+ls survey-noise/*.sh | xargs -n 1 -P 8 bash
+                           to run the survey.
+./conduct-noise-survey -S  to summarize the result to a data file.
+
+
+-}
+
 module Main where
 import Control.Applicative
 import Control.Lens
