@@ -2,7 +2,7 @@ UFCORINの使い方
 ====
 事前準備とビルド
 ----
-[libsvm]{https://www.csie.ntu.edu.tw/~cjlin/libsvm/}をビルドして実行ファイルのあるディレクトリにパスを通し、`svm-predict`等でlibsvmが動かせるようにしておいてください。
+[libsvm](https://www.csie.ntu.edu.tw/~cjlin/libsvm/)をビルドして実行ファイルのあるディレクトリにパスを通し、`svm-predict`等でlibsvmが動かせるようにしておいてください。
 
 [Glasgow Haskell Compiler(GHC)](https://www.haskell.org/ghc/) をインストールしてください。当方はGHC 7.8.4で動作検証しております。
 
