@@ -102,9 +102,10 @@ executable generate-survey
               , lens
               , containers
               , text
-              , spaceweather-wavelet
               , process
               , random
+              , safe
+              , spaceweather-wavelet
 
 executable scan-survey-results
   main-is: scan-survey-results.hs

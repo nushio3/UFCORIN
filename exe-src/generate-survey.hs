@@ -3,8 +3,10 @@ import Control.Applicative
 import Control.Lens
 import Control.Monad
 import Data.List
+import Data.Maybe
 import qualified Data.Map as M
 import qualified Data.Text.IO as T
+import Safe
 import System.Environment
 import System.Process
 import System.Random
@@ -27,17 +29,21 @@ testStrategy = defaultPredictionStrategy  & crossValidationStrategy .~ CVShuffle
 
 main :: IO ()
 main = withWorkDir $ do
-  seeds <- goodSeeds
-  let perfLimit = 99
-  system $ "mkdir -p " ++ surveyDir
-  sequence_ [process seeds "bsplC-301" True (2^i) (2^j) (2^iy) (2^jy)
-            | i <- [0..9], j <- [i..9],  iy <- [0..9], jy <- [iy..9], (jy-iy)*(j-i)<perfLimit ]
-  sequence_ [process seeds "bsplC-301" False (2^i) (2^j) (2^iy) (2^jy)
-            | i <- [0..9], j <- [i..9],  iy <- [0..9], jy <- [iy..9] , (jy-iy)*(j-i)<perfLimit]
-  sequence_ [process seeds "haarC-2" True (2^i) (2^j) (2^iy) (2^jy)
-            | i <- [0..9], j <- [i..9],  iy <- [0..9], jy <- [iy..9] , (jy-iy)*(j-i)<perfLimit]
-  sequence_ [process seeds "haarC-2" False (2^i) (2^j) (2^iy) (2^jy)
-            | i <- [0..9], j <- [i..9],  iy <- [0..9], jy <- [iy..9] , (jy-iy)*(j-i)<perfLimit]
+  argv <- getArgs
+  let nSeeds = fromMaybe 5 (headMay argv >>= readMay)
+  seeds <- goodSeeds nSeeds
+
+  when ("-X" `elem` argv) $ do
+    let perfLimit = 99
+    system $ "mkdir -p " ++ surveyDir
+    sequence_ [process seeds "bsplC-301" True (2^i) (2^j) (2^iy) (2^jy)
+              | i <- [0..9], j <- [i..9],  iy <- [0..9], jy <- [iy..9], (jy-iy)*(j-i)<perfLimit ]
+    sequence_ [process seeds "bsplC-301" False (2^i) (2^j) (2^iy) (2^jy)
+              | i <- [0..9], j <- [i..9],  iy <- [0..9], jy <- [iy..9] , (jy-iy)*(j-i)<perfLimit]
+    sequence_ [process seeds "haarC-2" True (2^i) (2^j) (2^iy) (2^jy)
+              | i <- [0..9], j <- [i..9],  iy <- [0..9], jy <- [iy..9] , (jy-iy)*(j-i)<perfLimit]
+    sequence_ [process seeds "haarC-2" False (2^i) (2^j) (2^iy) (2^jy)
+              | i <- [0..9], j <- [i..9],  iy <- [0..9], jy <- [iy..9] , (jy-iy)*(j-i)<perfLimit]
 
 process :: [Int] -> String -> Bool -> Int -> Int -> Int -> Int -> IO ()
 process seeds basisName isStd lower upper lowerY0 upperY0 = do
@@ -105,14 +111,14 @@ process seeds basisName isStd lower upper lowerY0 upperY0 = do
 
       return ()
 
-goodSeeds :: IO [Int]
-goodSeeds = do
+goodSeeds :: Int -> IO [Int]
+goodSeeds n = do
   Right strategy <- fmap decode $ T.readFile "resource/strategy-template.yml"
   Right goesFeature <- loadFeatureWithSchema
                        (strategy ^. predictionTargetSchema)
                        (strategy ^. predictionTargetFile)
   return (strategy :: PredictionStrategyGS)
-  collectIO 5 $ getGoodSeed goesFeature
+  collectIO n $ getGoodSeed goesFeature
 
 collectIO :: Int -> IO [a] -> IO [a]
 collectIO n m
