@@ -188,13 +188,13 @@ main = do
       writeFile tmpFn $ unlines $ map ppr $ M.toList $ M.map snd (chosens dirChar fc)
 
       let plot1 :: String
-          plot1 = printf "'%s' u (($1+$2)/2):3:($3-$4):($3+$4) w yerr t '' pt 0 lt 4 lw 3 lc rgb '%s'" tmpFn lcstr
+          plot1 = printf "'%s' u (($1+$2)/2):3:($3-$4):($3+$4) w yerr t '' pt 0 lt 1 lw 2 lc rgb '%s'" tmpFn lcstr
           lcstr = case fc of
             XClassFlare -> "#FF8080"
             MClassFlare -> "#00FF00"
             CClassFlare -> "#8080FF"
       let plot2 :: String
-          plot2 = printf "'%s' u (($1+$2)/2):3:(0.99*$1):(1.01*$2) w xerr t '' pt 0 lt 1 lw 6 lc rgb '%s'" tmpFn lcstr
+          plot2 = printf "'%s' u (($1+$2)/2):3:(0.97*$1):(1.03*$2) w xerr t '' pt 0 lt 1 lw 4 lc rgb '%s'" tmpFn lcstr
           lcstr = case fc of
             XClassFlare -> "#FF0000"
             MClassFlare -> "#008000"
@@ -204,7 +204,8 @@ main = do
            [ "set term postscript landscape enhanced color 35"
            , printf "set out '%s'" figFn
            , "set log x; set grid "
-           , "set xrange [0.001:1]"
+           , "set xrange [0.001:1.2]"
+           , "set ytics 0.5"
            , "set format y '%.1f'"
            , printf "set yrange [%f:%f]" yrangeLo yrangeUp
            , printf "set xlabel '%s'" xlabel
