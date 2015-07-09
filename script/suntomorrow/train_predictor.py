@@ -50,12 +50,12 @@ def zoom_x2(batch):
 gpu_flag=(args.gpu >= 0)
 
 # load the numpy 2D arrays located under the folder.
-p=subprocess.Popen('find scaled-256/',shell=True, stdout=subprocess.PIPE)
+p=subprocess.Popen('find scaled-1024/',shell=True, stdout=subprocess.PIPE)
 stdout, _ = p.communicate()
 
 sun_data = []
 
-for fn in stdout.split('\n')[0:10]:
+for fn in stdout.split('\n'):
     if not re.search('\.npy$',fn) : continue
     sun_data.append(np.load(fn))
 
@@ -68,12 +68,12 @@ if len(sun_data)==0:
 
 
 model=chainer.FunctionSet(
-    conv1 = F.Convolution2D(4,8,3,stride=1,pad=1),
-    conv2 = F.Convolution2D(8,16,3,stride=1,pad=1),
-    conv9 = F.Convolution2D(16,1,3,stride=1,pad=1),
+    convA1 = F.Convolution2D( 4, 8,3,stride=1,pad=1),
+    convA2 = F.Convolution2D( 8,16,3,stride=1,pad=1),
+    convV2 = F.Convolution2D(16, 8,3,stride=1,pad=1),
+    convV1 = F.Convolution2D( 8, 4,3,stride=1,pad=1),
+    convY  = F.Convolution2D( 4, 1,3,stride=1,pad=1),
 )
-
-
 
 if gpu_flag:
     cuda.init(0)
@@ -82,11 +82,20 @@ if gpu_flag:
 
 
 def forward(x_data,y_data,train=True):
+    deploy = False
     x = Variable(x_data, volatile = not train)
     y = Variable(y_data, volatile = not train)
-    h1 = F.dropout(F.leaky_relu(model.conv1(x)),  train=train)
-    h2 = F.dropout(F.leaky_relu(model.conv2(h1)),  train=train)
-    y_pred = model.conv9(h2)
+
+    hc1 = F.dropout(F.leaky_relu(model.convA1(x)),  train=train and deploy)
+    hm1 = F.max_pooling_2d(hc1,2)
+    hc2 = F.dropout(F.leaky_relu(model.convA2(hm1)), train=train and deploy)
+    hm2 = F.max_pooling_2d(hc2,2)
+    hv3 = hm2
+    hz2 = zoom_x2(hv3)
+    hv2 = F.dropout(F.leaky_relu(model.convV2(hz2)), train=train and deploy)
+    hz1 = zoom_x2(hv2)
+    hv1 = F.dropout(F.leaky_relu(model.convV1(hz1)), train=train and deploy)
+    y_pred = model.convY(hv1)
     return F.mean_squared_error(y,y_pred)
 
 
@@ -95,7 +104,11 @@ def forward(x_data,y_data,train=True):
 optimizer = optimizers.Adam()
 optimizer.setup(model.collect_parameters())
 
-for epoch in range(1000000):
+
+epoch=0
+while True:
+
+    epoch+=1
     batch_input = []; batch_output = []
     for i in range(1):
         n = 4
