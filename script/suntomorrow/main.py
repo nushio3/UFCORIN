@@ -27,7 +27,7 @@ def gnuplot(cmd):
 
 
 def process(fn):
-    n=256
+    n=1024
     n2=4096/n
     pngfn = 'frames-{}/'.format(n) + fn.replace('/','-').replace('.fits','.png')
     binfn = 'scaled-{}/'.format(n) + fn.replace('/','-').replace('.fits','')
@@ -46,6 +46,12 @@ def process(fn):
     img = np.where( np.isnan(img), 0.0, img)
     
     img2=intp.zoom(img,zoom=1.0/n2)
+
+    for y in range(n):
+        for x in range(n):
+            r2 = (x-511.5)**2 + (y-511.5)**2
+            if r2 >= 475.0**2 : img2[y][x]=0.0
+
     np.save(binfn, np.float32(img2))
 #    print np.shape(img2)
 
