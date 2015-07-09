@@ -24,11 +24,17 @@ def gnuplot(cmd):
 
 #system('aws s3 sync s3://sdo/hmi/mag720/2015/07/ 07/')
 
-system('mkdir -p frames')
+
 
 def process(fn):
-    pngfn = 'frames/' + fn.replace('/','-').replace('.fits','.png')
+    n=256
+    n2=4096/n
+    pngfn = 'frames-{}/'.format(n) + fn.replace('/','-').replace('.fits','.png')
+    binfn = 'scaled-{}/'.format(n) + fn.replace('/','-').replace('.fits','')
     print '{} -> {}'.format(fn, pngfn)
+
+    system('mkdir -p frames-{}'.format(n))
+    system('mkdir -p scaled-{}'.format(n))
 
     try:
         hdulist=fits.open(fn)
@@ -36,10 +42,11 @@ def process(fn):
         return
     img=hdulist[1].data
     str = ''
-    n=1024
-    n2=4096/n
 
+    img = np.where( np.isnan(img), 0.0, img)
+    
     img2=intp.zoom(img,zoom=1.0/n2)
+    np.save(binfn, np.float32(img2))
 #    print np.shape(img2)
 
     for y in range(n):
@@ -51,14 +58,14 @@ def process(fn):
         fp.write(str)
     
     gnuplot("""
-set term png 20 size 2048,2048
+set term png 20 size 1024,768
 set out '{png}'
 set pm3d
 set pm3d map
 set size ratio -1
 set xrange [0:{n}]
 set yrange [{n}:0]
-set cbrange [-3:3]
+set cbrange [-20:20]
 red(x)=1-atan(3*(x-0.5))/pi*2
 green(x)=1-10*(x-0.5)**2
 blue(x)=1+atan(3*(x-0.5))/pi*2
