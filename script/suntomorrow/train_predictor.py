@@ -70,6 +70,8 @@ if len(sun_data)==0:
 model=chainer.FunctionSet(
     convA1 = F.Convolution2D( 4, 8,3,stride=1,pad=1),
     convA2 = F.Convolution2D( 8,16,3,stride=1,pad=1),
+    convA3 = F.Convolution2D(16,32,3,stride=1,pad=1),
+    convV3 = F.Convolution2D(32,16,3,stride=1,pad=1),
     convV2 = F.Convolution2D(16, 8,3,stride=1,pad=1),
     convV1 = F.Convolution2D( 8, 4,3,stride=1,pad=1),
     convY  = F.Convolution2D( 4, 1,3,stride=1,pad=1),
@@ -90,7 +92,11 @@ def forward(x_data,y_data,train=True):
     hm1 = F.max_pooling_2d(hc1,2)
     hc2 = F.dropout(F.leaky_relu(model.convA2(hm1)), train=train and deploy)
     hm2 = F.max_pooling_2d(hc2,2)
-    hv3 = hm2
+    hc3 = F.dropout(F.leaky_relu(model.convA2(hm2)), train=train and deploy)
+    hm3 = F.max_pooling_2d(hc3,2)
+    hv4 = hm3
+    hz3 = zoom_x2(hv4)
+    hv3 = F.dropout(F.leaky_relu(model.convV2(hz3)), train=train and deploy)
     hz2 = zoom_x2(hv3)
     hv2 = F.dropout(F.leaky_relu(model.convV2(hz2)), train=train and deploy)
     hz1 = zoom_x2(hv2)
