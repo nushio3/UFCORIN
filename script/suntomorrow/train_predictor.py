@@ -104,8 +104,14 @@ def forward(x_data,y_data,train=True):
     y_pred = model.convY(hv1)
     return F.mean_squared_error(y,y_pred)
 
+def reference(x_data,y_data):
+    x = Variable(x_data)
+    y = Variable(y_data)
+    print F.mean_squared_error(y,y).data
+    print F.mean_squared_error(x,y).data
 
 
+reference(np.array(sun_data[0]), np.array(sun_data[1]))
 
 optimizer = optimizers.Adam()
 optimizer.setup(model.collect_parameters())
@@ -113,7 +119,6 @@ optimizer.setup(model.collect_parameters())
 
 epoch=0
 while True:
-
     epoch+=1
     batch_input = []; batch_output = []
     for i in range(1):
@@ -137,3 +142,13 @@ while True:
 
     with(open(logfn,'a')) as fp:
         fp.write('{} {}\n'.format(epoch,loss.data))
+
+    if epoch == 1:
+        with open("graph.dot", "w") as o:
+            o.write(c.build_computational_graph((loss, )).dump())
+        with open("graph.wo_split.dot", "w") as o:
+            g = c.build_computational_graph((loss, ),
+                                                remove_split=True)
+            o.write(g.dump())
+        print('graph generated')
+
