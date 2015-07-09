@@ -26,9 +26,11 @@ parser.add_argument('--gpu', '-g', default=-1, type=int,
                     help='GPU ID (negative value indicates CPU)')
 args = parser.parse_args()
 
-logfn = 'log-training.txt'
+log_train_fn = 'log-training.txt'
+log_test_fn = 'log-test.txt'
 
-subprocess.call('rm '+ logfn,shell=True)
+subprocess.call('rm '+ log_train_fn,shell=True)
+subprocess.call('rm '+ log_test_fn,shell=True)
 
 def zoom_x2(batch):
     shape = batch.data.shape
@@ -50,7 +52,7 @@ def zoom_x2(batch):
 gpu_flag=(args.gpu >= 0)
 
 # load the numpy 2D arrays located under the folder.
-p=subprocess.Popen('find scaled-1024/',shell=True, stdout=subprocess.PIPE)
+p=subprocess.Popen('find scaled-256/',shell=True, stdout=subprocess.PIPE)
 stdout, _ = p.communicate()
 
 sun_data = []
@@ -84,7 +86,7 @@ if gpu_flag:
 
 
 def forward(x_data,y_data,train=True):
-    deploy = False
+    deploy = True
     x = Variable(x_data, volatile = not train)
     y = Variable(y_data, volatile = not train)
 
@@ -121,7 +123,7 @@ epoch=0
 while True:
     epoch+=1
     batch_input = []; batch_output = []
-    for i in range(1):
+    for i in range(10):
         n = 4
         start = random.randrange(len(sun_data)-n-1)
         batch_input.append(sun_data[start:start+n])
@@ -140,7 +142,7 @@ while True:
 
     print epoch,loss.data
 
-    with(open(logfn,'a')) as fp:
+    with(open(log_train_fn,'a')) as fp:
         fp.write('{} {}\n'.format(epoch,loss.data))
 
     if epoch == 1:
@@ -152,3 +154,8 @@ while True:
             o.write(g.dump())
         print('graph generated')
 
+    if epoch % 10 == 1:
+        loss = forward(batch_input, batch_output, train=False)
+        print "TEST: ",epoch,loss.data
+        with(open(log_test_fn,'a')) as fp:
+            fp.write('{} {}\n'.format(epoch,loss.data))
