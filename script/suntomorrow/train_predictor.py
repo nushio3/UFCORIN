@@ -92,11 +92,11 @@ def forward(x_data,y_data,train=True):
     hm1 = F.max_pooling_2d(hc1,2)
     hc2 = F.dropout(F.leaky_relu(model.convA2(hm1)), train=train and deploy)
     hm2 = F.max_pooling_2d(hc2,2)
-    hc3 = F.dropout(F.leaky_relu(model.convA2(hm2)), train=train and deploy)
+    hc3 = F.dropout(F.leaky_relu(model.convA3(hm2)), train=train and deploy)
     hm3 = F.max_pooling_2d(hc3,2)
     hv4 = hm3
     hz3 = zoom_x2(hv4)
-    hv3 = F.dropout(F.leaky_relu(model.convV2(hz3)), train=train and deploy)
+    hv3 = F.dropout(F.leaky_relu(model.convV3(hz3)), train=train and deploy)
     hz2 = zoom_x2(hv3)
     hv2 = F.dropout(F.leaky_relu(model.convV2(hz2)), train=train and deploy)
     hz1 = zoom_x2(hv2)
