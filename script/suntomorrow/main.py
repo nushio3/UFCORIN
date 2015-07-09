@@ -2,6 +2,7 @@
 
 import argparse
 import math
+import scipy.ndimage.interpolation as intp
 import numpy as np
 import chainer
 from chainer import computational_graph as c
@@ -37,16 +38,13 @@ def process(fn):
     str = ''
     n=1024
     n2=4096/n
+
+    img2=intp.zoom(img,zoom=1.0/n2)
+#    print np.shape(img2)
+
     for y in range(n):
         for x in range(n):
-            sumv=0.0
-            for y2 in range(n2):
-                for x2 in range (n2):
-                    v=img[n2*y+y2][4095-(n2*x+x2)]
-                    if math.isnan(v): v=0.0
-                    sumv += v
-            sumv=v/(1.0*n2*n2)
-            str+='{} {} {}\n'.format(x,y,sumv)
+            str+='{} {} {}\n'.format(x,y,img2[y][n-1-x])
         str+='\n'
     
     with open('test.txt','w') as fp:
