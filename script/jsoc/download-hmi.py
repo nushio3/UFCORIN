@@ -11,11 +11,11 @@ def system(cmd):
 wl = 'mag720'
 yearstart = 2011
 monthstart = 1
-yearend = 2015
-monthend = 4
+yearend = 2014
+monthend = 8
 bucket = "sdo"
 
-path= '/home/ubuntu/hub/UFCORIN/script/jsoc/'
+path= '/home/nushio/hub/UFCORIN/script/jsoc/'
 
 if not os.path.exists(wl): os.mkdir(wl)
 os.chdir(wl)
@@ -32,7 +32,7 @@ for i in reversed(range(yearstart,yearend+1)):
         if (i==yearend and j>monthend):
             continue
 
-        month='%02d' % j 
+        month='%02d' % j
         for k in [1,7,13,19,25]:
             k2=k+6
             if k==25: k2=32
@@ -46,7 +46,7 @@ for i in reversed(range(yearstart,yearend+1)):
 
             for fn in glob.glob('*.fits'):
                 if not re.match('hmi',fn): continue
-    
+
                 # hmi.M_720s%5B2011.03.05_12%3A00%3A00_TAI%5D%5B1%5D%7Bmagnetogram%7D.fits
                 ma = re.search('%5B(\d+)\.(\d+)\.(\d+)_(\d+)%3A(\d+)',fn)
                 if not ma: continue
@@ -55,10 +55,10 @@ for i in reversed(range(yearstart,yearend+1)):
                 dd=ma.group(3)
                 hh=ma.group(4)
                 minu=ma.group(5)
-    
+
                 print 'detect {}-{}-{} {}:{}'.format(yyyy,mm,dd,hh,minu)
-    
-                if mm!=month: 
+
+                if mm!=month:
                     os.remove(fn)
                     continue
                 if not os.path.exists(dd): os.mkdir(dd)
@@ -68,8 +68,7 @@ for i in reversed(range(yearstart,yearend+1)):
             s3 = "aws s3 sync "+month+" s3://sdo/hmi/"+wl+"/"+year+"/"+month+"/"
             print s3
             system(s3)
-            ## exit(0) # test disk capacity here
+            # exit(0) # test disk capacity here
             shutil.rmtree(month)
 
     os.chdir('..')
-
