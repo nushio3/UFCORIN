@@ -12,7 +12,7 @@ wl = 'mag720'
 yearstart = 2011
 monthstart = 1
 yearend = 2015
-monthend = 7
+monthend = 4
 bucket = "sdo"
 
 path= '/home/ubuntu/hub/UFCORIN/script/jsoc/'
@@ -42,7 +42,8 @@ for i in reversed(range(yearstart,yearend+1)):
             command = path+"exportfile.csh "+query+ " " + sys.argv[1]
             print command
             system(command)
-    
+            system('mv jsoc_export.* exportlog-{}-{}-{}.txt'.format(i,j,k))
+
             for fn in glob.glob('*.fits'):
                 if not re.match('hmi',fn): continue
     
@@ -67,6 +68,7 @@ for i in reversed(range(yearstart,yearend+1)):
             s3 = "aws s3 sync "+month+" s3://sdo/hmi/"+wl+"/"+year+"/"+month+"/"
             print s3
             system(s3)
+            ## exit(0) # test disk capacity here
             shutil.rmtree(month)
 
     os.chdir('..')
