@@ -1,4 +1,4 @@
-#! /bin/csh -f
+#! /bin/csh
 #
 # Simple script to fetch a JSOC recordset using calls to wget
 #
