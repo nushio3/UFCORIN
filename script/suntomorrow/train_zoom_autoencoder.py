@@ -86,7 +86,7 @@ if gpu_flag:
 
 
 def forward(x_data,train=True,level=1):
-    deploy =False
+    deploy = True
     x = Variable(x_data, volatile = not train)
     y = Variable(x_data, volatile = not train)
 
@@ -94,18 +94,18 @@ def forward(x_data,train=True,level=1):
     hc1 = model.convA1(noisy_x)
     hm1 = F.average_pooling_2d(hc1,2)
     if level >= 2:
-        hc2 = model.convA1(hm1)
+        hc2 = model.convA2(hm1)
         hm2 = F.average_pooling_2d(hc2,2)
         if level >= 3:
-            hc3 = model.convA1(hm2)
+            hc3 = model.convA3(hm2)
             hm3 = F.average_pooling_2d(hc3,2)
         
             hz3 = zoom_x2(hm3)
-            hv3 = model.convV1(hz3)
+            hv3 = model.convV3(hz3)
         else:
             hv3 = hm2
         hz2 = zoom_x2(hv3)
-        hv2 = model.convV1(hz2)
+        hv2 = model.convV2(hz2)
     else:
         hv2=hm1
     hz1 = zoom_x2(hv2)
@@ -151,7 +151,7 @@ while True:
         print '\t'*level,epoch,loss.data
     
         with(open(log_train_fn,'a')) as fp:
-            fp.write('{} {}\n'.format(level,epoch,loss.data))
+            fp.write('{} {} {}\n'.format(level,epoch,loss.data))
     
         if epoch == 1:
             with open("graph{}.dot".format(level), "w") as o:
@@ -166,4 +166,4 @@ while True:
             loss = forward(batch,train=False,level=level)
             print "T",'\t'*level,epoch,loss.data
             with(open(log_test_fn,'a')) as fp:
-                fp.write('{} {}\n'.format(epoch,loss.data))
+                fp.write('{} {} {}\n'.format(level, epoch,loss.data))
