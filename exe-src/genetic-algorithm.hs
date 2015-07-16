@@ -1,3 +1,4 @@
+{-# LANGUAGE TupleSections #-}
 import Control.Lens
 import Control.Monad
 
@@ -20,19 +21,30 @@ genome = featureSchemaPackUsed . fspFilenamePairs . l
     l :: Lens' [(String, FilePath)] Genome
     l = lens g s
     g :: [(String, FilePath)] -> Genome
-    g xs = M.fromList $ zip xs $ repeat True
+    g xs = M.union (M.fromList $ zip xs $ repeat True) defaultGenome
 
     s :: [(String, FilePath)] -> Genome -> [(String, FilePath)]
     s _ xs = map fst $ filter snd $ M.toList xs
 
--- mutate :: PredictionStrategyGS -> IO PredictionStrategyGS
+mutate :: Genome -> IO Genome
+mutate g = do
 
 
-featureFiles :: [String]
-featureFiles = unsafePerformIO $ do
-  files <- readSystem0 "ls wavelet-features/*.txt"
-  return $ map ("file://./" ++ ) $ words files
 
+defaultGenome :: Genome
+defaultGenome = unsafePerformIO $ do
+  filesW <- readSystem0 "ls wavelet-features/*.txt"
+  let
+    featuresW :: [(String, FilePath)]
+    featuresW = map ("f35Log",) $  map ("file://./" ++ ) $ words filesW
+  filesB <- readSystem0 "ls forecast-features/backcast*.txt"
+  let
+    featuresB :: [(String, FilePath)]
+    featuresB = map ("f25Log",) $  map ("file://./" ++ ) $ words filesB
+  return $
+    M.fromList $
+    map (,False) $
+    featuresB ++ featuresW
 
 main :: IO ()
 main = withWorkDir $ do
