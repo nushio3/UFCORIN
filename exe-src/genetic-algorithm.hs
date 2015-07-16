@@ -1,5 +1,7 @@
+import Control.Lens
 import Control.Monad
 
+import qualified Data.Map as M
 import qualified Data.Text as T
 import qualified Data.Text.IO as T
 import SpaceWeather.CmdArgs
@@ -10,9 +12,15 @@ import SpaceWeather.FeaturePack
 import System.System
 import System.IO.Unsafe
 
-type Genome = M.Map String Bool
+type Genome = M.Map (String, FilePath) Bool
 
-mutate :: PredictionStrategyGS -> IO PredictionStrategyGS
+genome :: Lens' PredictionStrategyGS Genome
+genome = featureSchemaPackUsed . fspFilenamePairs . l
+  where
+    l :: Lens' [(String, FilePath)] Genome
+    l = undefined
+
+-- mutate :: PredictionStrategyGS -> IO PredictionStrategyGS
 
 
 featureFiles :: [String]
