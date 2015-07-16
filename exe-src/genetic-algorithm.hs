@@ -18,7 +18,12 @@ genome :: Lens' PredictionStrategyGS Genome
 genome = featureSchemaPackUsed . fspFilenamePairs . l
   where
     l :: Lens' [(String, FilePath)] Genome
-    l = undefined
+    l = lens g s
+    g :: [(String, FilePath)] -> Genome
+    g xs = M.fromList $ zip xs $ repeat True
+
+    s :: [(String, FilePath)] -> Genome -> [(String, FilePath)]
+    s _ xs = map fst $ filter snd $ M.toList xs
 
 -- mutate :: PredictionStrategyGS -> IO PredictionStrategyGS
 
