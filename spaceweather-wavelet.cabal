@@ -94,8 +94,8 @@ executable prediction-main
               , spaceweather-wavelet
   ghc-options:       -Wall -O2
 
-executable generate-survey
-  main-is: generate-survey.hs
+executable genetic-algorithm
+  main-is: genetic-algorithm.hs
   hs-source-dirs: exe-src/
   build-depends:
                 base < 6
@@ -107,183 +107,196 @@ executable generate-survey
               , safe
               , spaceweather-wavelet
 
-executable scan-survey-results
-  main-is: scan-survey-results.hs
-  hs-source-dirs: exe-src/
-  build-depends:
-                base < 6
-              , containers
-              , lens
-              , text
-              , spaceweather-wavelet
-
-executable scan-survey-4
-  main-is: scan-survey-4.hs
-  hs-source-dirs: exe-src/
-  build-depends:
-                base < 6
-              , containers
-              , lens
-              , statistics
-              , vector
-              , split
-              , text
-              , spaceweather-wavelet
-
-executable scan-survey-6
-  main-is: scan-survey-6.hs
-  hs-source-dirs: exe-src/
-  build-depends:
-                base < 6
-              , containers
-              , lens
-              , statistics
-              , vector
-              , split
-              , text
-              , spaceweather-wavelet
-
-
-executable conduct-noise-survey
-  main-is: conduct-noise-survey.hs
-  hs-source-dirs: exe-src/
-  build-depends:
-                base < 6
-              , lens
-              , containers
-              , vector
-              , statistics
-              , text
-              , spaceweather-wavelet
-              , process
-
-
-executable aia2timebin
-  main-is:           aia2timebin.hs
-  hs-source-dirs:    exe-src/
-  build-depends:
-                base < 6
-              , lens
-              , text
-              , time
-
-              , spaceweather-wavelet
-  ghc-options:       -Wall -O2
-
-
-
--- executable wavelet-analysis-main
---   buildable: False
---   main-is:           wavelet-analysis-main.hs
+-- executable generate-survey
+--   main-is: generate-survey.hs
+--   hs-source-dirs: exe-src/
+--   build-depends:
+--                 base < 6
+--               , lens
+--               , containers
+--               , text
+--               , process
+--               , random
+--               , safe
+--               , spaceweather-wavelet
+--
+-- executable scan-survey-results
+--   main-is: scan-survey-results.hs
+--   hs-source-dirs: exe-src/
+--   build-depends:
+--                 base < 6
+--               , containers
+--               , lens
+--               , text
+--               , spaceweather-wavelet
+--
+-- executable scan-survey-4
+--   main-is: scan-survey-4.hs
+--   hs-source-dirs: exe-src/
+--   build-depends:
+--                 base < 6
+--               , containers
+--               , lens
+--               , statistics
+--               , vector
+--               , split
+--               , text
+--               , spaceweather-wavelet
+--
+-- executable scan-survey-6
+--   main-is: scan-survey-6.hs
+--   hs-source-dirs: exe-src/
+--   build-depends:
+--                 base < 6
+--               , containers
+--               , lens
+--               , statistics
+--               , vector
+--               , split
+--               , text
+--               , spaceweather-wavelet
+--
+--
+-- executable conduct-noise-survey
+--   main-is: conduct-noise-survey.hs
+--   hs-source-dirs: exe-src/
+--   build-depends:
+--                 base < 6
+--               , lens
+--               , containers
+--               , vector
+--               , statistics
+--               , text
+--               , spaceweather-wavelet
+--               , process
+--
+--
+-- executable aia2timebin
+--   main-is:           aia2timebin.hs
 --   hs-source-dirs:    exe-src/
 --   build-depends:
---      base < 6
---    , binary
---    , bindings-gsl >= 0.2
---    , bytestring >= 0.10.0.2
---    , cpu >= 0.1.1
---    , filepath
---    , text >= 0.11.3.1
---    , MissingH
---    , process
---    , repa
---    , repa-io
---    , unix
---   ghc-options:       -Wall -O2 -threaded
-
-executable make-pdf
-  main-is:           make-pdf.hs
-  hs-source-dirs:    exe-src/
-  build-depends:     base < 6
-  ghc-options:       -Wall -O2
-
-executable hs-wordcount-mapper
-  main-is:           hs-wordcount-mapper.hs
-  hs-source-dirs:    exe-src/
-  build-depends:
-                base < 6
-  ghc-options:       -Wall -O2
-
-executable hs-wordcount-reducer
-  main-is:           hs-wordcount-reducer.hs
-  hs-source-dirs:    exe-src/
-  build-depends:
-                base < 6
-  ghc-options:       -Wall -O2
-
-executable daily-forecast
-  main-is:           daily-forecast.hs
-  hs-source-dirs:    exe-src/
-  build-depends:
-                base < 6
-              , spaceweather-wavelet
-
-              , containers
-              , lens
-              , safe
-              , text
-              , time
-  ghc-options:       -Wall -O2
-
-executable transpose-wavelet-mapper
-  main-is:           transpose-wavelet-mapper.hs
-  hs-source-dirs:    exe-src/
-  build-depends:
-                base < 6
-              , spaceweather-wavelet
-
-              , spoon
-              , text
-  ghc-options:       -Wall -O2
-
-executable transpose-wavelet-reducer
-  main-is:           transpose-wavelet-reducer.hs
-  hs-source-dirs:    exe-src/
-  build-depends:
-                base < 6
-              , spaceweather-wavelet
-
-              , spoon
-              , text
-  ghc-options:       -Wall -O2
-
-executable transpose-wavelet-finalizer
-  main-is:           transpose-wavelet-finalizer.hs
-  hs-source-dirs:    exe-src/
-  build-depends:
-                base < 6
-              , spaceweather-wavelet
-
-              , containers
-              , process
-              , spoon
-              , text
-
-  ghc-options:       -Wall -O2
-
-executable linear-regression
-  main-is:           linear-regression.hs
-  hs-source-dirs:    exe-src/
-  build-depends:
-                base < 6
-              , spaceweather-wavelet
-
-              , cmaes
-              , containers
-              , spoon
-              , process
-              , random
-  ghc-options:       -Wall -O2
-
-
-executable visualize-feature-vector
-  main-is:           visualize-feature-vector.hs
-  hs-source-dirs:    exe-src/
-  build-depends:
-                base < 6
-              , containers
-              , process
-              , safe
-              , spaceweather-wavelet
-              , text
-  ghc-options:       -Wall -O2
+--                 base < 6
+--               , lens
+--               , text
+--               , time
+--
+--               , spaceweather-wavelet
+--   ghc-options:       -Wall -O2
+--
+--
+--
+-- -- executable wavelet-analysis-main
+-- --   buildable: False
+-- --   main-is:           wavelet-analysis-main.hs
+-- --   hs-source-dirs:    exe-src/
+-- --   build-depends:
+-- --      base < 6
+-- --    , binary
+-- --    , bindings-gsl >= 0.2
+-- --    , bytestring >= 0.10.0.2
+-- --    , cpu >= 0.1.1
+-- --    , filepath
+-- --    , text >= 0.11.3.1
+-- --    , MissingH
+-- --    , process
+-- --    , repa
+-- --    , repa-io
+-- --    , unix
+-- --   ghc-options:       -Wall -O2 -threaded
+--
+-- executable make-pdf
+--   main-is:           make-pdf.hs
+--   hs-source-dirs:    exe-src/
+--   build-depends:     base < 6
+--   ghc-options:       -Wall -O2
+--
+-- executable hs-wordcount-mapper
+--   main-is:           hs-wordcount-mapper.hs
+--   hs-source-dirs:    exe-src/
+--   build-depends:
+--                 base < 6
+--   ghc-options:       -Wall -O2
+--
+-- executable hs-wordcount-reducer
+--   main-is:           hs-wordcount-reducer.hs
+--   hs-source-dirs:    exe-src/
+--   build-depends:
+--                 base < 6
+--   ghc-options:       -Wall -O2
+--
+-- executable daily-forecast
+--   main-is:           daily-forecast.hs
+--   hs-source-dirs:    exe-src/
+--   build-depends:
+--                 base < 6
+--               , spaceweather-wavelet
+--
+--               , containers
+--               , lens
+--               , safe
+--               , text
+--               , time
+--   ghc-options:       -Wall -O2
+--
+-- executable transpose-wavelet-mapper
+--   main-is:           transpose-wavelet-mapper.hs
+--   hs-source-dirs:    exe-src/
+--   build-depends:
+--                 base < 6
+--               , spaceweather-wavelet
+--
+--               , spoon
+--               , text
+--   ghc-options:       -Wall -O2
+--
+-- executable transpose-wavelet-reducer
+--   main-is:           transpose-wavelet-reducer.hs
+--   hs-source-dirs:    exe-src/
+--   build-depends:
+--                 base < 6
+--               , spaceweather-wavelet
+--
+--               , spoon
+--               , text
+--   ghc-options:       -Wall -O2
+--
+-- executable transpose-wavelet-finalizer
+--   main-is:           transpose-wavelet-finalizer.hs
+--   hs-source-dirs:    exe-src/
+--   build-depends:
+--                 base < 6
+--               , spaceweather-wavelet
+--
+--               , containers
+--               , process
+--               , spoon
+--               , text
+--
+--   ghc-options:       -Wall -O2
+--
+-- executable linear-regression
+--   main-is:           linear-regression.hs
+--   hs-source-dirs:    exe-src/
+--   build-depends:
+--                 base < 6
+--               , spaceweather-wavelet
+--
+--               , cmaes
+--               , containers
+--               , spoon
+--               , process
+--               , random
+--   ghc-options:       -Wall -O2
+--
+--
+-- executable visualize-feature-vector
+--   main-is:           visualize-feature-vector.hs
+--   hs-source-dirs:    exe-src/
+--   build-depends:
+--                 base < 6
+--               , containers
+--               , process
+--               , safe
+--               , spaceweather-wavelet
+--               , text
+--   ghc-options:       -Wall -O2
