@@ -100,8 +100,10 @@ evaluate g = do
     ses <- performPrediction rsc $ defaultStrategy & genome .~ g
     let res :: PredictionResult
         res = ses ^. predictionResult
-        PredictionSuccess prMap = res
-        val = prMap M.! MClassFlare M.! TrueSkillStatistic ^. scoreValue
+        val = case res of
+          PredictionSuccess prMap ->
+            prMap M.! MClassFlare M.! TrueSkillStatistic ^. scoreValue
+          _ -> 0
     return val
 
 proceed :: [Genome] -> IO [Genome]
@@ -119,7 +121,7 @@ proceed gs = do
 
   let top10 = take 10 $ reverse $ sort egs
   print $ map fst top10
-  appendFile "genetic-algorithm.txt" $ show $ map fst top10
+  appendFile "genetic-algorithm.txt" $ (++"\n") $show $ map fst top10
   return $ map snd top10
 
 main :: IO ()
