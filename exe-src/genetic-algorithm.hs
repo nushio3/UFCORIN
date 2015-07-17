@@ -116,6 +116,7 @@ proceed gs = do
   egs <- P.parallel $ flip map  newPopulation $ \g -> do
     e <- evaluate g
     return (e,g)
+
   let top10 = take 10 $ reverse $ sort egs
   print $ map fst top10
   appendFile "genetic-algorithm.txt" $ show $ map fst top10
@@ -130,10 +131,10 @@ main = do
   let population :: [Genome]
       population = map (^. genome) [cclass, mclass, xclass :: PredictionStrategyGS]
   vs <- P.parallel $ map evaluate population
-  P.stopGlobalPool
   print vs
 
   loop population
+  P.stopGlobalPool
   return ()
 
 loop :: [Genome] -> IO ()
