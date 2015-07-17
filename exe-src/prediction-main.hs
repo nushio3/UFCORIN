@@ -63,7 +63,7 @@ process fn = withWorkDir $ do
           | otherwise              = fn ++ ".regress.txt"
 
 
-      res <- performPrediction (strategy2 :: PredictionStrategyGS)
+      res <- performPrediction defaultPredictorResource (strategy2 :: PredictionStrategyGS)
 
 
       putStrLn $ "FN: " ++ finalResFn

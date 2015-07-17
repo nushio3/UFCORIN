@@ -93,12 +93,16 @@ defaultStrategy = unsafePerformIO $ do
 
 evaluate :: Genome -> IO Double
 evaluate g = do
-  ses <- performPrediction $ defaultStrategy & genome .~ g
-  let res :: PredictionResult
-      res = ses ^. predictionResult
-      PredictionSuccess prMap = res
-      val = prMap M.! MClassFlare M.! TrueSkillStatistic ^. scoreValue
-  return val
+  r <- replicateM 32 $ randomRIO ('a','z')
+  let wd = workDir ++ r
+      rsc = defaultPredictorResource { _workingDirectory = wd }
+  withWorkDirOf wd $  do
+    ses <- performPrediction rsc $ defaultStrategy & genome .~ g
+    let res :: PredictionResult
+        res = ses ^. predictionResult
+        PredictionSuccess prMap = res
+        val = prMap M.! MClassFlare M.! TrueSkillStatistic ^. scoreValue
+    return val
 
 proceed :: [Genome] -> IO [Genome]
 proceed gs = do
@@ -109,7 +113,7 @@ proceed gs = do
   let newPopulation = nub $ gs ++ mutatedGs ++ crossoverGs
   mapM_ putStrLn $ map pprGenome newPopulation
 
-  egs <- forM newPopulation $ \g -> do
+  egs <- P.parallel $ flip map  newPopulation $ \g -> do
     e <- evaluate g
     return (e,g)
   let top10 = take 10 $ reverse $ sort egs
@@ -118,7 +122,7 @@ proceed gs = do
   return $ map snd top10
 
 main :: IO ()
-main = withWorkDir $ do
+main = do
   Right cclass <- fmap decode $ T.readFile "resource/best-strategies-local/CClass.yml"
   Right mclass <- fmap decode $ T.readFile "resource/best-strategies-local/MClass.yml"
   Right xclass <- fmap decode $ T.readFile "resource/best-strategies-local/XClass.yml"
@@ -126,6 +130,7 @@ main = withWorkDir $ do
   let population :: [Genome]
       population = map (^. genome) [cclass, mclass, xclass :: PredictionStrategyGS]
   vs <- P.parallel $ map evaluate population
+  P.stopGlobalPool
   print vs
 
   loop population

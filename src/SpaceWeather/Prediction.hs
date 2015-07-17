@@ -10,6 +10,7 @@ import qualified Data.Yaml as Yaml
 import Data.Maybe
 import System.Random
 
+import SpaceWeather.CmdArgs
 import SpaceWeather.DefaultFeatureSchemaPack
 import SpaceWeather.Feature
 import SpaceWeather.FeaturePack
@@ -109,9 +110,14 @@ data LearningOutput = LearningOutput
 makeClassy ''LearningOutput
 
 
+data PredictorResource = PredictorResource { _workingDirectory :: FilePath }
+makeClassy ''PredictorResource
+
+defaultPredictorResource :: PredictorResource
+defaultPredictorResource = PredictorResource workDir
 
 class Predictor a where
-  performPrediction :: PredictionStrategy a -> IO (PredictionSession a)
+  performPrediction :: PredictorResource -> PredictionStrategy a -> IO (PredictionSession a)
   preprocessLearning :: PredictionStrategy a -> IO (Either String LearningInput)
   performLearning :: a -> LearningInput -> LearningOutput
   postprocessLearning :: PredictionStrategy a -> LearningOutput -> IO (PredictionSession a)

@@ -28,28 +28,28 @@ type PredictionStrategyGS = PredictionStrategy [GeneralRegressor]
 type PredictionSessionGS = PredictionSession [GeneralRegressor]
 
 instance Predictor GeneralRegressor where
-  performPrediction ps = let optG = ps^.regressorUsed in case optG of
-    LibSVMRegressor opt -> fmap (fmap LibSVMRegressor) $ performPrediction $ fmap (const opt) ps
-    LinearRegressor opt -> fmap (fmap LinearRegressor) $ performPrediction $ fmap (const opt) ps
+  performPrediction rsc ps = let optG = ps^.regressorUsed in case optG of
+    LibSVMRegressor opt -> fmap (fmap LibSVMRegressor) $ performPrediction rsc $ fmap (const opt) ps
+    LinearRegressor opt -> fmap (fmap LinearRegressor) $ performPrediction rsc $ fmap (const opt) ps
 
 instance Predictor [GeneralRegressor] where
-  performPrediction ps = do
-    let 
+  performPrediction rsc ps = do
+    let
         rs :: [GeneralRegressor]
-        rs = ps^.regressorUsed 
+        rs = ps^.regressorUsed
         singleStrts :: [PredictionStrategy GeneralRegressor]
         singleStrts = [fmap (const r) ps | r <- rs]
 
         cmp = compare `on` (prToDouble . _predictionSessionResult)
-    sessions <- mapM performPrediction $ singleStrts
+    sessions <- mapM (performPrediction rsc) $ singleStrts
     return $ fmap (:[]) $ last $ sortBy cmp sessions
-    
+
 
 defaultPredictionStrategy :: PredictionStrategy [GeneralRegressor]
-defaultPredictionStrategy = PredictionStrategy 
+defaultPredictionStrategy = PredictionStrategy
   { _spaceWeatherLibVersion = "version " ++ showVersion version
-  , _regressorUsed = 
-   [ LibSVMRegressor $ defaultLibSVMOption{_libSVMCost = c} 
+  , _regressorUsed =
+   [ LibSVMRegressor $ defaultLibSVMOption{_libSVMCost = c}
    | c <- [1]]
   , _featureSchemaPackUsed = defaultFeatureSchemaPack
   , _crossValidationStrategy = CVWeekly
@@ -60,13 +60,13 @@ defaultPredictionStrategy = PredictionStrategy
   , _predictionSessionFile = ""}
 
 biggerPredictionStrategy :: PredictionStrategy [GeneralRegressor]
-biggerPredictionStrategy = PredictionStrategy 
+biggerPredictionStrategy = PredictionStrategy
   { _spaceWeatherLibVersion = "version " ++ showVersion version
-  , _regressorUsed = 
+  , _regressorUsed =
    [ LibSVMRegressor $
        defaultLibSVMOption{
          _libSVMCost = 10**(c/10) ,
-         _libSVMGamma = 10**(g/10) } 
+         _libSVMGamma = 10**(g/10) }
    | c <- [0..30], g <- [-70.. -30]]
   , _featureSchemaPackUsed = defaultFeatureSchemaPack
   , _crossValidationStrategy = CVWeekly

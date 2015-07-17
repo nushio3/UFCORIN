@@ -23,6 +23,10 @@ withWorkDir = bracket_
   (system $ "mkdir -p " ++ workDir)
   (system $ "rm -fr " ++ workDir)
 
+withWorkDirOf wd = bracket_
+  (system $ "mkdir -p " ++ wd)
+  (system $ "rm -fr " ++ wd)
+
 spacialNoise :: Double
 spacialNoise = fromMaybe 0 $ listToMaybe $ catMaybes $ map mkCand unsafeArgv
   where

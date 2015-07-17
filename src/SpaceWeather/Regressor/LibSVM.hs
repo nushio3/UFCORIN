@@ -107,8 +107,8 @@ instance Format LibSVMFeatures where
 
 
 instance Predictor LibSVMOption where
-  performPrediction strategy = do
-    e <- runEitherT $ libSVMPerformPrediction strategy
+  performPrediction rsc strategy = do
+    e <- runEitherT $ libSVMPerformPrediction rsc strategy
     return $ case e of
       Right x  -> x
       Left msg ->
@@ -118,12 +118,13 @@ instance Predictor LibSVMOption where
         }
 
 
-libSVMPerformPrediction :: PredictionStrategy LibSVMOption -> EitherT String IO (PredictionSession LibSVMOption)
-libSVMPerformPrediction strategy = do
+libSVMPerformPrediction :: PredictorResource -> PredictionStrategy LibSVMOption -> EitherT String IO (PredictionSession LibSVMOption)
+libSVMPerformPrediction rsc strategy = do
   let fsp :: FeatureSchemaPack
       fsp = strategy ^. featureSchemaPackUsed
       opt0 :: LibSVMOption
       opt0 = strategy ^. regressorUsed
+      workDir = rsc ^. workingDirectory
 
   featurePack0 <- EitherT $ loadFeatureSchemaPack fsp
 
