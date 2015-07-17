@@ -1,7 +1,10 @@
 {-# LANGUAGE TupleSections #-}
 import Control.Lens
 import Control.Monad
+import qualified Control.Concurrent.ParallelIO.Global as P
 
+import Data.Function (on)
+import Data.List
 import qualified Data.Map as M
 import qualified Data.Text as T
 import qualified Data.Text.IO as T
@@ -19,6 +22,9 @@ import System.System
 import System.IO.Unsafe
 
 type Genome = M.Map (String, FilePath) Bool
+
+pprGenome :: Genome -> String
+pprGenome g = concat $ map (show . fromEnum) $ map snd $ M.toList g
 
 -- data Statistics :±
 
@@ -57,6 +63,14 @@ crossover g1 g2 = traverse selecter $ M.unionWith justSame (setJust g1) (setJust
 
     setJust = M.map Just
 
+chooseN :: Int -> [a] -> IO [a]
+chooseN n xs = do
+  rxs <- forM xs $ \x -> do
+    r <- randomRIO (0,1 :: Double)
+    return (r,x)
+  return $ take n $ map snd $ sortBy (compare `on` fst) rxs
+
+
 defaultGenome :: Genome
 defaultGenome = unsafePerformIO $ do
   filesW <- readSystem0 "ls wavelet-features/*.txt"
@@ -74,7 +88,7 @@ defaultGenome = unsafePerformIO $ do
 
 defaultStrategy :: PredictionStrategyGS
 defaultStrategy = unsafePerformIO $ do
-  Right s <- fmap decode $ T.readFile "resource/best-strategies-3/CClass.yml"
+  Right s <- fmap decode $ T.readFile "resource/best-strategies-local/CClass.yml"
   return s
 
 evaluate :: Genome -> IO Double
@@ -86,15 +100,38 @@ evaluate g = do
       val = prMap M.! MClassFlare M.! TrueSkillStatistic ^. scoreValue
   return val
 
+proceed :: [Genome] -> IO [Genome]
+proceed gs = do
+  mutatedGs   <- mapM mutate gs
+  crossoverGs <- replicateM 20 $ do
+    [g1,g2] <- chooseN 2 gs
+    crossover g1 g2
+  let newPopulation = nub $ gs ++ mutatedGs ++ crossoverGs
+  mapM_ putStrLn $ map pprGenome newPopulation
+
+  egs <- forM newPopulation $ \g -> do
+    e <- evaluate g
+    return (e,g)
+  let top10 = take 10 $ reverse $ sort egs
+  print $ map fst top10
+  appendFile "genetic-algorithm.txt" $ show $ map fst top10
+  return $ map snd top10
+
 main :: IO ()
 main = withWorkDir $ do
-  Right cclass <- fmap decode $ T.readFile "resource/best-strategies-3/CClass.yml"
-  Right mclass <- fmap decode $ T.readFile "resource/best-strategies-3/MClass.yml"
-  Right xclass <- fmap decode $ T.readFile "resource/best-strategies-3/XClass.yml"
+  Right cclass <- fmap decode $ T.readFile "resource/best-strategies-local/CClass.yml"
+  Right mclass <- fmap decode $ T.readFile "resource/best-strategies-local/MClass.yml"
+  Right xclass <- fmap decode $ T.readFile "resource/best-strategies-local/XClass.yml"
 
   let population :: [Genome]
       population = map (^. genome) [cclass, mclass, xclass :: PredictionStrategyGS]
----  mapM_ T.putStrLn $ map encode
-  vs <- mapM_ evaluate population
+  vs <- P.parallel $ map evaluate population
   print vs
+
+  loop population
   return ()
+
+loop :: [Genome] -> IO ()
+loop gs = do
+  next <- proceed gs
+  loop next

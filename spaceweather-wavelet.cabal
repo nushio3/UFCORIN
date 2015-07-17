@@ -62,7 +62,7 @@ library
               , transformers
               , unix
               , yaml
-
+  ghc-options:       -Wall -O2  -threaded
 
 Test-Suite spec
   Type:                 exitcode-stdio-1.0
@@ -92,7 +92,7 @@ executable prediction-main
               , text
               , random
               , spaceweather-wavelet
-  ghc-options:       -Wall -O2
+  ghc-options:       -Wall -O2  -threaded
 
 executable genetic-algorithm
   main-is: genetic-algorithm.hs
@@ -103,9 +103,12 @@ executable genetic-algorithm
               , containers >= 0.5
               , text
               , process
+              , parallel-io
               , random
               , safe
               , spaceweather-wavelet
+  ghc-options:       -Wall -O2  -threaded
+
 
 -- executable generate-survey
 --   main-is: generate-survey.hs
