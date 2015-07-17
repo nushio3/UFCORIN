@@ -1,0 +1,50 @@
+predictionResultFile: ''
+featureSchemaPackUsed:
+  FilenamePairs:
+  - - f25Log
+    - file://./forecast-features/backcast-goes-24.txt
+  - - f25Log
+    - file://./forecast-features/backcast-goes-48.txt
+  - - f25Log
+    - file://./forecast-features/backcast-goes-72.txt
+  - - f35Log
+    - file://./wavelet-features/haarC-2-S-0016-0001.txt
+  - - f35Log
+    - file://./wavelet-features/haarC-2-S-0032-0001.txt
+  SchemaDefinitions:
+    f35Log:
+      colT: 3
+      colX: 5
+      isLog: true
+      scaling: 1
+    f25Log:
+      colT: 2
+      colX: 5
+      isLog: true
+      scaling: 1
+crossValidationStrategy:
+  tag: CVWeekly
+  contents: []
+spaceWeatherLibVersion: version 1.1
+predictionRegressionFile: /dev/null
+predictionTargetFile: file://./forecast-features/forecast-goes-24.txt
+predictionSessionFile: ''
+regressorUsed:
+- tag: LibSVMRegressor
+  contents:
+    Gamma: 1.0e-2
+    AutomationScaling: 2
+    Cost: 1
+    Nu: null
+    AutomationNoise: false
+    Epsilon: null
+    AutomationTolFun: 1.0e-2
+    AutomationPopSize: 10
+    Type: 3
+    KernelType: 2
+    AutomationLevel: 0
+predictionTargetSchema:
+  colT: 2
+  colX: 5
+  isLog: true
+  scaling: 1

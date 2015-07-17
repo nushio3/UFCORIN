@@ -100,7 +100,7 @@ executable genetic-algorithm
   build-depends:
                 base < 6
               , lens
-              , containers
+              , containers >= 0.5
               , text
               , process
               , random
