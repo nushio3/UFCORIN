@@ -8,14 +8,14 @@ def system(cmd):
 
 # seems to downlowd the SDO/HMI fits file for given years.
 
-wl = 'mag720'
+wl = '/mnt'
 yearstart = 2011
 monthstart = 1
 yearend = 2014
-monthend = 8
+monthend = 4
 bucket = "sdo"
 
-path= '/home/nushio/hub/UFCORIN/script/jsoc/'
+path= '/home/ubuntu/hub/UFCORIN/script/jsoc/'
 
 if not os.path.exists(wl): os.mkdir(wl)
 os.chdir(wl)
@@ -23,8 +23,6 @@ for i in reversed(range(yearstart,yearend+1)):
     year='%04d' % i
     if not os.path.exists(year): os.mkdir(year)
     os.chdir(year)
-    #s3dir = "/user/shibayama/sdo/aia/"+wl+"/"+year
-    #system(s3)
 
     for j in reversed(range(1,13)):
         if (i==yearstart and j<monthstart):
@@ -39,7 +37,7 @@ for i in reversed(range(yearstart,yearend+1)):
             if not os.path.exists(month): os.mkdir(month)
             os.chdir(month)
             query = "hmi.M_720s[{y}.{m}.{d}-{y}.{m}.{d2}@720s]".format(y=i,m=j,d=k,d2=k2)
-            command = path+"exportfile.csh "+query+ " " + sys.argv[1]
+            command = path+"exportfile.csh '"+query+ "' " + sys.argv[1]
             print command
             system(command)
             system('mv jsoc_export.* exportlog-{}-{}-{}.txt'.format(i,j,k))
@@ -65,7 +63,7 @@ for i in reversed(range(yearstart,yearend+1)):
                 name=dd+'/'+hh+minu+'.fits'
                 shutil.move(fn,name)
             os.chdir('..')
-            s3 = "aws s3 sync "+month+" s3://sdo/hmi/"+wl+"/"+year+"/"+month+"/"
+            s3 = "aws s3 sync "+month+" s3://sdo/hmi/mag720/"+year+"/"+month+"/"
             print s3
             system(s3)
             # exit(0) # test disk capacity here
