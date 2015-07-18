@@ -146,7 +146,7 @@ def fetch_data():
 
     system('rm work/*')
     while not os.path.exists('work/0000.npy'):
-        y=random.randrange(2011,2016)
+        y=random.randrange(2015,2016)
         m=random.randrange(1,13)
         d=random.randrange(1,32)
         cmd='aws s3 sync --quiet s3://sdo/hmi/mag720x1024/{:04}/{:02}/{:02}/ work/'.format(y,m,d)
@@ -186,7 +186,7 @@ while True:
         batch= []
     
     
-        for i in range(10):
+        for i in range(4):
             start = random.randrange(len(sun_data))
             batch.append([sun_data[start]])
     
