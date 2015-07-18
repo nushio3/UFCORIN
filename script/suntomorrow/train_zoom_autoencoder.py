@@ -144,24 +144,22 @@ def load_fits(fn):
 def fetch_data():
     global sun_data
 
-    system('rm -fr daily')
-    while not os.path.exists('daily'):
+    system('rm work/*')
+    while not os.path.exists('work/0000.npy'):
         y=random.randrange(2011,2016)
         m=random.randrange(1,13)
         d=random.randrange(1,32)
-        cmd='aws s3 sync s3://sdo/hmi/mag720/{:04}/{:02}/{:02}/ daily/'.format(y,m,d)
-        print cmd
+        cmd='aws s3 sync --quiet s3://sdo/hmi/mag720x1024/{:04}/{:02}/{:02}/ work/'.format(y,m,d)
         system(cmd)
 
 
-    p=subprocess.Popen('find daily/',shell=True, stdout=subprocess.PIPE)
+    p=subprocess.Popen('find work/',shell=True, stdout=subprocess.PIPE)
     stdout, _ = p.communicate()
     sun_data = []
 
     for fn in stdout.split('\n'):
-        if not re.search('\.fits$',fn) : continue
-        for img in load_fits(fn):
-            sun_data.append(img)
+        if not re.search('\.npy$',fn) : continue
+        sun_data.append(np.load(fn))
 
 # if len(sun_data)==0:
 #     # where no data is available, add a dummy data for debugging
