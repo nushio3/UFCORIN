@@ -182,7 +182,8 @@ while True:
     reference(np.array(sun_data[0]), np.array(sun_data[1]))
 
     epoch+=1
-    for level in range(3):
+    for t in range(20): # use the same dataset 
+      for level in range(3):
         batch= []
     
     
