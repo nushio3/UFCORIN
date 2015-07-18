@@ -7,9 +7,11 @@
 # http://qiita.com/kenmatsu4/items/99d4a54d5a57405ecaf8
 
 import argparse
-
+from astropy.io import fits
 import numpy as np
+import scipy.ndimage.interpolation as intp
 import operator
+import os
 import re
 import six
 import subprocess
@@ -30,8 +32,11 @@ args = parser.parse_args()
 log_train_fn = 'log-training.txt'
 log_test_fn = 'log-test.txt'
 
-subprocess.call('rm '+ log_train_fn,shell=True)
-subprocess.call('rm '+ log_test_fn,shell=True)
+def system(cmd):
+    subprocess.call(cmd, shell=True)
+
+system('rm '+ log_train_fn)
+system('rm '+ log_test_fn)
 
 def zoom_x2(batch):
     shape = batch.data.shape
@@ -52,22 +57,10 @@ def zoom_x2(batch):
 
 gpu_flag=(args.gpu >= 0)
 
-# load the numpy 2D arrays located under the folder.
-p=subprocess.Popen('find scaled-1024/',shell=True, stdout=subprocess.PIPE)
-stdout, _ = p.communicate()
-
+global sun_data
 sun_data = []
 
-for fn in stdout.split('\n'):
-    if not re.search('\.npy$',fn) : continue
-    sun_data.append(np.load(fn))
 
-if len(sun_data)==0:
-    # where no data is available, add a dummy data for debugging
-    for i in range(10):
-        x=32*[0.333*i*i]
-        xy=32*[x]
-        sun_data.append(xy)
 
 
 model=chainer.FunctionSet(
@@ -118,18 +111,78 @@ def forward(x_data,train=True,level=1):
 def reference(x_data,y_data):
     x = Variable(x_data)
     y = Variable(y_data)
-    print F.mean_squared_error(y,y).data
-    print F.mean_squared_error(x,y).data
+    print "rmsqerr_adj: {}".format(F.mean_squared_error(x,y).data)
 
 
-reference(np.array(sun_data[0]), np.array(sun_data[1]))
+def load_fits(fn):
+    n=1024
+    n_original=4096
+    n2=n_original/n
+    print 'now loading {}'.format(fn)
+
+    try:
+        hdulist=fits.open(fn)
+    except:
+        return []
+    img=hdulist[1].data
+    str = ''
+
+    img = np.where( np.isnan(img), 0.0, img)
+    
+    img2=intp.zoom(img,zoom=1.0/n2)
+
+    for y in range(n):
+        for x in range(n):
+            x0=n/2.0-0.5
+            y0=n/2.0-0.5
+            r2 = (x-x0)**2 + (y-y0)**2
+            r0 = 1800.0*n/n_original
+            if r2 >= r0**2 : img2[y][x]=0.0
+
+    return [np.float32(img2)]
+
+def fetch_data():
+    global sun_data
+
+    system('rm -fr daily')
+    while not os.path.exists('daily'):
+        y=random.randrange(2011,2016)
+        m=random.randrange(1,13)
+        d=random.randrange(1,32)
+        cmd='aws s3 sync s3://sdo/hmi/mag720/{:04}/{:02}/{:02}/ daily/'.format(y,m,d)
+        print cmd
+        system(cmd)
+
+
+    p=subprocess.Popen('find daily/',shell=True, stdout=subprocess.PIPE)
+    stdout, _ = p.communicate()
+    sun_data = []
+
+    for fn in stdout.split('\n'):
+        if not re.search('\.fits$',fn) : continue
+        for img in load_fits(fn):
+            sun_data.append(img)
+
+# if len(sun_data)==0:
+#     # where no data is available, add a dummy data for debugging
+#     for i in range(10):
+#         x=32*[0.333*i*i]
+#         xy=32*[x]
+#         sun_data.append(xy)
+
+
 
 optimizer = optimizers.Adam()
 optimizer.setup(model.collect_parameters())
 
 
+
+
 epoch=0
 while True:
+    fetch_data()
+    reference(np.array(sun_data[0]), np.array(sun_data[1]))
+
     epoch+=1
     for level in range(3):
         batch= []
