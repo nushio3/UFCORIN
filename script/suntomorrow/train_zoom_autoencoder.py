@@ -159,7 +159,10 @@ def fetch_data():
 
     for fn in stdout.split('\n'):
         if not re.search('\.npy$',fn) : continue
-        sun_data.append(np.load(fn))
+        try:
+            sun_data.append(np.load(fn))
+        except:
+            continue
 
 # if len(sun_data)==0:
 #     # where no data is available, add a dummy data for debugging
