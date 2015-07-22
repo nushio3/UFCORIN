@@ -145,7 +145,7 @@ def fetch_data():
     global sun_data
 
     system('rm work/*')
-    while not os.path.exists('work/0000.npy'):
+    while not os.path.exists('work/0000.npz'):
         y=random.randrange(2015,2016)
         m=random.randrange(1,13)
         d=random.randrange(1,32)
@@ -158,9 +158,9 @@ def fetch_data():
     sun_data = []
 
     for fn in stdout.split('\n'):
-        if not re.search('\.npy$',fn) : continue
+        if not re.search('\.npz$',fn) : continue
         try:
-            sun_data.append(np.load(fn))
+            sun_data.append(np.load(fn)['img'])
         except:
             continue
 
