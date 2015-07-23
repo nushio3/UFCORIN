@@ -24,6 +24,32 @@ from chainer import cuda, Variable, FunctionSet, optimizers
 import chainer.functions as F
 from chainer import optimizers
 
+import matplotlib as mpl
+mpl.use('Agg')
+import pylab
+import matplotlib.pyplot as plt
+from mpl_toolkits.axes_grid1 import AxesGrid
+
+
+def plot_img(img4,fn):
+    print np.shape(img4)
+
+    img=img4[0][0]
+
+    fig, ax = plt.subplots()
+	
+	
+    circle1=plt.Circle((512,512),450,edgecolor='black',fill=False)
+	
+    cmap = plt.get_cmap('bwr')
+    cax = ax.imshow(img,cmap=cmap,extent=(0,1024,0,1024),vmin=-100,vmax=100)
+    cbar=fig.colorbar(cax)
+    fig.gca().add_artist(circle1)
+    ax.set_title('Solar Image')
+    fig.savefig('/home/ubuntu/public_html/{}.png'.format(fn))
+    plt.clf()
+
+
 parser = argparse.ArgumentParser(description='Chainer example: MNIST')
 parser.add_argument('--gpu', '-g', default=-1, type=int,
                     help='GPU ID (negative value indicates CPU)')
@@ -62,15 +88,16 @@ sun_data = []
 
 
 
+modelDict = dict()
+modelDict['convA1'] = F.Convolution2D( 1, 2,3,stride=1,pad=1)
+modelDict['convA2'] = F.Convolution2D( 2, 4,3,stride=1,pad=1)
+modelDict['convA3'] = F.Convolution2D( 4, 8,3,stride=1,pad=1)
+modelDict['convV3'] = F.Convolution2D( 8, 4,3,stride=1,pad=1)
+modelDict['convV2'] = F.Convolution2D( 4, 2,3,stride=1,pad=1)
+modelDict['convV1'] = F.Convolution2D( 2, 1,3,stride=1,pad=1)
 
-model=chainer.FunctionSet(
-    convA1 = F.Convolution2D( 1, 2,3,stride=1,pad=1),
-    convA2 = F.Convolution2D( 2, 4,3,stride=1,pad=1),
-    convA3 = F.Convolution2D( 4, 8,3,stride=1,pad=1),
-    convV3 = F.Convolution2D( 8, 4,3,stride=1,pad=1),
-    convV2 = F.Convolution2D( 4, 2,3,stride=1,pad=1),
-    convV1 = F.Convolution2D( 2, 1,3,stride=1,pad=1),
-)
+
+model=chainer.FunctionSet(**modelDict)
 
 if gpu_flag:
     cuda.init(0)
@@ -84,7 +111,7 @@ def forward(x_data,train=True,level=1):
     y = Variable(x_data, volatile = not train)
 
     noisy_x = F.dropout(x, ratio = 0.1, train=deploy)
-    hc1 = model.convA1(noisy_x)
+    hc1 = getattr(model,'convA1')(noisy_x)
     hm1 = F.average_pooling_2d(hc1,2)
     if level >= 2:
         hc2 = model.convA2(hm1)
@@ -106,6 +133,10 @@ def forward(x_data,train=True,level=1):
 
 
     y_pred = hv1
+
+    if(not train):
+        plot_img(y_pred.data, level)
+
     return F.mean_squared_error(y,y_pred)
 
 def reference(x_data,y_data):

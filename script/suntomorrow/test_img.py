@@ -13,7 +13,7 @@ circle1=plt.Circle((512,512),450,edgecolor='black',fill=False)
 
 img = np.load('copy-work/0000.npz')['img']
 cmap = plt.get_cmap('bwr')
-cax = ax.imshow(img,cmap=cmap,extent=(0,1024,0,1024))
+cax = ax.imshow(img,cmap=cmap,extent=(0,1024,0,1024),vmin=-100,vmax=100)
 cbar=fig.colorbar(cax)
 fig.gca().add_artist(circle1)
 ax.set_title('Solar Image')
