@@ -32,12 +32,13 @@ from mpl_toolkits.axes_grid1 import AxesGrid
 
 
 def plot_img(img4,fn,title_str):
+    global  global_normalization
     print np.shape(img4)
 
     if gpu_flag :
         img4 = cuda.to_cpu(img4)
 
-    img=img4[0][0]
+    img=(1.0/ global_normalization)*img4[0][0]
 
     fig, ax = plt.subplots()
 	
@@ -85,11 +86,12 @@ def zoom_x2(batch):
 global gpu_flag
 gpu_flag=(args.gpu >= 0)
 
-global sun_data
+global sun_data,  global_normalization
 sun_data = []
 
 global dlDepth
 dlDepth = 4
+global_normalization = 1e-3
 
 modelDict = dict()
 for d in range(dlDepth):
@@ -116,24 +118,25 @@ def layer_norm(x_data,level=1):
 
 def forward(x_data,train=True,level=1):
     global dlDepth
-    deploy = True
+    deploy = train
     x = Variable(x_data, volatile = not train)
     y = Variable(x_data, volatile = not train)
 
     hm = F.dropout(x, ratio = 0.1, train=deploy)
     for d in range(level):
-        hc = (getattr(model,'convA{}'.format(d))(hm))
+        hc = F.sigmoid(getattr(model,'convA{}'.format(d))(hm))
         if d < level - 1:
-            hm = F.average_pooling_2d(hc,2)
+            hc = F.dropout(hc, ratio = 0.1, train=deploy)
+            hm = F.max_pooling_2d(hc,2)
         
     for d in reversed(range(level)):    
         if d < level - 1:        
             hc = zoom_x2(hm)
-        hm =(getattr(model,'convV{}'.format(d))(hc))
+        hm = F.sigmoid(getattr(model,'convV{}'.format(d))(hc))
 
     y_pred = hm
 
-    ret = F.mean_squared_error(y,y_pred)
+    ret = (global_normalization**(-2))*F.mean_squared_error(F.sigmoid(y),y_pred)
     if(not train):
         plot_img(y_pred.data, level, 'Lv {} autoencoder, msqe={}'.format(level, ret.data))
     if(not train and level==1):
@@ -142,9 +145,10 @@ def forward(x_data,train=True,level=1):
 
 
 def reference(x_data,y_data):
+    global global_normalization
     x = Variable(x_data)
     y = Variable(y_data)
-    print "rmsqerr_adj: {}".format(F.mean_squared_error(x,y).data)
+    print "rmsqerr_adj: {}".format((global_normalization**(-2))*F.mean_squared_error(x,y).data)
 
 
 def load_fits(fn):
@@ -175,7 +179,7 @@ def load_fits(fn):
     return [np.float32(img2)]
 
 def fetch_data():
-    global sun_data
+    global sun_data, global_normalization
 
     system('rm work/*')
     while not os.path.exists('work/0000.npz'):
@@ -193,7 +197,7 @@ def fetch_data():
     for fn in stdout.split('\n'):
         if not re.search('\.npz$',fn) : continue
         try:
-            sun_data.append(np.load(fn)['img'])
+            sun_data.append( global_normalization*np.load(fn)['img'])
         except:
             continue
 
@@ -222,7 +226,7 @@ while True:
         batch= []
     
     
-        for i in range(4):
+        for i in range(3):
             start = random.randrange(len(sun_data))
             batch.append([sun_data[start]])
     
