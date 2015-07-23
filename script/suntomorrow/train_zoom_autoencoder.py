@@ -31,8 +31,11 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.axes_grid1 import AxesGrid
 
 
-def plot_img(img4,fn):
+def plot_img(img4,fn,title_str):
     print np.shape(img4)
+
+    if gpu_flag :
+        img4 = cuda.to_cpu(img4)
 
     img=img4[0][0]
 
@@ -42,10 +45,10 @@ def plot_img(img4,fn):
     circle1=plt.Circle((512,512),450,edgecolor='black',fill=False)
 	
     cmap = plt.get_cmap('bwr')
-    cax = ax.imshow(img,cmap=cmap,extent=(0,1024,0,1024),vmin=-1.0,vmax=1.0)
+    cax = ax.imshow(img,cmap=cmap,extent=(0,1024,0,1024),vmin=-100.0,vmax=100.0)
     cbar=fig.colorbar(cax)
     fig.gca().add_artist(circle1)
-    ax.set_title('Solar Image')
+    ax.set_title(title_str)
     fig.savefig('/home/ubuntu/public_html/{}.png'.format(fn))
     plt.close('all')
 
@@ -79,7 +82,7 @@ def zoom_x2(batch):
     return F.reshape(b4, channel_shape + (2*height ,) + (2*width ,))
 
 
-
+global gpu_flag
 gpu_flag=(args.gpu >= 0)
 
 global sun_data
@@ -100,7 +103,16 @@ if gpu_flag:
     cuda.init(0)
     model.to_gpu()
 
+def layer_norm(x_data,level=1):
+    global dlDepth
+    x = Variable(x_data)
 
+    hm = x
+    for d in range(level):
+        hc = (getattr(model,'convA{}'.format(d))(hm))
+        if d < level - 1:
+            hm = F.average_pooling_2d(hc,2)
+    return F.mean_squared_error(hc,0*hc)
 
 def forward(x_data,train=True,level=1):
     global dlDepth
@@ -121,10 +133,13 @@ def forward(x_data,train=True,level=1):
 
     y_pred = hm
 
+    ret = F.mean_squared_error(y,y_pred)
     if(not train):
-        plot_img(y_pred.data, level)
+        plot_img(y_pred.data, level, 'Lv {} autoencoder, msqe={}'.format(level, ret.data))
+    if(not train and level==1):
+        plot_img(y.data, 0, 'original magnetic field image')
+    return ret
 
-    return F.mean_squared_error(y,y_pred)
 
 def reference(x_data,y_data):
     x = Variable(x_data)
@@ -178,7 +193,7 @@ def fetch_data():
     for fn in stdout.split('\n'):
         if not re.search('\.npz$',fn) : continue
         try:
-            sun_data.append(1e-2 * np.load(fn)['img'])
+            sun_data.append(np.load(fn)['img'])
         except:
             continue
 
@@ -193,6 +208,8 @@ def fetch_data():
 
 optimizer = optimizers.Adam()
 optimizer.setup(model.collect_parameters())
+optimizer_norm = optimizers.Adam()
+optimizer_norm.setup(model.collect_parameters())
 
 
 
@@ -214,13 +231,26 @@ while True:
             batch.append([sun_data[start]])
     
         batch=np.array(batch)
+
+        batch_norm = F.mean_squared_error(Variable(batch),0*Variable(batch))
+        batch_norm = float(str(batch_norm.data))
+        
         if gpu_flag :
             batch = cuda.to_gpu(batch)
     
+        optimizer_norm.zero_grads()
+        this_layer_norm = layer_norm(batch, level=level)
+        loss = (this_layer_norm - batch_norm)**2
+        loss.backward()
+        optimizer_norm.update()
+        if epoch % 10 == 1:
+            print 'normalization --- {} : {}'.format(this_layer_norm.data, batch_norm)
+
         optimizer.zero_grads()
         loss = forward(batch, train=True,level=level)
         loss.backward()
         optimizer.update()
+
 
         print '  '*(level-1),epoch,loss.data
     
