@@ -89,7 +89,7 @@ global sun_data
 sun_data = []
 
 global dlDepth
-dlDepth = 8
+dlDepth = 4
 
 modelDict = dict()
 for d in range(dlDepth):
@@ -208,10 +208,6 @@ def fetch_data():
 
 optimizer = optimizers.Adam()
 optimizer.setup(model.collect_parameters())
-optimizer_norm = optimizers.Adam()
-optimizer_norm.setup(model.collect_parameters())
-
-
 
 
 epoch=0
@@ -234,20 +230,6 @@ while True:
         if gpu_flag :
             batch = cuda.to_gpu(batch)
 
-        batch_norm = F.mean_squared_error(Variable(batch),0*Variable(batch))
-        if gpu_flag :
-            batch_norm = cuda.to_gpu(batch_norm)
-        batch_norm = float(str(batch_norm.data))
-        
-
-    
-        optimizer_norm.zero_grads()
-        this_layer_norm = layer_norm(batch, level=level)
-        loss = (this_layer_norm - batch_norm)**2
-        loss.backward()
-        optimizer_norm.update()
-        if epoch % 10 == 1:
-            print 'normalization --- {} : {}'.format(this_layer_norm.data, batch_norm)
 
         optimizer.zero_grads()
         loss = forward(batch, train=True,level=level)
