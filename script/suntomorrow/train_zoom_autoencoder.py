@@ -231,12 +231,15 @@ while True:
             batch.append([sun_data[start]])
     
         batch=np.array(batch)
-
-        batch_norm = F.mean_squared_error(Variable(batch),0*Variable(batch))
-        batch_norm = float(str(batch_norm.data))
-        
         if gpu_flag :
             batch = cuda.to_gpu(batch)
+
+        batch_norm = F.mean_squared_error(Variable(batch),0*Variable(batch))
+        if gpu_flag :
+            batch_norm = cuda.to_gpu(batch_norm)
+        batch_norm = float(str(batch_norm.data))
+        
+
     
         optimizer_norm.zero_grads()
         this_layer_norm = layer_norm(batch, level=level)
