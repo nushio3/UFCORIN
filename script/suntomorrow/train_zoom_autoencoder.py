@@ -102,7 +102,7 @@ global sun_data,  global_normalization
 sun_data = []
 
 global dlDepth
-dlDepth = 6
+dlDepth = 10
 global_normalization = 1e-3
 
 modelDict = dict()
