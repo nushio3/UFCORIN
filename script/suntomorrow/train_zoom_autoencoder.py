@@ -211,9 +211,10 @@ def fetch_data():
 #         sun_data.append(xy)
 
 
-
-optimizer = optimizers.Adam(alpha=1e-4)
-optimizer.setup(model.collect_parameters())
+optimizer = dict()
+for level in range(1,dlDepth+1):
+    optimizer[level] = optimizers.Adam(alpha=3e-4)
+    optimizer[level].setup(model.collect_parameters())
 
 
 epoch=0
@@ -238,12 +239,14 @@ while True:
       if gpu_flag :
             batch = cuda.to_gpu(batch)
 
-      for level in range(1,dlDepth+1):
+      current_depth = min(dlDepth+1,max(2,epoch/1000))
 
-        optimizer.zero_grads()
+      for level in range(1,current_depth):
+
+        optimizer[level].zero_grads()
         loss = forward(batch, train=True,level=level)
         loss.backward()
-        optimizer.update()
+        optimizer[level].update()
 
 
         print '  '*(level-1),epoch,loss.data
@@ -262,7 +265,9 @@ while True:
     
         if epoch % 10 == 1:
             loss = forward_dumb(batch, train=False,level=level)
+            loss_dumb = loss.data
             loss = forward(batch,train=False,level=level)
-            print "T",'  '*(level-1),epoch,loss.data
+            loss_auto = loss.data
+            print "T",'  '*(level-1),epoch,loss_auto, loss_auto/loss_dumb
             with(open(log_test_fn,'a')) as fp:
-                fp.write('{} {} {}\n'.format(level, epoch,loss.data))
+                fp.write('{} {} {} {}\n'.format(level, epoch,loss_auto, loss_dumb))
