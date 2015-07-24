@@ -116,6 +116,9 @@ def layer_norm(x_data,level=1):
             hm = F.average_pooling_2d(hc,2)
     return F.mean_squared_error(hc,0*hc)
 
+def sigmoid2(x):
+    return F.sigmoid(x)*2-1
+
 def forward(x_data,train=True,level=1):
     global dlDepth
     deploy = train
@@ -124,7 +127,7 @@ def forward(x_data,train=True,level=1):
 
     hm = F.dropout(x, ratio = 0.1, train=deploy)
     for d in range(level):
-        hc = F.sigmoid(getattr(model,'convA{}'.format(d))(hm))
+        hc = sigmoid2(getattr(model,'convA{}'.format(d))(hm))
         if d < level - 1:
             hc = F.dropout(hc, ratio = 0.1, train=deploy)
             hm = F.max_pooling_2d(hc,2)
@@ -132,11 +135,11 @@ def forward(x_data,train=True,level=1):
     for d in reversed(range(level)):    
         if d < level - 1:        
             hc = zoom_x2(hm)
-        hm = F.sigmoid(getattr(model,'convV{}'.format(d))(hc))
+        hm = sigmoid2(getattr(model,'convV{}'.format(d))(hc))
 
     y_pred = hm
 
-    ret = (global_normalization**(-2))*F.mean_squared_error(F.sigmoid(y),y_pred)
+    ret = (global_normalization**(-2))*F.mean_squared_error(sigmoid2(y),y_pred)
     if(not train):
         plot_img(y_pred.data, level, 'Lv {} autoencoder, msqe={}'.format(level, ret.data))
     if(not train and level==1):
@@ -151,32 +154,6 @@ def reference(x_data,y_data):
     print "rmsqerr_adj: {}".format((global_normalization**(-2))*F.mean_squared_error(x,y).data)
 
 
-def load_fits(fn):
-    n=1024
-    n_original=4096
-    n2=n_original/n
-    print 'now loading {}'.format(fn)
-
-    try:
-        hdulist=fits.open(fn)
-    except:
-        return []
-    img=hdulist[1].data
-    str = ''
-
-    img = np.where( np.isnan(img), 0.0, img)
-    
-    img2=intp.zoom(img,zoom=1.0/n2)
-
-    for y in range(n):
-        for x in range(n):
-            x0=n/2.0-0.5
-            y0=n/2.0-0.5
-            r2 = (x-x0)**2 + (y-y0)**2
-            r0 = 1800.0*n/n_original
-            if r2 >= r0**2 : img2[y][x]=0.0
-
-    return [np.float32(img2)]
 
 def fetch_data():
     global sun_data, global_normalization
