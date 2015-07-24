@@ -30,9 +30,32 @@ import pylab
 import matplotlib.pyplot as plt
 from mpl_toolkits.axes_grid1 import AxesGrid
 
+from datetime import datetime
+
+
+
+parser = argparse.ArgumentParser(description='Chainer example: MNIST')
+parser.add_argument('--gpu', '-g', default=-1, type=int,
+                    help='GPU ID (negative value indicates CPU)')
+args = parser.parse_args()
+
+
+def system(cmd):
+    subprocess.call(cmd, shell=True)
+
+
+global work_dir
+work_dir='/home/ubuntu/public_html/' + datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
+
+system('mkdir -p ' + work_dir)
+
+log_train_fn = work_dir + '/log-training.txt'
+log_test_fn = work_dir + '/log-test.txt'
+
+system('cp {} {} '.format(__file__, work_dir))
 
 def plot_img(img4,fn,title_str):
-    global  global_normalization
+    global  global_normalization, work_dir
     print np.shape(img4)
 
     if gpu_flag :
@@ -50,22 +73,8 @@ def plot_img(img4,fn,title_str):
     cbar=fig.colorbar(cax)
     fig.gca().add_artist(circle1)
     ax.set_title(title_str)
-    fig.savefig('/home/ubuntu/public_html/{}.png'.format(fn))
+    fig.savefig('{}/{}.png'.format(work_dir,fn))
     plt.close('all')
-
-parser = argparse.ArgumentParser(description='Chainer example: MNIST')
-parser.add_argument('--gpu', '-g', default=-1, type=int,
-                    help='GPU ID (negative value indicates CPU)')
-args = parser.parse_args()
-
-log_train_fn = 'log-training.txt'
-log_test_fn = 'log-test.txt'
-
-def system(cmd):
-    subprocess.call(cmd, shell=True)
-
-system('rm '+ log_train_fn)
-system('rm '+ log_test_fn)
 
 def zoom_x2(batch):
     shape = batch.data.shape
@@ -90,7 +99,7 @@ global sun_data,  global_normalization
 sun_data = []
 
 global dlDepth
-dlDepth = 4
+dlDepth = 6
 global_normalization = 1e-3
 
 modelDict = dict()
@@ -118,6 +127,22 @@ def layer_norm(x_data,level=1):
 
 def sigmoid2(x):
     return F.sigmoid(x)*2.0-1.0
+
+def forward_dumb(x_data,train=True,level=1):
+    x = Variable(x_data)
+    y = Variable(x_data)
+    for d in range(level):    
+        x = F.average_pooling_2d(x,2)
+    for d in range(level):    
+        x = zoom_x2(x)
+
+    ret = (global_normalization**(-2))*F.mean_squared_error(sigmoid2(y),sigmoid2(x))
+    if(not train):
+        plot_img(x.data, 'd{}'.format(level), 
+                 'Lv {} dumb encoder, msqe={}'.format(level, ret.data))
+    return ret
+
+        
 
 def forward(x_data,train=True,level=1):
     global dlDepth
@@ -160,7 +185,7 @@ def fetch_data():
 
     system('rm work/*')
     while not os.path.exists('work/0000.npz'):
-        y=random.randrange(2015,2016)
+        y=random.randrange(2011,2016)
         m=random.randrange(1,13)
         d=random.randrange(1,32)
         cmd='aws s3 sync --quiet s3://sdo/hmi/mag720x1024/{:04}/{:02}/{:02}/ work/'.format(y,m,d)
@@ -187,30 +212,33 @@ def fetch_data():
 
 
 
-optimizer = optimizers.Adam()
+optimizer = optimizers.Adam(alpha=1e-4)
 optimizer.setup(model.collect_parameters())
 
 
 epoch=0
 while True:
     fetch_data()
-    reference(np.array(sun_data[0]), np.array(sun_data[1]))
+    try:
+        reference(np.array(sun_data[0]), np.array(sun_data[1]))
+    except:
+        continue
 
     for t in range(20): # use the same dataset 
       epoch+=1
 
-      for level in range(1,dlDepth+1):
-        batch= []
+      batch= []
     
     
-        for i in range(3):
-            start = random.randrange(len(sun_data))
-            batch.append([sun_data[start]])
+      for i in range(3):
+          start = random.randrange(len(sun_data))
+          batch.append([sun_data[start]])
     
-        batch=np.array(batch)
-        if gpu_flag :
+      batch=np.array(batch)
+      if gpu_flag :
             batch = cuda.to_gpu(batch)
 
+      for level in range(1,dlDepth+1):
 
         optimizer.zero_grads()
         loss = forward(batch, train=True,level=level)
@@ -233,6 +261,7 @@ while True:
             print('graph generated')
     
         if epoch % 10 == 1:
+            loss = forward_dumb(batch, train=False,level=level)
             loss = forward(batch,train=False,level=level)
             print "T",'  '*(level-1),epoch,loss.data
             with(open(log_test_fn,'a')) as fp:
