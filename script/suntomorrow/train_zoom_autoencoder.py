@@ -63,6 +63,8 @@ def plot_img(img4,fn,title_str):
 
     img=(1.0/ global_normalization)*img4[0][0]
 
+    dpi=200
+    plt.figure(figsize=(8,6),dpi=dpi)
     fig, ax = plt.subplots()
 	
 	
@@ -73,7 +75,8 @@ def plot_img(img4,fn,title_str):
     cbar=fig.colorbar(cax)
     fig.gca().add_artist(circle1)
     ax.set_title(title_str)
-    fig.savefig('{}/{}.png'.format(work_dir,fn))
+    fig.savefig('{}/{}.png'.format(work_dir,fn),dpi=dpi)
+    fig.savefig('{}/{}-thumb.png'.format(work_dir,fn),dpi=dpi/4)
     plt.close('all')
 
 def zoom_x2(batch):
@@ -144,7 +147,7 @@ def forward(x_data,train=True,level=1):
         h = sigmoid2(getattr(model,'convA{}'.format(d))(h))
         if d < level - 1:
             h = F.dropout(h, ratio = 0.1, train=deploy)
-        h = F.max_pooling_2d(h,2)
+        h = F.average_pooling_2d(h,2)
 
     h = sigmoid2(getattr(model,'convB{}'.format(level-1))(h))
         
@@ -238,11 +241,10 @@ while True:
             batch = cuda.to_gpu(batch)
 
       current_depth = min(dlDepth+1,max(2,2+epoch/2000))
-      current_depth = dlDepth+1
 
       for level in range(1,current_depth):
         if level < current_depth-1:
-            optimizer[level].alpha=1e-4
+            optimizer[level].alpha=1e-4/current_depth
         optimizer[level].zero_grads()
         loss = forward(batch, train=True,level=level)
         loss.backward()
