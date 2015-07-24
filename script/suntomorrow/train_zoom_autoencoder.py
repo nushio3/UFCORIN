@@ -149,9 +149,8 @@ def forward(x_data,train=True,level=1):
             h = F.dropout(h, ratio = 0.1, train=deploy)
         h = F.average_pooling_2d(h,2)
 
-    h = sigmoid2(getattr(model,'convB{}'.format(level-1))(h))
-        
     for d in reversed(range(level)):    
+        h = sigmoid2(getattr(model,'convB{}'.format(d))(h))    
         h = zoom_x2(h)
         h = sigmoid2(getattr(model,'convV{}'.format(d))(h))
 
