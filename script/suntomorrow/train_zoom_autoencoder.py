@@ -117,7 +117,7 @@ def layer_norm(x_data,level=1):
     return F.mean_squared_error(hc,0*hc)
 
 def sigmoid2(x):
-    return F.sigmoid(x)*2-1
+    return F.sigmoid(x)*2.0-1.0
 
 def forward(x_data,train=True,level=1):
     global dlDepth
