@@ -213,7 +213,7 @@ def fetch_data():
 
 optimizer = dict()
 for level in range(1,dlDepth+1):
-    optimizer[level] = optimizers.Adam(alpha=3e-4)
+    optimizer[level] = optimizers.Adam() #(alpha=3e-4)
     optimizer[level].setup(model.collect_parameters())
 
 
@@ -239,10 +239,11 @@ while True:
       if gpu_flag :
             batch = cuda.to_gpu(batch)
 
-      current_depth = min(dlDepth+1,max(2,epoch/1000))
+      current_depth = min(dlDepth+1,max(2,2+epoch/1000))
 
       for level in range(1,current_depth):
-
+        if level < current_depth-1:
+            optimizer[level].alpha=1e-4
         optimizer[level].zero_grads()
         loss = forward(batch, train=True,level=level)
         loss.backward()
