@@ -105,7 +105,7 @@ global_normalization = 1e-3
 modelDict = dict()
 for d in range(dlDepth):
     modelDict['convA{}'.format(d)] = F.Convolution2D( 2**d, 2**(d+1),3,stride=1,pad=1)
-for d in range(dlDepth):
+    modelDict['convB{}'.format(d)] = F.Convolution2D( 2**(d+1), 2**(d+1),3,stride=1,pad=1)
     modelDict['convV{}'.format(d)] = F.Convolution2D( 2**(d+1), 2**d,3,stride=1,pad=1)
 
 model=chainer.FunctionSet(**modelDict)
@@ -113,17 +113,6 @@ model=chainer.FunctionSet(**modelDict)
 if gpu_flag:
     cuda.init(0)
     model.to_gpu()
-
-def layer_norm(x_data,level=1):
-    global dlDepth
-    x = Variable(x_data)
-
-    hm = x
-    for d in range(level):
-        hc = (getattr(model,'convA{}'.format(d))(hm))
-        if d < level - 1:
-            hm = F.average_pooling_2d(hc,2)
-    return F.mean_squared_error(hc,0*hc)
 
 def sigmoid2(x):
     return F.sigmoid(x)*2.0-1.0
@@ -150,19 +139,20 @@ def forward(x_data,train=True,level=1):
     x = Variable(x_data, volatile = not train)
     y = Variable(x_data, volatile = not train)
 
-    hm = F.dropout(x, ratio = 0.1, train=deploy)
+    h = F.dropout(x, ratio = 0.1, train=deploy)
     for d in range(level):
-        hc = sigmoid2(getattr(model,'convA{}'.format(d))(hm))
+        h = sigmoid2(getattr(model,'convA{}'.format(d))(h))
         if d < level - 1:
-            hc = F.dropout(hc, ratio = 0.1, train=deploy)
-            hm = F.max_pooling_2d(hc,2)
+            h = F.dropout(h, ratio = 0.1, train=deploy)
+        h = F.max_pooling_2d(h,2)
+
+    h = sigmoid2(getattr(model,'convB{}'.format(level-1))(h))
         
     for d in reversed(range(level)):    
-        if d < level - 1:        
-            hc = zoom_x2(hm)
-        hm = sigmoid2(getattr(model,'convV{}'.format(d))(hc))
+        h = zoom_x2(h)
+        h = sigmoid2(getattr(model,'convV{}'.format(d))(h))
 
-    y_pred = hm
+    y_pred = h
 
     ret = (global_normalization**(-2))*F.mean_squared_error(sigmoid2(y),y_pred)
     if(not train):
@@ -214,7 +204,15 @@ def fetch_data():
 optimizer = dict()
 for level in range(1,dlDepth+1):
     optimizer[level] = optimizers.Adam() #(alpha=3e-4)
-    optimizer[level].setup(model.collect_parameters())
+    d=level-1
+    model_of_level=dict()
+    k='convA{}'.format(d)
+    model_of_level[k]=modelDict[k]
+    k='convB{}'.format(d)
+    model_of_level[k]=modelDict[k]
+    k='convV{}'.format(d)
+    model_of_level[k]=modelDict[k]
+    optimizer[level].setup(chainer.FunctionSet(**model_of_level).collect_parameters())
 
 
 epoch=0
@@ -239,7 +237,8 @@ while True:
       if gpu_flag :
             batch = cuda.to_gpu(batch)
 
-      current_depth = min(dlDepth+1,max(2,2+epoch/1000))
+      current_depth = min(dlDepth+1,max(2,2+epoch/2000))
+      current_depth = dlDepth+1
 
       for level in range(1,current_depth):
         if level < current_depth-1:
