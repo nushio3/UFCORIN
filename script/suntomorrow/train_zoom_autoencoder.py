@@ -10,6 +10,7 @@ import argparse
 from astropy.io import fits
 import numpy as np
 import scipy.ndimage.interpolation as intp
+import math as M
 import operator
 import os
 import re
@@ -33,11 +34,20 @@ from mpl_toolkits.axes_grid1 import AxesGrid
 from datetime import datetime
 
 
+global dlDepth
+global  global_normalization, work_dir
+dlDepth = 10
+global_normalization = 1e-3
+dl_batch_size = 3
+
 
 parser = argparse.ArgumentParser(description='Chainer example: MNIST')
 parser.add_argument('--gpu', '-g', default=-1, type=int,
                     help='GPU ID (negative value indicates CPU)')
 args = parser.parse_args()
+
+global gpu_flag
+gpu_flag=(args.gpu >= 0)
 
 
 def system(cmd):
@@ -46,7 +56,6 @@ def system(cmd):
 
 global work_dir
 work_dir='/home/ubuntu/public_html/' + datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
-
 system('mkdir -p ' + work_dir)
 
 log_train_fn = work_dir + '/log-training.txt'
@@ -79,6 +88,38 @@ def plot_img(img4,fn,title_str):
     fig.savefig('{}/{}-thumb.png'.format(work_dir,fn),dpi=dpi/4)
     plt.close('all')
 
+
+batch_location_supply = dlDepth * [None]
+solar_disk_mask= dlDepth * [None]
+for d in range(dlDepth):
+    n=1024/(2**d)
+    location_mask_x = np.float32(np.array(n*[n*[0]]))
+    location_mask_y = np.float32(np.array(n*[n*[0]]))
+    mask =  np.float32(np.array(n*[n*[0]]))
+    ox = n/2-0.5
+    oy = n/2-0.5
+    r0 = n*450.0/1024.0
+
+    for iy in range(n):
+        for ix in range(n):
+            x = (ix - ox) / r0
+            y = (iy - oy) / r0
+            r = M.sqrt(x**2 + y**2)
+            if r < 1:
+                location_mask_x[iy][ix]=M.asin(x/(M.cos(M.asin(y))))
+                location_mask_y[iy][ix]=M.asin(y)
+                mask[iy][ix]=1
+            else:
+                location_mask_x[iy][ix]=-4
+                location_mask_y[iy][ix]=0
+                mask[iy][ix]=0
+    batch_location_supply[d] = np.array(dl_batch_size * [[location_mask_x, location_mask_y]])
+    batch_location_supply[d] *= global_normalization * 10.0
+    solar_disk_mask[d] = np.array(dl_batch_size * [[mask]]) 
+    if gpu_flag:
+        batch_location_supply[d]=cuda.to_gpu(batch_location_supply[d])
+        solar_disk_mask[d]=cuda.to_gpu(solar_disk_mask[d])
+
 def zoom_x2(batch):
     shape = batch.data.shape
     channel_shape = shape[0:-2]
@@ -95,21 +136,16 @@ def zoom_x2(batch):
     return F.reshape(b4, channel_shape + (2*height ,) + (2*width ,))
 
 
-global gpu_flag
-gpu_flag=(args.gpu >= 0)
 
-global sun_data,  global_normalization
+global sun_data
 sun_data = []
 
-global dlDepth
-dlDepth = 10
-global_normalization = 1e-3
 
 modelDict = dict()
 for d in range(dlDepth):
     modelDict['convA{}'.format(d)] = F.Convolution2D( 2**d, 2**(d+1),3,stride=1,pad=1)
     modelDict['convB{}'.format(d)] = F.Convolution2D( 2**(d+1), 2**(d+1),3,stride=1,pad=1)
-    modelDict['convV{}'.format(d)] = F.Convolution2D( 2**(d+1), 2**d,3,stride=1,pad=1)
+    modelDict['convV{}'.format(d)] = F.Convolution2D( 2**(d+1)+2, 2**d,3,stride=1,pad=1)
 
 model=chainer.FunctionSet(**modelDict)
 
@@ -140,7 +176,7 @@ def forward(x_data,train=True,level=1):
     global dlDepth
     deploy = train
     x = Variable(x_data, volatile = not train)
-    y = Variable(x_data, volatile = not train)
+    y = Variable(x_data, volatile = not train) * Variable(solar_disk_mask[0], volatile= not train)
 
     h = F.dropout(x, ratio = 0.1, train=deploy)
     for d in range(level):
@@ -152,9 +188,11 @@ def forward(x_data,train=True,level=1):
     for d in reversed(range(level)):    
         h = sigmoid2(getattr(model,'convB{}'.format(d))(h))    
         h = zoom_x2(h)
+        sup = Variable(batch_location_supply[d], volatile = not train)
+        h = F.concat([h,sup],1)
         h = sigmoid2(getattr(model,'convV{}'.format(d))(h))
 
-    y_pred = h
+    y_pred = h * solar_disk_mask[0]
 
     ret = (global_normalization**(-2))*F.mean_squared_error(sigmoid2(y),y_pred)
     if(not train):
@@ -231,7 +269,7 @@ while True:
       batch= []
     
     
-      for i in range(3):
+      for i in range(dl_batch_size):
           start = random.randrange(len(sun_data))
           batch.append([sun_data[start]])
     
