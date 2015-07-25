@@ -48,6 +48,8 @@ args = parser.parse_args()
 
 global gpu_flag
 gpu_flag=(args.gpu >= 0)
+if gpu_flag:
+    cuda.init(args.gpu)
 
 
 def system(cmd):
@@ -150,7 +152,6 @@ for d in range(dlDepth):
 model=chainer.FunctionSet(**modelDict)
 
 if gpu_flag:
-    cuda.init(0)
     model.to_gpu()
 
 def sigmoid2(x):
