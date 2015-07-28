@@ -119,7 +119,7 @@ for d in range(dlDepth):
                 mask[iy][ix]=0
     batch_location_supply[d] = np.array(dl_batch_size * [[location_mask_x, location_mask_y]])
     batch_location_supply[d] *= global_normalization * 10.0
-    solar_disk_mask[d] = np.array(dl_batch_size * [[mask]]) 
+    solar_disk_mask[d] = np.array(dl_batch_size * [(2**d)*[mask]]) 
     if gpu_flag:
         batch_location_supply[d]=cuda.to_gpu(batch_location_supply[d])
         solar_disk_mask[d]=cuda.to_gpu(solar_disk_mask[d])
@@ -179,30 +179,37 @@ def forward(x_data,train=True,level=1):
        do_dropout=False 
     x = Variable(x_data, volatile = not train)
     y = Variable(x_data, volatile = not train) * Variable(solar_disk_mask[0], volatile= not train)
+    if(not train and level==1):
+        plot_img(y.data, 0, 'original magnetic field image')
 
     h = F.dropout(x, ratio = 0.1, train=do_dropout)
     for d in range(level):
-        h = F.leaky_relu(getattr(model,'convA{}'.format(d))(h))
+        if d == level -1 :
+            y = h * solar_disk_mask[d]
+
+        h = F.tanh(getattr(model,'convA{}'.format(d))(h))
         if d < level - 1:
             h = F.dropout(h, ratio = 0.1, train=do_dropout)
         h = F.average_pooling_2d(h,2)
 
+
     for d in reversed(range(level)):    
         h = F.dropout(h, ratio = 0.1, train=do_dropout)
-        h = F.leaky_relu(getattr(model,'convB{}'.format(d))(h))    
+        h = F.tanh(getattr(model,'convB{}'.format(d))(h))    
         h = zoom_x2(h)
         sup = Variable(batch_location_supply[d], volatile = not train)
         h = F.concat([h,sup],1)
         h = F.dropout(h, ratio = 0.1, train=do_dropout)
-        h = F.leaky_relu(getattr(model,'convV{}'.format(d))(h))
+        h = F.tanh(getattr(model,'convV{}'.format(d))(h))
+        if d == level -1 :
+            y_pred = h * solar_disk_mask[d]
 
-    y_pred = h * solar_disk_mask[0]
+
+
 
     ret = (global_normalization**(-2))*F.mean_squared_error(F.tanh(y),F.tanh(y_pred))
     if(not train):
-        plot_img(y_pred.data, level, 'Lv {} autoencoder, msqe={}'.format(level, ret.data))
-    if(not train and level==1):
-        plot_img(y.data, 0, 'original magnetic field image')
+        plot_img(h.data, level, 'Lv {} autoencoder, msqe={}'.format(level, ret.data))
     return ret
 
 
@@ -289,11 +296,14 @@ while True:
       eplm = epoch % epoch_per_level 
       if eplm < epoch_per_level/3:
           training_mode_string = 'i'
+          if epoch > (dlDepth+2)*epoch_per_level:
+              training_mode_string = 'p'
       elif eplm < 2*epoch_per_level/3:
           training_mode_string = 'f'
       else:
           training_mode_string = 'p'
 
+      training_mode_string = 'i'
 
       starting_depth = 1 if training_mode_string == 'i' else current_depth-1
       for level in range(starting_depth,current_depth):
@@ -325,7 +335,7 @@ while True:
                 o.write(g.dump())
             print('graph generated')
     
-        if epoch % 10 == 1:
+        if epoch % 20 == 1:
             loss = forward_dumb(batch, train=False,level=level)
             loss_dumb = loss.data
             loss = forward(batch,train=False,level=level)
