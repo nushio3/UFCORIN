@@ -35,11 +35,12 @@ from datetime import datetime
 
 
 global dlDepth
-global  global_normalization, work_dir
+global  global_normalization, work_dir, epoch_per_level, training_mode_string
 dlDepth = 10
 global_normalization = 1e-3
-dl_batch_size = 3
-
+dl_batch_size = 2
+epoch_per_level = 6000
+training_mode_string = 'i'
 
 parser = argparse.ArgumentParser(description='Chainer example: MNIST')
 parser.add_argument('--gpu', '-g', default=-1, type=int,
@@ -67,6 +68,7 @@ system('cp {} {} '.format(__file__, work_dir))
 
 def plot_img(img4,fn,title_str):
     global  global_normalization, work_dir
+    global dlDepth, training_mode_string 
     print np.shape(img4)
 
     if gpu_flag :
@@ -86,8 +88,8 @@ def plot_img(img4,fn,title_str):
     cbar=fig.colorbar(cax)
     fig.gca().add_artist(circle1)
     ax.set_title(title_str)
-    fig.savefig('{}/{}.png'.format(work_dir,fn),dpi=dpi)
-    fig.savefig('{}/{}-thumb.png'.format(work_dir,fn),dpi=dpi/4)
+    fig.savefig('{}/{}-{}.png'.format(work_dir,fn,training_mode_string),dpi=dpi)
+    fig.savefig('{}/{}-{}-thumb.png'.format(work_dir,fn,training_mode_string),dpi=dpi/4)
     plt.close('all')
 
 
@@ -154,9 +156,6 @@ model=chainer.FunctionSet(**modelDict)
 if gpu_flag:
     model.to_gpu()
 
-def sigmoid2(x):
-    return F.sigmoid(x)*2.0-1.0
-
 def forward_dumb(x_data,train=True,level=1):
     x = Variable(x_data)
     y = Variable(x_data)
@@ -165,7 +164,7 @@ def forward_dumb(x_data,train=True,level=1):
     for d in range(level):    
         x = zoom_x2(x)
 
-    ret = (global_normalization**(-2))*F.mean_squared_error(sigmoid2(y),sigmoid2(x))
+    ret = (global_normalization**(-2))*F.mean_squared_error(F.tanh(y),F.tanh(x))
     if(not train):
         plot_img(x.data, 'd{}'.format(level), 
                  'Lv {} dumb encoder, msqe={}'.format(level, ret.data))
@@ -174,28 +173,32 @@ def forward_dumb(x_data,train=True,level=1):
         
 
 def forward(x_data,train=True,level=1):
-    global dlDepth
-    deploy = train
+    global dlDepth,           training_mode_string 
+    do_dropout = train
+    if training_mode_string == 'p' :
+       do_dropout=False 
     x = Variable(x_data, volatile = not train)
     y = Variable(x_data, volatile = not train) * Variable(solar_disk_mask[0], volatile= not train)
 
-    h = F.dropout(x, ratio = 0.1, train=deploy)
+    h = F.dropout(x, ratio = 0.1, train=do_dropout)
     for d in range(level):
-        h = sigmoid2(getattr(model,'convA{}'.format(d))(h))
+        h = F.leaky_relu(getattr(model,'convA{}'.format(d))(h))
         if d < level - 1:
-            h = F.dropout(h, ratio = 0.1, train=deploy)
+            h = F.dropout(h, ratio = 0.1, train=do_dropout)
         h = F.average_pooling_2d(h,2)
 
     for d in reversed(range(level)):    
-        h = sigmoid2(getattr(model,'convB{}'.format(d))(h))    
+        h = F.dropout(h, ratio = 0.1, train=do_dropout)
+        h = F.leaky_relu(getattr(model,'convB{}'.format(d))(h))    
         h = zoom_x2(h)
         sup = Variable(batch_location_supply[d], volatile = not train)
         h = F.concat([h,sup],1)
-        h = sigmoid2(getattr(model,'convV{}'.format(d))(h))
+        h = F.dropout(h, ratio = 0.1, train=do_dropout)
+        h = F.leaky_relu(getattr(model,'convV{}'.format(d))(h))
 
     y_pred = h * solar_disk_mask[0]
 
-    ret = (global_normalization**(-2))*F.mean_squared_error(sigmoid2(y),y_pred)
+    ret = (global_normalization**(-2))*F.mean_squared_error(F.tanh(y),F.tanh(y_pred))
     if(not train):
         plot_img(y_pred.data, level, 'Lv {} autoencoder, msqe={}'.format(level, ret.data))
     if(not train and level==1):
@@ -255,6 +258,10 @@ for level in range(1,dlDepth+1):
     model_of_level[k]=modelDict[k]
     optimizer[level].setup(chainer.FunctionSet(**model_of_level).collect_parameters())
 
+global_optimizer = optimizers.Adam()
+global_optimizer.setup(model.collect_parameters())
+
+
 
 epoch=0
 while True:
@@ -278,15 +285,30 @@ while True:
       if gpu_flag :
             batch = cuda.to_gpu(batch)
 
-      current_depth = min(dlDepth+1,max(2,2+epoch/2000))
+      current_depth = min(dlDepth+1,max(2,2+epoch/epoch_per_level))
+      eplm = epoch % epoch_per_level 
+      if eplm < epoch_per_level/3:
+          training_mode_string = 'i'
+      elif eplm < 2*epoch_per_level/3:
+          training_mode_string = 'f'
+      else:
+          training_mode_string = 'p'
 
-      for level in range(1,current_depth):
+
+      starting_depth = 1 if training_mode_string == 'i' else current_depth-1
+      for level in range(starting_depth,current_depth):
         if level < current_depth-1:
             optimizer[level].alpha=1e-4/current_depth
-        optimizer[level].zero_grads()
-        loss = forward(batch, train=True,level=level)
-        loss.backward()
-        optimizer[level].update()
+        if training_mode_string == 'i':
+            optimizer[level].zero_grads()
+            loss = forward(batch, train=True,level=level)
+            loss.backward()
+            optimizer[level].update()
+        else :
+            global_optimizer.zero_grads()
+            loss = forward(batch, train=True,level=level)
+            loss.backward()
+            global_optimizer.update()
 
 
         print '  '*(level-1),epoch,loss.data
