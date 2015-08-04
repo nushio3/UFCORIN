@@ -9,10 +9,10 @@ def system(cmd):
 # seems to downlowd the SDO/HMI fits file for given years.
 
 wl = '/mnt'
-yearstart = 2011
-monthstart = 1
-yearend = 2014
-monthend = 4
+yearstart = 2015
+monthstart = 7
+yearend = 2015
+monthend = 8
 bucket = "sdo"
 
 path= '/home/ubuntu/hub/UFCORIN/script/jsoc/'
