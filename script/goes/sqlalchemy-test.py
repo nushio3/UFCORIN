@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import datetime
+import re
 import sqlalchemy as sql
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.ext.declarative import declarative_base
@@ -18,7 +19,6 @@ class GOES(Base):
     xray_flux_short = sql.Column(sql.Float)
 
 
-goes = GOES(t=datetime.datetime(2025,8,5,8,50,0), xray_flux_long=2.335e-6, xray_flux_short=1.555e-7)
 
 
 
@@ -29,5 +29,12 @@ engine = sql.create_engine('mysql+mysqldb://ufcoroot:{}@sun-feature-db.cvxxbx1dl
 Session = sessionmaker(bind=engine)
 session = Session()
 
+
+with open('goes-xray-flux-primary.txt', 'r') as fp:
+    con = fp.read()
+    lines = con.split('\n')
+    
+
+goes = GOES(t=datetime.datetime(2025,8,5,8,50,0), xray_flux_long=2.335e-6, xray_flux_short=1.555e-7)
 session.merge(goes)
 session.commit()

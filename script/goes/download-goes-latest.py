@@ -36,6 +36,7 @@ session = Session()
 fp = urllib2.urlopen('http://services.swpc.noaa.gov/text/goes-xray-flux-primary.txt')
 con = fp.read()
 lines = con.split('\n')
+last_line=''
 for l in lines:
     match = re.search('^(\d+)\s+(\d+)\s+(\d+)\s+(\d+)\s+(\d+)\s+(\d+)\s+(\S+)\s+(\S+)',l)
     if not match : continue
@@ -49,4 +50,7 @@ for l in lines:
     
     goes = GOES(t=datetime.datetime(year,month,day,hour,minute,0), xray_flux_long=flux_long, xray_flux_short=flux_short)
     session.merge(goes)
+    last_line=l
+
 session.commit()
+print last_line
