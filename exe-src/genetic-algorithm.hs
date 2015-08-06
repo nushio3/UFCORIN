@@ -109,7 +109,7 @@ evaluate g = do
 proceed :: [Genome] -> IO [Genome]
 proceed gs = do
   mutatedGs   <- mapM mutate gs
-  crossoverGs <- replicateM 20 $ do
+  crossoverGs <- replicateM 100 $ do
     [g1,g2] <- chooseN 2 gs
     crossover g1 g2
   let newPopulation = nub $ gs ++ mutatedGs ++ crossoverGs
@@ -119,10 +119,10 @@ proceed gs = do
     e <- evaluate g
     return (e,g)
 
-  let top10 = take 10 $ reverse $ sort egs
-  print $ map fst top10
-  appendFile "genetic-algorithm.txt" $ (++"\n") $show $ map fst top10
-  return $ map snd top10
+  let tops = take 100 $ reverse $ sort egs
+  print $ map fst tops
+  appendFile "genetic-algorithm.txt" $ (++"\n") $show $ map fst tops
+  return $ map snd tops
 
 main :: IO ()
 main = do

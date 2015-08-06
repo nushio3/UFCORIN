@@ -4,6 +4,7 @@ import datetime
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 import numpy as np
+import random
 import re
 import sqlalchemy as sql
 from sqlalchemy.orm import sessionmaker
@@ -29,11 +30,15 @@ engine = sql.create_engine('mysql+mysqldb://ufcoroot:{}@sun-feature-db.cvxxbx1dl
 Session = sessionmaker(bind=engine)
 session = Session()
 
-for d in range(1000):
-    time_begin = datetime.datetime(2014,3,8) + datetime.timedelta(hours=d)
-    time_end   = time_begin + datetime.timedelta(days=3)
+while True:
+    # time_begin = datetime.datetime(2014,3,8) + datetime.timedelta(hours=d)
+    d = random.randrange(365*5*24)
+    time_begin = datetime.datetime(2011,1,1) +  datetime.timedelta(hours=d)
+    window_days = 10
+    time_end   = time_begin + datetime.timedelta(days=window_days)
     ret = session.query(GOES).filter(GOES.t>=time_begin).filter(GOES.t<=time_end).all()
     print time_begin, len(ret)
+    if  len(ret) < 0.95*24*60*window_days : continue
     x_data = []
     y_data = []
     for r in ret:
