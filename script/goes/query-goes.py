@@ -30,6 +30,9 @@ engine = sql.create_engine('mysql+mysqldb://ufcoroot:{}@sun-feature-db.cvxxbx1dl
 Session = sessionmaker(bind=engine)
 session = Session()
 
+global lightcurve
+lightcurve = dict()
+
 while True:
     # time_begin = datetime.datetime(2014,3,8) + datetime.timedelta(hours=d)
     d = random.randrange(365*5*24)
@@ -39,17 +42,17 @@ while True:
     ret = session.query(GOES).filter(GOES.t>=time_begin).filter(GOES.t<=time_end).all()
     print time_begin, len(ret)
     if  len(ret) < 0.95*24*60*window_days : continue
-    x_data = []
-    y_data = []
+    t_data = []
+    goes_flux = []
     for r in ret:
-        x_data.append(r.t)
-        y_data.append(r.xray_flux_long)
-
+        t_data.append(r.t)
+        goes_flux.append(r.xray_flux_long)
+        lightcurve[r.t] = r.xray_flux_long
 
 
     fig, ax = plt.subplots()
     ax.set_yscale('log')
-    ax.plot(x_data, y_data)
+    ax.plot(t_data, goes_flux)
 
     days    = mdates.DayLocator()  # every day
     daysFmt = mdates.DateFormatter('%Y-%m-%d %H:%M')
