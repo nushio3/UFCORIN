@@ -30,7 +30,7 @@ Session = sessionmaker(bind=engine)
 session = Session()
 
 for d in range(1000):
-    time_begin = datetime.datetime(2015,3,1) + datetime.timedelta(hours=d)
+    time_begin = datetime.datetime(2014,3,8) + datetime.timedelta(hours=d)
     time_end   = time_begin + datetime.timedelta(days=3)
     ret = session.query(GOES).filter(GOES.t>=time_begin).filter(GOES.t<=time_end).all()
     print time_begin, len(ret)
@@ -57,7 +57,7 @@ for d in range(1000):
     fig.autofmt_xdate()
 
 
-    plt.savefig('test2.png', dpi=300)
+    plt.savefig('test2.png', dpi=200)
 
     plt.close('all')
     time.sleep(0.5)
