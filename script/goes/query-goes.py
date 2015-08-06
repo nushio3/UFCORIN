@@ -1,10 +1,14 @@
 #!/usr/bin/env python
 
 import datetime
+import matplotlib.pyplot as plt
+import matplotlib.dates as mdates
+import numpy as np
 import re
 import sqlalchemy as sql
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.ext.declarative import declarative_base
+import time
 import urllib2
 
 with open('.mysqlpass','r') as fp:
@@ -25,8 +29,35 @@ engine = sql.create_engine('mysql+mysqldb://ufcoroot:{}@sun-feature-db.cvxxbx1dl
 Session = sessionmaker(bind=engine)
 session = Session()
 
-ret = session.query(GOES).filter(GOES.t>=datetime.datetime(2015,8,6,0,0,0)).all()
-for r in ret:
-    print r.t, r.xray_flux_long
-session.commit()
+for d in range(1000):
+    time_begin = datetime.datetime(2015,3,1) + datetime.timedelta(hours=d)
+    time_end   = time_begin + datetime.timedelta(days=3)
+    ret = session.query(GOES).filter(GOES.t>=time_begin).filter(GOES.t<=time_end).all()
+    print time_begin, len(ret)
+    x_data = []
+    y_data = []
+    for r in ret:
+        x_data.append(r.t)
+        y_data.append(r.xray_flux_long)
 
+
+
+    fig, ax = plt.subplots()
+    ax.set_yscale('log')
+    ax.plot(x_data, y_data)
+
+    days    = mdates.DayLocator()  # every day
+    daysFmt = mdates.DateFormatter('%Y-%m-%d %H:%M')
+    hours   = mdates.HourLocator()
+    ax.xaxis.set_major_locator(days)
+    ax.xaxis.set_major_formatter(daysFmt)
+    ax.xaxis.set_minor_locator(hours)
+
+    ax.grid()
+    fig.autofmt_xdate()
+
+
+    plt.savefig('test2.png', dpi=300)
+
+    plt.close('all')
+    time.sleep(0.5)
