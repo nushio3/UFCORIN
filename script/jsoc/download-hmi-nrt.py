@@ -2,6 +2,7 @@
 
 import datetime, glob, os, re, shutil, subprocess, sys
 from astropy.io import fits
+import astropy.time as time
 import matplotlib as mpl
 mpl.use('Agg')
 import matplotlib.pyplot as plt
@@ -33,7 +34,7 @@ os.chdir(workdir)
 # Download the latest NRT FITS image
 
 series_name = "hmi.M_720s_nrt"
-query = series_name + "[$]"
+query = series_name + "[2015.08.01-2015.08.09@720s]"
 command = path+"exportfile.csh '"+query+ "' " + sys.argv[1]
 print command
 system("rm *.fits")
@@ -100,8 +101,10 @@ for fn in glob.glob('*.fits'):
     hh  =int(ma.group(4))
     minu=int(ma.group(5))
     
-    t=datetime.datetime(yyyy,mm,dd,hh,minu)
-    print 'detect {:04}-{:02}-{:02} {:02}:{:02}'.format(yyyy,mm,dd,hh,minu)
+    # convert TAI to UTC
+    t_tai = time.Time('{:04}-{:02}-{:02} {:02}:{:02}'.format(yyyy,mm,dd,hh,minu),scale='tai', format='iso')
+    t=t_tai.utc.datetime
+    print "got data at {}".format(t)
 
     newfn='{:02}{:02}.fits'.format(hh,minu)
     shutil.copy(fn,newfn)
@@ -123,6 +126,5 @@ for fn in glob.glob('*.fits'):
     r = DB()
     r.fill_columns(t, img)
 
-    print r
     session.merge(r)
     session.commit()
