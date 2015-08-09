@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-import datetime, glob, os, re, shutil, subprocess, sys
+import argparse, datetime, glob, os, re, shutil, subprocess, sys
 from astropy.io import fits
 import astropy.time as time
 import matplotlib as mpl
@@ -13,6 +13,13 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy.ext.declarative import declarative_base
 import wavelet
 
+parser = argparse.ArgumentParser(description='HMI Downloader and converter')
+parser.add_argument('--convert', '-c', action='store_true',
+                    help='convert instead of downloading the latest data')
+parser.add_argument('--mail-address', '-m', type=str,
+                    help='mail address registered at JSOC')
+args = parser.parse_args()
+
 
 with open(os.path.expanduser('~')+'/.mysqlpass','r') as fp:
     password = fp.read().strip()
@@ -23,10 +30,16 @@ def system(cmd):
 
 path= '/home/ubuntu/hub/UFCORIN/script/jsoc/'
 
-workdir="nrt"
-if not os.path.exists(workdir): os.mkdir(workdir)
-os.chdir(workdir)
-
+if not args.convert:
+    workdir="nrt"
+    if not os.path.exists(workdir): os.mkdir(workdir)
+    system("rm "+workdir+"/*")
+    os.chdir(workdir)
+else:
+    workdir="convert"
+    if not os.path.exists(workdir): os.mkdir(workdir)
+    system("rm "+workdir+"/*")
+    os.chdir(workdir)
 
 
 
@@ -34,11 +47,12 @@ os.chdir(workdir)
 # Download the latest NRT FITS image
 
 series_name = "hmi.M_720s_nrt"
-query = series_name + "[2015.08.01-2015.08.09@720s]"
-command = path+"exportfile.csh '"+query+ "' " + sys.argv[1]
-print command
-system("rm *.fits")
-system(command)
+query = series_name + "[2015.08.01_00:00:00-2015.08.01_08:00:00@720s]"
+#query = series_name + "[$]"
+command = path+"exportfile.csh '"+query+ "' " + args.mail_address
+if not args.convert:
+    print command
+    system(command)
 
 # create the DB class for our particular wavelet
 DB = wavelet.db_class(series_name, 'haar')
@@ -89,6 +103,30 @@ def register_wavelet(img, imgfn):
     wavelet_img = wavelet.wavedec2_img(img,'haar','S')
     plot_img(wavelet_img,"S_" + imgfn,"S-wavelet")
     
+if args.convert:
+    for yyyy in reversed(range(2011,2016)):
+        for mm in reversed(range(1,13)):
+            if yyyy==2015 and mm >=8 : continue
+            for dd in reversed(range(1,32)):
+                system("rm *")
+                s3 = "aws s3 sync s3://sdo/hmi/mag720x1024/{:04}/{:02}/{:02}/ .".format(yyyy,mm,dd)
+                print s3
+                system(s3)
+                for fn in glob.glob('*.npz'):
+                    ma=re.search('(\d+)',fn)
+                    if not ma: continue
+                    hh=int(ma.group(1)[0:2])
+                    minu=int(ma.group(1)[2:4])
+                    t_tai = time.Time('{:04}-{:02}-{:02} {:02}:{:02}'.format(yyyy,mm,dd,hh,minu),scale='tai', format='iso')
+                    t=t_tai.utc.datetime
+                    print "got data at {}".format(t)
+                    r = DB()
+                    img=np.load(fn)['img']
+                    r.fill_columns(t, img)
+
+                    session.merge(r)
+                session.commit()
+
 
 for fn in glob.glob('*.fits'):
     if not re.match('hmi',fn): continue
