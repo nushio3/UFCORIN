@@ -68,7 +68,7 @@ def write_db(con):
     session.commit()
 
 
-for year in reversed(range(2011,2016)):
+for year in reversed(range(2015,2016)):
     for month in reversed(range(1,13)):
         if year==2015 and month > 8: continue
         (_, day_end) = calendar.monthrange(year,month)

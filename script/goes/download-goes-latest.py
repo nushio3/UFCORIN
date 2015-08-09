@@ -19,10 +19,6 @@ class GOES(Base):
     xray_flux_long = sql.Column(sql.Float)
     xray_flux_short = sql.Column(sql.Float)
 
-
-
-
-
 engine = sql.create_engine('mysql+mysqldb://ufcoroot:{}@sun-feature-db.cvxxbx1dlxvk.us-west-2.rds.amazonaws.com:3306/sun_feature'.format(password))
 try:
     GOES.metadata.create_all(engine)
