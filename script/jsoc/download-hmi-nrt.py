@@ -1,33 +1,33 @@
 #!/usr/bin/env python
 
-import glob, os, pywt, re, shutil, subprocess, sys
+import datetime, glob, os, re, shutil, subprocess, sys
 from astropy.io import fits
-import numpy as np
-import scipy.ndimage.interpolation as intp
 import matplotlib as mpl
 mpl.use('Agg')
 import matplotlib.pyplot as plt
+import numpy as np
+import scipy.ndimage.interpolation as intp
+import sqlalchemy as sql
+from sqlalchemy.orm import sessionmaker
+from sqlalchemy.ext.declarative import declarative_base
+import wavelet
 
 
 
 def system(cmd):
     subprocess.call(cmd, shell=True)
 
-
-# seems to downlowd the SDO/HMI fits file for given years.
-
-wl = '/mnt'
-yearstart = 2015
-monthstart = 7
-yearend = 2015
-monthend = 8
-bucket = "sdo"
-
 path= '/home/ubuntu/hub/UFCORIN/script/jsoc/'
 
 workdir="nrt"
 if not os.path.exists(workdir): os.mkdir(workdir)
 os.chdir(workdir)
+
+
+
+
+
+# Download the latest NRT FITS image
 
 query = "hmi.M_720s_nrt[$]"
 command = path+"exportfile.csh '"+query+ "' " + sys.argv[1]
@@ -51,18 +51,6 @@ def fits2npz(newfn, npzfn):
     np.savez_compressed(npzfn, img=np.float32(img2))
     register_wavelet(img2, newfn.replace('.fits','.png'))
         
-def concat_w2d(ws):
-    if (len(ws)==1) : return ws[0]
-
-    ca = ws[0]
-    ch,cv,cd = ws[1]
-
-    cah = np.concatenate((ca,ch), axis=0)
-    cvd = np.concatenate((cv,cd), axis=0)
-
-    ca2 = np.concatenate((cah,cvd), axis=1)
-    
-    return concat_w2d([ca2] + ws[2:])
 
 def plot_img(img,fn,title_str):
     w,h= np.shape(img)
@@ -77,20 +65,12 @@ def plot_img(img,fn,title_str):
     fig.savefig(fn,dpi=dpi)
     plt.close('all')
 
-def wavedec2std(img, wavelet):
-    for t in range(2):
-        for y in range(np.shape(img)[1]):
-            img[y] = np.concatenate(pywt.wavedec(img[y], wavelet))
-        img = np.transpose(img)
-    return img
 
 def register_wavelet(img, imgfn):
-    print img.shape
-    ws = pywt.wavedec2(img,'haar')
-    wavelet_img = concat_w2d(ws)
     plot_img(img,imgfn,"real")
+    wavelet_img = wavelet.wavedec2_img_NS(img,'haar')
     plot_img(wavelet_img,"NS_" + imgfn,"NS-wavelet")
-    wavelet_img = wavedec2std(img,'haar')
+    wavelet_img = wavelet.wavedec2_img_S(img,'haar')
     plot_img(wavelet_img,"S_" + imgfn,"S-wavelet")
     
 
