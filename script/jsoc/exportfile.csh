@@ -27,15 +27,15 @@ set notify = `/home/ubuntu/hub/UFCORIN/script/jsoc/url_escape.pl "$2"`
 
 # for FITS without full headers use fastest method use the next 2 lines:
 
-set method=url_quick
-set protocol=as-is
+#set method=url_quick
+#set protocol=as-is
 
 # if, as is most common, you want full FITS headers or
 # if you want to specify the filename format for the returned data or if you expect multiple
 # files you should use one of the next two methods.
 
-# set method=url
-# set protocol="FITS"
+set method=url
+set protocol="FITS"
 
 # to specify filename formats add the "filenamefmt" command to the cmd line below.
 # you will need to url_escape the filenamefmt.

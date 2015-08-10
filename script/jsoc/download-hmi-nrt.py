@@ -62,7 +62,7 @@ series_name = "hmi.M_720s_nrt"
 query = series_name + "[2015.07.01-2015.07.02]"
 if watch_state.last_success_time:
     t_begin = watch_state.last_success_time.datetime
-    t_end   = t_begin + datetime.timedelta(days=1)
+    t_end   = t_begin + datetime.timedelta(hours=24)
     query = series_name + '[{}-{}]'.format(
         t_begin.strftime('%Y.%m.%d_%H:%M:%S'),
         t_end.strftime('%Y.%m.%d_%H:%M:%S') )
