@@ -59,7 +59,7 @@ else:
 
 print "last success " , watch_state.last_success_time
 series_name = "hmi.M_720s_nrt"
-query = series_name + "[$]"
+query = series_name + "[2015.07.01-2015.07.02]"
 if watch_state.last_success_time:
     t_begin = watch_state.last_success_time.datetime
     t_end   = t_begin + datetime.timedelta(days=1)
