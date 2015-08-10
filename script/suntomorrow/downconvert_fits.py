@@ -67,9 +67,12 @@ def fetch_data(y,m,d):
     system(cmd)
 
 
-for y in reversed(range(2011,2016)):
-    for m in reversed(range(1,13)): 
-        if (y==2015 and m>=8): continue
-        for d in reversed(range(1,32)):
-            fetch_data(y,m,d)
+# for y in reversed(range(2011,2016)):
+#     for m in reversed(range(1,13)): 
+#         if (y==2015 and m>=8): continue
+#         for d in reversed(range(1,32)):
+#             fetch_data(y,m,d)
+# 
 
+for d in reversed(range(1,32)):
+    fetch_data(2015,7,d)
