@@ -6,8 +6,8 @@ import sqlalchemy as sql
 from sqlalchemy.ext.declarative import declarative_base
 
 
-def db_fill_columns(self,t, img):
-    self.t = t
+def db_fill_columns(self,t_tai, img):
+    self.t_tai = t_tai
     for s in ['S','NS']:
         wv_img = wavedec2_img(img, self.wavelet_name, s)
         for r in subspaces(s):
@@ -27,7 +27,7 @@ def db_class(series_name, wavelet):
     Base = declarative_base()
     class Ret(Base):
         __tablename__ = table_name
-        t = sql.Column(sql.DateTime, primary_key=True)
+        t_tai = sql.Column(sql.DateTime, primary_key=True)
         wavelet_name = wavelet
 
     for s in ['S','NS']:

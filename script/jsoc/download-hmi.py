@@ -12,7 +12,7 @@ wl = '/mnt'
 yearstart = 2015
 monthstart = 7
 yearend = 2015
-monthend = 8
+monthend = 9
 bucket = "sdo"
 
 path= '/home/ubuntu/hub/UFCORIN/script/jsoc/'

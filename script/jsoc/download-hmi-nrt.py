@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-import argparse, datetime, glob, os, re, shutil, subprocess, sys
+import argparse, datetime, glob, os, pickle, re, shutil, subprocess, sys
 from astropy.io import fits
 import astropy.time as time
 import matplotlib as mpl
@@ -13,6 +13,9 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy.ext.declarative import declarative_base
 import wavelet
 
+class WatchState:
+    last_success_time = None
+
 parser = argparse.ArgumentParser(description='HMI Downloader and converter')
 parser.add_argument('--convert', '-c', action='store_true',
                     help='convert instead of downloading the latest data')
@@ -23,6 +26,14 @@ args = parser.parse_args()
 
 with open(os.path.expanduser('~')+'/.mysqlpass','r') as fp:
     password = fp.read().strip()
+
+original_working_directory = os.getcwd()
+watch_state=WatchState()
+try:
+    with open('download-hmi-nrt.state','r') as fp:
+        watch_state = pickle.load(fp)
+except:
+    pass
 
 
 def system(cmd):
@@ -46,9 +57,16 @@ else:
 
 # Download the latest NRT FITS image
 
+print "last success " , watch_state.last_success_time
 series_name = "hmi.M_720s_nrt"
-query = series_name + "[2015.08.01_00:00:00-2015.08.01_08:00:00@720s]"
-#query = series_name + "[$]"
+query = series_name + "[$]"
+if watch_state.last_success_time:
+    t_begin = watch_state.last_success_time.datetime
+    t_end   = t_begin + datetime.timedelta(days=1)
+    query = series_name + '[{}-{}]'.format(
+        t_begin.strftime('%Y.%m.%d_%H:%M:%S'),
+        t_end.strftime('%Y.%m.%d_%H:%M:%S') )
+
 command = path+"exportfile.csh '"+query+ "' " + args.mail_address
 if not args.convert:
     print command
@@ -118,17 +136,18 @@ if args.convert:
                     hh=int(ma.group(1)[0:2])
                     minu=int(ma.group(1)[2:4])
                     t_tai = time.Time('{:04}-{:02}-{:02} {:02}:{:02}'.format(yyyy,mm,dd,hh,minu),scale='tai', format='iso')
-                    t=t_tai.utc.datetime
-                    print "got data at {}".format(t)
+                    print "got data at {}".format(t_tai)
                     r = DB()
-                    img=np.load(fn)['img']
-                    r.fill_columns(t, img)
-
-                    session.merge(r)
+                    try:
+                        img=np.load(fn)['img']
+                        r.fill_columns(t_tai.datetime, img)
+                        session.merge(r)
+                    except:
+                        pass
                 session.commit()
+    exit(0)
 
-
-for fn in glob.glob('*.fits'):
+for fn in sorted(glob.glob('*.fits')):
     if not re.match('hmi',fn): continue
 
     ma = re.search('%5B(\d+)\.(\d+)\.(\d+)_(\d+)%3A(\d+)',fn)
@@ -141,8 +160,8 @@ for fn in glob.glob('*.fits'):
     
     # convert TAI to UTC
     t_tai = time.Time('{:04}-{:02}-{:02} {:02}:{:02}'.format(yyyy,mm,dd,hh,minu),scale='tai', format='iso')
-    t=t_tai.utc.datetime
-    print "got data at {}".format(t)
+
+    print "got data at {} ".format(t_tai)
 
     newfn='{:02}{:02}.fits'.format(hh,minu)
     shutil.copy(fn,newfn)
@@ -162,7 +181,14 @@ for fn in glob.glob('*.fits'):
     system(cmd)
 
     r = DB()
-    r.fill_columns(t, img)
+    r.fill_columns(t_tai.datetime, img)
 
     session.merge(r)
     session.commit()
+
+    if not watch_state.last_success_time or t_tai > watch_state.last_success_time:
+        watch_state.last_success_time = t_tai
+
+os.chdir(original_working_directory)
+with open('download-hmi-nrt.state','w') as fp:
+    pickle.dump(watch_state,fp)
