@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-import argparse, datetime, glob, os, pickle, re, shutil, subprocess, sys
+import argparse, datetime, glob, os, pickle, re, shutil, subprocess, sys, traceback
 from astropy.io import fits
 import astropy.time as time
 import matplotlib as mpl
@@ -59,7 +59,7 @@ else:
 
 print "last success " , watch_state.last_success_time
 series_name = "hmi.M_720s_nrt"
-query = series_name + "[2015.07.01-2015.07.02]"
+query = series_name + "[2015.08.05_05:00:00-2015.08.05_06:00:00]"
 if watch_state.last_success_time:
     t_begin = watch_state.last_success_time.datetime
     t_end   = t_begin + datetime.timedelta(hours=24)
@@ -83,6 +83,7 @@ session = Session()
 
 def fits2npz(newfn, npzfn):
     hdulist=fits.open(newfn)
+    hdulist.verify('fix+warn')
     img=hdulist[1].data
     img = np.where( np.isnan(img), 0.0, img)
     img2=intp.zoom(img,zoom=zoom_ratio)
@@ -173,21 +174,25 @@ for fn in sorted(glob.glob('*.fits')):
     reso_new=1024
     zoom_ratio = float(reso_new)/reso_original
 
-    npzfn = newfn.replace('.fits','.npz')
-    img = fits2npz(newfn, npzfn)
+    try:
+        npzfn = newfn.replace('.fits','.npz')
+        img = fits2npz(newfn, npzfn)
 
-    cmd='aws s3 cp '+npzfn+ (' s3://sdo/hmi/mag720x{}/{:04}/{:02}/{:02}/'.format(reso_new,yyyy,mm,dd))+npzfn
-    print cmd
-    system(cmd)
+        cmd='aws s3 cp '+npzfn+ (' s3://sdo/hmi/mag720x{}/{:04}/{:02}/{:02}/'.format(reso_new,yyyy,mm,dd))+npzfn
+        print cmd
+        system(cmd)
 
-    r = DB()
-    r.fill_columns(t_tai.datetime, img)
+        r = DB()
+        r.fill_columns(t_tai.datetime, img)
 
-    session.merge(r)
-    session.commit()
+        session.merge(r)
+        session.commit()
 
-    if not watch_state.last_success_time or t_tai > watch_state.last_success_time:
-        watch_state.last_success_time = t_tai
+        if not watch_state.last_success_time or t_tai > watch_state.last_success_time:
+            watch_state.last_success_time = t_tai
+    except Exception as e:
+        print traceback.format_exc()
+        print e
 
 os.chdir(original_working_directory)
 with open('download-hmi-nrt.state','w') as fp:
