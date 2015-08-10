@@ -15,6 +15,7 @@ import wavelet
 
 class WatchState:
     last_success_time = None
+    last_cached_time = None
 
 parser = argparse.ArgumentParser(description='HMI Downloader and converter')
 parser.add_argument('--convert', '-c', action='store_true',
@@ -59,10 +60,11 @@ else:
 
 print "last success " , watch_state.last_success_time
 series_name = "hmi.M_720s_nrt"
-query = series_name + "[2015.08.05_05:00:00-2015.08.05_06:00:00]"
+query = series_name + "[2015.08.10_13:00:00-2015.08.13_06:00:00]"
 if watch_state.last_success_time:
-    t_begin = watch_state.last_success_time.datetime
-    t_end   = t_begin + datetime.timedelta(hours=24)
+    watch_state.last_cached_time -= time.TimeDelta(1, format='sec')
+    t_begin = watch_state.last_cached_time.datetime 
+    t_end   = watch_state.last_success_time.datetime  + datetime.timedelta(hours=24)
     query = series_name + '[{}-{}]'.format(
         t_begin.strftime('%Y.%m.%d_%H:%M:%S'),
         t_end.strftime('%Y.%m.%d_%H:%M:%S') )
@@ -190,6 +192,7 @@ for fn in sorted(glob.glob('*.fits')):
 
         if not watch_state.last_success_time or t_tai > watch_state.last_success_time:
             watch_state.last_success_time = t_tai
+            watch_state.last_cached_time = t_tai
     except Exception as e:
         print traceback.format_exc()
         print e
