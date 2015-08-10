@@ -20,7 +20,7 @@ Base = declarative_base()
 class GOES(Base):
     __tablename__ = 'goes_xray_flux'
 
-    t = sql.Column(sql.DateTime, primary_key=True)
+    t_tai = sql.Column(sql.DateTime, primary_key=True)
     xray_flux_long = sql.Column(sql.Float)
     xray_flux_short = sql.Column(sql.Float)
 
@@ -39,15 +39,15 @@ while True:
     time_begin = datetime.datetime(2011,1,1) +  datetime.timedelta(hours=d)
     window_days = 10
     time_end   = time_begin + datetime.timedelta(days=window_days)
-    ret = session.query(GOES).filter(GOES.t>=time_begin).filter(GOES.t<=time_end).all()
+    ret = session.query(GOES).filter(GOES.t_tai>=time_begin).filter(GOES.t_tai<=time_end).all()
     print time_begin, len(ret)
     if  len(ret) < 0.95*24*60*window_days : continue
     t_data = []
     goes_flux = []
     for r in ret:
-        t_data.append(r.t)
+        t_data.append(r.t_tai)
         goes_flux.append(r.xray_flux_long)
-        lightcurve[r.t] = r.xray_flux_long
+        lightcurve[r.t_tai] = r.xray_flux_long
 
 
     fig, ax = plt.subplots()
