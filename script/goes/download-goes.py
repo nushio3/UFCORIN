@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 
+import astropy.time as time
 import calendar
 import datetime
 import re
@@ -16,7 +17,7 @@ Base = declarative_base()
 class GOES(Base):
     __tablename__ = 'goes_xray_flux'
 
-    t = sql.Column(sql.DateTime, primary_key=True)
+    t_tai = sql.Column(sql.DateTime, primary_key=True)
     xray_flux_long = sql.Column(sql.Float)
     xray_flux_short = sql.Column(sql.Float)
 
@@ -28,8 +29,7 @@ engine = sql.create_engine('mysql+mysqldb://ufcoroot:{}@sun-feature-db.cvxxbx1dl
 try:
     GOES.metadata.create_all(engine)
 except:
-    None
-    # the table already exists
+    pass # the table already exists
 
 Session = sessionmaker(bind=engine)
 session = Session()
@@ -58,10 +58,11 @@ def write_db(con):
             hour_t  = int(match.group(4))
             min_t   = int(match.group(5))
             
-            time_tag = datetime.datetime(year_t,month_t,day_t,hour_t,min_t,0)
+            time_utc = datetime.datetime(year_t,month_t,day_t,hour_t,min_t,0)
+            time_tai = time.Time(time_utc,format='datetime',scale='utc').tai.datetime
             flux_short = float(words[3])
             flux_long = float(words[6])
-            goes = GOES(t=time_tag, xray_flux_long=flux_long, xray_flux_short=flux_short)
+            goes = GOES(t_tai=time_tai, xray_flux_long=flux_long, xray_flux_short=flux_short)
             session.merge(goes)
             ctr+=1
     print 'commiting {} rows.'.format(ctr)

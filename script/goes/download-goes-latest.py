@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 
+import astropy.time as time
 import datetime
 import re
 import sqlalchemy as sql
@@ -15,7 +16,7 @@ Base = declarative_base()
 class GOES(Base):
     __tablename__ = 'goes_xray_flux'
 
-    t = sql.Column(sql.DateTime, primary_key=True)
+    t_tai = sql.Column(sql.DateTime, primary_key=True)
     xray_flux_long = sql.Column(sql.Float)
     xray_flux_short = sql.Column(sql.Float)
 
@@ -44,7 +45,9 @@ for l in lines:
     flux_short=float(match.group(7))
     flux_long=float(match.group(8))
     
-    goes = GOES(t=datetime.datetime(year,month,day,hour,minute,0), xray_flux_long=flux_long, xray_flux_short=flux_short)
+    t_utc=datetime.datetime(year,month,day,hour,minute,0)
+    t_tai=time.Time(t_utc,format='datetime',scale='utc').tai.datetime
+    goes = GOES(t_tai=t_tai, xray_flux_long=flux_long, xray_flux_short=flux_short)
     session.merge(goes)
     last_line=l
 
