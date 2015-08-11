@@ -62,9 +62,9 @@ print "last success " , watch_state.last_success_time
 series_name = "hmi.M_720s_nrt"
 query = series_name + "[2015.08.10_13:00:00-2015.08.13_06:00:00]"
 if watch_state.last_success_time:
-    watch_state.last_cached_time -= time.TimeDelta(1, format='sec')
-    t_begin = watch_state.last_cached_time.datetime 
-    t_end   = watch_state.last_success_time.datetime  + datetime.timedelta(hours=24)
+    watch_state.last_cached_time += time.TimeDelta(1, format='sec')
+    t_begin = watch_state.last_success_time.datetime + datetime.timedelta(minutes=1)
+    t_end   = watch_state.last_cached_time.datetime  + datetime.timedelta(hours=24)
     query = series_name + '[{}-{}]'.format(
         t_begin.strftime('%Y.%m.%d_%H:%M:%S'),
         t_end.strftime('%Y.%m.%d_%H:%M:%S') )
