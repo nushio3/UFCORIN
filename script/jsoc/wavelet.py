@@ -12,10 +12,10 @@ def db_fill_columns(self,t_tai, img):
         wv_img = wavedec2_img(img, self.wavelet_name, s)
         for r in subspaces(s):
             subimg = wv_img[r.t : r.b , r.l : r.r]
-            key = "mean_" + s + "_" + r.key_string()
+            key = r.db_column_string(1,s)
             val = np.sum(subimg)/r.area()
             setattr(self, key, val)
-            key = "mean_sq_" + s + "_" + r.key_string()
+            key = r.db_column_string(2,s)
             val = np.sum(subimg**2)/r.area()
             setattr(self, key, val)
 
@@ -32,9 +32,9 @@ def db_class(series_name, wavelet):
 
     for s in ['S','NS']:
         for r in subspaces(s):
-            key = "mean_" + s + "_" + r.key_string()
+            key = r.db_column_string(1,s)
             setattr(Ret, key, sql.Column(sql.Float))
-            key = "mean_sq_" + s + "_" + r.key_string()
+            key = r.db_column_string(2,s)
             setattr(Ret, key, sql.Column(sql.Float))
     Ret.fill_columns = db_fill_columns
     return Ret
@@ -47,8 +47,9 @@ class WaveletSubspace:
     def __init__ (self,l,t,r,b):
         # left, top, right, bottom
         self.l=l; self.t=t; self.r=r; self.b=b
-    def key_string(self):
-        return '{:04}_{:04}_{:04}_{:04}'.format(self.l,self.t,self.r,self.b)
+    def db_column_string(self,power,ord_str):
+        pow_str = ['','mean','mean_sq'][power]
+        return '{}_{}_{:04}_{:04}_{:04}_{:04}'.format(pow_str,ord_str,self.l,self.t,self.r,self.b)
     def area(self):
         return (self.r-self.l)*(self.b-self.t)
     def overwrap(self, other):
@@ -76,6 +77,12 @@ def subspaces(w2d_ordering):
             ret.append(WaveletSubspace(lo,lo,hi,hi))
     else:
         raise Exception('w2d_ordering should be either "S" or "NS"; got : ' + w2d_ordering)
+    return ret
+
+def subspace_db_columns(power,ordering):
+    ret = []
+    for r in subspaces(ordering):
+        ret.append(r.db_column_string(power,ordering))
     return ret
 
 

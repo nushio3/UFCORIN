@@ -9,7 +9,7 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy.ext.declarative import declarative_base
 import urllib2
 
-with open('.mysqlpass','r') as fp:
+with open(os.path.expanduser('~')+'/.mysqlpass','r') as fp:
     password = fp.read().strip()
 
 Base = declarative_base()
