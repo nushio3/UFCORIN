@@ -7,18 +7,12 @@ import sqlalchemy as sql
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.ext.declarative import declarative_base
 import urllib2
+from schema import *
+
 
 with open('.mysqlpass','r') as fp:
     password = fp.read().strip()
 
-Base = declarative_base()
-
-class GOES(Base):
-    __tablename__ = 'goes_xray_flux'
-
-    t_tai = sql.Column(sql.DateTime, primary_key=True)
-    xray_flux_long = sql.Column(sql.Float)
-    xray_flux_short = sql.Column(sql.Float)
 
 engine = sql.create_engine('mysql+mysqldb://ufcoroot:{}@sun-feature-db.cvxxbx1dlxvk.us-west-2.rds.amazonaws.com:3306/sun_feature'.format(password))
 try:
@@ -44,7 +38,7 @@ for l in lines:
     minute=int(match.group(4)[2:4])
     flux_short=float(match.group(7))
     flux_long=float(match.group(8))
-    
+
     t_utc=datetime.datetime(year,month,day,hour,minute,0)
     t_tai=time.Time(t_utc,format='datetime',scale='utc').tai.datetime
     goes = GOES(t_tai=t_tai, xray_flux_long=flux_long, xray_flux_short=flux_short)
