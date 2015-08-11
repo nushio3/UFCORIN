@@ -85,7 +85,7 @@ session = Session()
 
 def fits2npz(newfn, npzfn):
     hdulist=fits.open(newfn)
-    hdulist.verify('fix+warn')
+    hdulist.verify('fix')
     img=hdulist[1].data
     img = np.where( np.isnan(img), 0.0, img)
     img2=intp.zoom(img,zoom=zoom_ratio)
