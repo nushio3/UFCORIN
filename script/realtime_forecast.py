@@ -178,7 +178,7 @@ while True:
         if not b<e : continue
         print goes_range_max(b,e), max(target_data[b:e])
 
-    # start BPTT learning
+    # start BPTT learning anew
     state = make_initial_state()
 
     accum_loss = chainer.Variable(mod.zeros((), dtype=np.float32))
