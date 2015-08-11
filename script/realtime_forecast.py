@@ -1,7 +1,11 @@
 #!/usr/bin/env python
 
-import datetime, math, os, random
+import argparse, datetime, math, os, pickle, random
 import astropy.time as time
+import chainer
+from chainer import cuda
+import chainer.functions as F
+from chainer import optimizers
 import numpy as np
 import sqlalchemy as sql
 from   sqlalchemy.orm import sessionmaker
@@ -9,6 +13,18 @@ from   sqlalchemy.ext.declarative import declarative_base
 
 import goes.schema as goes
 import jsoc.wavelet as wavelet
+
+parser = argparse.ArgumentParser()
+parser.add_argument('--gpu', '-g', default=-1, type=int,
+                    help='GPU ID (negative value indicates CPU)')
+parser.add_argument('--optimizer', '-o', default='AdaGrad',
+                    help='Name of the optimizer function')
+parser.add_argument('--optimizeroptions', '-p', default='()',
+                    help='Tuple of options to the optimizer')
+parser.add_argument('--filename', '-f', default='',
+                    help='Model dump filename tag')
+args = parser.parse_args()
+mod = cuda if args.gpu >= 0 else np
 
 with open(os.path.expanduser('~')+'/.mysqlpass','r') as fp:
     password = fp.read().strip()
@@ -25,10 +41,60 @@ feature_data = None
 target_data = None
 n_feature = n_goes_feature + n_hmi_feature
 
-print n_feature
+n_backprop = 4096
+
+n_inputs = n_feature
+n_outputs = 48
+n_units = 720
+batchsize = 1
+grad_clip = 80.0 #exp(grad_clip) < float_max
+
+# setup the model
+model = chainer.FunctionSet(embed=F.Linear(n_inputs, n_units),
+                            l1_x=F.Linear(n_units, 4 * n_units),
+                            l1_h=F.Linear(n_units, 4 * n_units),
+                            l2_x=F.Linear(n_units, 4 * n_units),
+                            l2_h=F.Linear(n_units, 4 * n_units),
+                            l3=F.Linear(n_units, n_outputs))
+try:
+    with open('model.pickle','r') as fp:
+        model = pickle.load(fp)
+except:
+    print "cannot load model!"
 
 
-goes_range_max_inner_memo = dict()
+for param in model.parameters:
+    param[:] = np.random.uniform(-0.1, 0.1, param.shape)
+
+
+if args.gpu >= 0:
+    cuda.init(args.gpu)
+    model.to_gpu()
+# Setup optimizer
+optimizer_expr = 'optimizers.{}{}'.format(args.optimizer, args.optimizeroptions)
+optimizer = eval(optimizer_expr)
+optimizer.setup(model.collect_parameters())
+
+def forward_one_step(x, state, train=True):
+    drop_ratio = 0.5
+    h0 = model.embed(x)
+    h1_in = model.l1_x(F.dropout(h0,ratio=drop_ratio, train=train)) + model.l1_h(state['h1'])
+    c1, h1 = F.lstm(state['c1'], h1_in)
+
+    h2_in = model.l2_x(F.dropout(h1,ratio=drop_ratio, train=train)) + model.l2_h(state['h2'])
+    c2, h2 = F.lstm(state['c2'], h2_in)
+
+    y = model.l3(F.dropout(h2,ratio=drop_ratio, train=train))
+    state = {'c1': c1, 'h1': h1, 'c2': c2, 'h2': h2}
+    return state, y
+
+def make_initial_state(batchsize=batchsize, train=True):
+    return {name: chainer.Variable(mod.zeros((batchsize, n_units),
+                                             dtype=np.float32),
+                                   volatile=not train)
+            for name in ('c1', 'h1', 'c2', 'h2')}
+
+
 
 def encode_goes(x):
     return 10 + math.log(max(1e-10,x))/math.log(10.0)
@@ -40,7 +106,7 @@ def encode_hmi(x):
 def decode_goes(x):
     return math.exp(x)
 
-
+goes_range_max_inner_memo = dict()
 
 def goes_range_max_inner(begin, end, stride):
     ret = None
@@ -71,7 +137,6 @@ engine = sql.create_engine('mysql+mysqldb://ufcoroot:{}@sun-feature-db.cvxxbx1dl
 
 Session = sessionmaker(bind=engine)
 session = Session()
-
 
 
 while True:
@@ -106,8 +171,48 @@ while True:
             col_str = hmi_columns[j]
             feature_data[idx][o+1+j] = encode_hmi(getattr(row,col_str))
     print 'feature filled.'
+
     while False: # Test code for goes_range_max
         b = random.randrange(window_minutes)
         e = random.randrange(window_minutes)
         if not b<e : continue
         print goes_range_max(b,e), max(target_data[b:e])
+
+    # start BPTT learning
+    state = make_initial_state()
+
+    accum_loss = chainer.Variable(mod.zeros((), dtype=np.float32))
+    n_backprop = int(2**random.randrange(1,10))
+    print 'backprop length = ', n_backprop
+    for t in range(window_minutes - 24*60): # future max prediction training
+        input_batch = np.array([feature_data[t]], dtype=np.float32)
+        output_data = []
+        for i in range(24):
+            output_data.append(goes_range_max(t+60*i,t+60*(i+1)))
+        for i in range(24):
+            output_data.append(goes_range_max(t,t+60*(i+1)))
+        output_batch = np.array([output_data], dtype=np.float32)
+        
+        input_variable=chainer.Variable(input_batch)
+        output_variable=chainer.Variable(output_batch)
+        
+        state, output_prediction = forward_one_step(input_variable, state)
+        
+        loss_iter = F.mean_squared_error(output_variable, output_prediction)
+        accum_loss += loss_iter
+        if t&(t-1)==0:
+            print 't=',t,' loss=', loss_iter.data
+        if (t+1) % n_backprop == 0:
+            optimizer.zero_grads()
+            accum_loss.backward()
+            accum_loss.unchain_backward()
+            optimizer.clip_grads(grad_clip)
+            optimizer.update()
+    with open('model.pickle','w') as fp:
+        pickle.dump(model,fp)
+
+
+
+
+
+            
