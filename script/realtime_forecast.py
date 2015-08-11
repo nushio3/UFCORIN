@@ -14,6 +14,7 @@ from   sqlalchemy.ext.declarative import declarative_base
 import goes.schema as goes
 import jsoc.wavelet as wavelet
 
+# Parse the command line argument
 parser = argparse.ArgumentParser()
 parser.add_argument('--gpu', '-g', default=-1, type=int,
                     help='GPU ID (negative value indicates CPU)')
@@ -26,14 +27,16 @@ parser.add_argument('--filename', '-f', default='',
 args = parser.parse_args()
 mod = cuda if args.gpu >= 0 else np
 
+# Obtain MySQL Password
 with open(os.path.expanduser('~')+'/.mysqlpass','r') as fp:
     password = fp.read().strip()
 
+# Create SQLAlchemy Interface Classes
 GOES = goes.GOES
 HMI  = wavelet.db_class('hmi.M_720s_nrt', 'haar')
 
-window_minutes = 2**15 # about 22.7 days, which is larger than 1/2 of the Sun's rotation period
-hmi_columns = wavelet.subspace_db_columns(2,'S') +  wavelet.subspace_db_columns(2,'NS') 
+window_minutes = 2**15 # about 22.7 days, which is more than 1/2 of the Sun's rotation period
+hmi_columns = wavelet.subspace_db_columns(2,'S') +  wavelet.subspace_db_columns(2,'NS')
 n_hmi_feature = len(hmi_columns) + 1
 n_goes_feature = 3
 
@@ -47,7 +50,21 @@ n_inputs = n_feature
 n_outputs = 48
 n_units = 720
 batchsize = 1
-grad_clip = 80.0 #exp(grad_clip) < float_max
+grad_clip = 80.0 #so that exp(grad_clip) < float_max
+
+
+# Convert the raw GOES and HMI data
+# so that they are non-negative numbers of order 1
+def encode_goes(x):
+    return 10 + math.log(max(1e-10,x))/math.log(10.0)
+def decode_goes(x):
+    return 10.0**(x-10)
+
+def encode_hmi(x):
+    return math.log(max(1.0,x))
+def decode_goes(x):
+    return math.exp(x)
+
 
 # setup the model
 model = chainer.FunctionSet(embed=F.Linear(n_inputs, n_units),
@@ -56,20 +73,20 @@ model = chainer.FunctionSet(embed=F.Linear(n_inputs, n_units),
                             l2_x=F.Linear(n_units, 4 * n_units),
                             l2_h=F.Linear(n_units, 4 * n_units),
                             l3=F.Linear(n_units, n_outputs))
+
+# Load the model, if available.
 try:
     with open('model.pickle','r') as fp:
         model = pickle.load(fp)
 except:
     print "cannot load model!"
-
-
-for param in model.parameters:
-    param[:] = np.random.uniform(-0.1, 0.1, param.shape)
-
+    for param in model.parameters:
+        param[:] = np.random.uniform(-0.1, 0.1, param.shape)
 
 if args.gpu >= 0:
     cuda.init(args.gpu)
     model.to_gpu()
+
 # Setup optimizer
 optimizer_expr = 'optimizers.{}{}'.format(args.optimizer, args.optimizeroptions)
 optimizer = eval(optimizer_expr)
@@ -96,15 +113,6 @@ def make_initial_state(batchsize=batchsize, train=True):
 
 
 
-def encode_goes(x):
-    return 10 + math.log(max(1e-10,x))/math.log(10.0)
-def decode_goes(x):
-    return 10.0**(x-10)
-
-def encode_hmi(x):
-    return math.log(max(1.0,x))
-def decode_goes(x):
-    return math.exp(x)
 
 goes_range_max_inner_memo = dict()
 
@@ -112,7 +120,7 @@ def goes_range_max_inner(begin, end, stride):
     ret = None
     if begin>=end: return None
     if (begin,end) in goes_range_max_inner_memo: return goes_range_max_inner_memo[(begin,end)]
-    if stride <= 1: 
+    if stride <= 1:
         for i in range(begin,end):
             ret = max(ret,target_data[i])
     else:
@@ -140,17 +148,18 @@ session = Session()
 
 
 while True:
+    # Select the new time range
     d = random.randrange(365*5*24)
     time_begin = datetime.datetime(2011,1,1) +  datetime.timedelta(hours=d)
     time_end   = time_begin +  datetime.timedelta(minutes=window_minutes)
     print time_begin, time_end
     ret_goes = session.query(GOES).filter(GOES.t_tai>=time_begin, GOES.t_tai<=time_end).all()
     if len(ret_goes) < 0.8 * window_minutes :
-        print 'short GOES'
+        print 'too few  GOES data'
         continue
     ret_hmi = session.query(HMI).filter(HMI.t_tai>=time_begin, HMI.t_tai<=time_end).all()
-    if len(ret_hmi)  < 0.8 * window_minutes/12 : 
-        print 'short HMI'
+    if len(ret_hmi)  < 0.8 * window_minutes/12 :
+        print 'too few HMI data'
         continue
     print len(ret_goes), len(ret_hmi)
 
@@ -170,6 +179,10 @@ while True:
         for j in range(len(hmi_columns)):
             col_str = hmi_columns[j]
             feature_data[idx][o+1+j] = encode_hmi(getattr(row,col_str))
+
+    # count the population in order to calculate the TSS.
+
+
     print 'feature filled.'
 
     while False: # Test code for goes_range_max
@@ -192,12 +205,12 @@ while True:
         for i in range(24):
             output_data.append(goes_range_max(t,t+60*(i+1)))
         output_batch = np.array([output_data], dtype=np.float32)
-        
+
         input_variable=chainer.Variable(input_batch)
         output_variable=chainer.Variable(output_batch)
-        
+
         state, output_prediction = forward_one_step(input_variable, state)
-        
+
         loss_iter = F.mean_squared_error(output_variable, output_prediction)
         accum_loss += loss_iter
         if t&(t-1)==0:
@@ -210,9 +223,3 @@ while True:
             optimizer.update()
     with open('model.pickle','w') as fp:
         pickle.dump(model,fp)
-
-
-
-
-
-            
