@@ -18,8 +18,8 @@ def db_fill_columns(self,t_tai, img):
             key = "mean_sq_" + s + "_" + r.key_string()
             val = np.sum(subimg**2)/r.area()
             setattr(self, key, val)
-            
-def db_class_name(series_name, wavelet): 
+
+def db_class_name(series_name, wavelet):
     return "DB_" +(series_name + "_wavelet_" + wavelet).replace('.','_')
 
 def db_class(series_name, wavelet):
@@ -63,8 +63,8 @@ def subspaces(w2d_ordering):
     if w2d_ordering=='S':
         for iy in range(11):
             for ix in range(11):
-                l=int(2**(ix-1)); t=int(2**(iy-1)); 
-                r=2**ix; b=2**iy; 
+                l=int(2**(ix-1)); t=int(2**(iy-1));
+                r=2**ix; b=2**iy;
                 ret.append(WaveletSubspace(l,t,r,b))
     elif w2d_ordering=='NS':
         ret.append(WaveletSubspace(0,0,1,1))
@@ -88,7 +88,7 @@ if __name__ == '__main__':
         for r in ss:
             sum += r.area()
         assert( sum == 1024**2)
-        
+
         for i in range(len(ss)):
             for j in range(i+1,len(ss)):
                 if ss[i].overwrap(ss[j]) : overwrap_found=True
@@ -104,7 +104,7 @@ def concat_w2d(ws):
     cvd = np.concatenate((cv,cd), axis=0)
 
     ca2 = np.concatenate((cah,cvd), axis=1)
-    
+
     return concat_w2d([ca2] + ws[2:])
 
 def wavedec2_img(img, wavelet, w2d_ordering):
@@ -119,4 +119,3 @@ def wavedec2_img(img, wavelet, w2d_ordering):
         return img
     else:
         raise Exception('w2d_ordering should be either "S" or "NS"; got : ' + w2d_ordering)
-

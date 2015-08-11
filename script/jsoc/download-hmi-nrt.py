@@ -99,14 +99,14 @@ def fits2npz(newfn, npzfn):
     np.savez_compressed(npzfn, img=img32)
 
     return img32
-        
+
 
 def plot_img(img,fn,title_str):
     w,h= np.shape(img)
     dpi=200
     plt.figure(figsize=(8,6),dpi=dpi)
     fig, ax = plt.subplots()
-	
+
     cmap = plt.get_cmap('bwr')
     cax = ax.imshow(img,cmap=cmap,vmin=-100.0,vmax=100.0)  # extent=(0,w,0,h),
     cbar=fig.colorbar(cax)
@@ -121,7 +121,7 @@ def register_wavelet(img, imgfn):
     plot_img(wavelet_img,"NS_" + imgfn,"NS-wavelet")
     wavelet_img = wavelet.wavedec2_img(img,'haar','S')
     plot_img(wavelet_img,"S_" + imgfn,"S-wavelet")
-    
+
 if args.convert:
     for yyyy in reversed(range(2011,2016)):
         for mm in reversed(range(1,13)):
@@ -158,7 +158,7 @@ for fn in sorted(glob.glob('*.fits')):
     dd  =int(ma.group(3))
     hh  =int(ma.group(4))
     minu=int(ma.group(5))
-    
+
     # convert TAI to UTC
     t_tai = time.Time('{:04}-{:02}-{:02} {:02}:{:02}'.format(yyyy,mm,dd,hh,minu),scale='tai', format='iso')
 
