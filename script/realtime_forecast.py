@@ -268,10 +268,10 @@ while True:
         for i in range(n_outputs):
             b,a = poptable[i].population_ratio(output_data[i])
             is_overshoot = output_prediction.data[0, i] >= output_data[i]
-            if output_data[i] == encode_goes(0):
+            if output_data[i] == encode_goes(0) or output_data[i] == None:
                 factor=0
             else:
-                factor=a if is_overshoot else b
+                factor=1.0 #a if is_overshoot else b
             fac.append(factor)
 
         fac_variable = np.array([fac], dtype=np.float32)
