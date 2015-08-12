@@ -66,8 +66,9 @@ def encode_hmi(x):
 def decode_goes(x):
     return math.exp(x)
 
-flare_classes = [encode_goes(x) for x in [1e-4,1e-5,1e-6]]
-flare_class_labels = ['X','>=M','>=C']
+flare_threshold = {'X': encode_goes(1e-4), '>=M': encode_goes(1e-5),'>=C': encode_goes(1e-6)}
+flare_classes = flare_threshold.keys()
+
 
 # maintain the contingency table.
 contingency_tables = dict()
@@ -82,7 +83,7 @@ except:
 
 
 # count the populations for each kind of predicted events
-poptable = n_outputs[poptbl.PopulationTable()]
+poptable = n_outputs * [poptbl.PopulationTable()]
 try:
     with open('poptable.pickle','r') as fp:
         poptable = pickle.load(fp,protocol=2)
@@ -242,6 +243,8 @@ while True:
         output_variable=chainer.Variable(output_batch)
 
         state, output_prediction = forward_one_step(input_variable, state)
+
+        # accumulate the gradient, modified by the factor 
         fac = []
         for i in range(n_outputs):
             b,a = poptable[i].population_ratio(output_data[i])
@@ -249,19 +252,38 @@ while True:
             fac.append(a if is_overshoot else b)
 
         fac_variable = np.array([fac], dtype=np.float32)
-        loss_iter = F.sum(output_variable, output_prediction)
+        loss_iter = F.sum(fac_variable * (output_variable - output_prediction)**2)
         accum_loss += loss_iter
-        if t&(t-1)==0:
-            print 't=',t,' loss=', loss_iter.data
+
+        # collect prediction statistics
+        for i in range(n_outputs):
+            for c in flare_classes:
+                thre = flare_threshold[c]
+                p = output_prediction.data[0][i] >= thre
+                o = output_variable.data[0][i] >= thre
+                contingency_tables[i,c].add(p,o)
+
+        # learn
         if (t+1) % n_backprop == 0:
             optimizer.zero_grads()
             accum_loss.backward()
             accum_loss.unchain_backward()
             optimizer.clip_grads(grad_clip)
             optimizer.update()
-    with open('model.pickle','w') as fp:
-        pickle.dump(model,fp,protocol=2)
-    with open('poptable.pickle','w') as fp:
-        pickle.dump(poptable,fp,protocol=2)
-    with open('contingency_tables.pickle','w') as fp:
-        pickle.dump(contingency_tables,fp,protocol=2)
+
+        if t&(t-1)==0:
+            print 't=',t,' loss=', loss_iter.data
+            for j in [0,4,23]:
+                i = j+24
+                t = j+1
+                for c in flare_classes:
+                    print '{} hr forecast, class {} TSS = {}'.format(t,c,contingency_tables[i,c].tss())
+
+    if True:
+            with open('model.pickle','w') as fp:
+                pickle.dump(model,fp,protocol=2)
+            with open('poptable.pickle','w') as fp:
+                pickle.dump(poptable,fp,protocol=2)
+            with open('contingency_tables.pickle','w') as fp:
+                pickle.dump(contingency_tables,fp,protocol=2)
+            print 'dump done'

@@ -25,7 +25,7 @@ class PopulationTable:
     # more slowly.
     def population_ratio(self,x0):
         b,a = self.count_event_pair(x0)
-        m = float(max(a,b))
+        m = float(a+b)
         return (b/m, a/m)
 
 
