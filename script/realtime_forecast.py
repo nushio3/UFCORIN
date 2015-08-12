@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-
+# -*- coding: utf-8 -*-
 import argparse, datetime, math, os, pickle, random
 import astropy.time as time
 import chainer
@@ -173,9 +173,7 @@ def goes_range_max_inner(begin, end, stride):
     return ret
 
 def goes_range_max(begin, end):
-    if begin < 0: return None
-    if end > window_size : return None
-    return goes_range_max_inner(begin, end , 2**15)
+    return goes_range_max_inner(max(0,begin), min(window_size,end) , 2**15)
 
 
 engine = sql.create_engine('mysql+mysqldb://ufcoroot:{}@sun-feature-db.cvxxbx1dlxvk.us-west-2.rds.amazonaws.com:3306/sun_feature'.format(password))
@@ -322,14 +320,16 @@ while True:
         ax.plot(goes_curve_t, goes_curve_y, 'b')
 
         pred_data = output_prediction.data[0]
+        pred_curve_t = []
+        pred_curve_y = []
         for i in range(24):
             pred_begin_t = now + t_per_hour*i*dt
             pred_end_t   = now + t_per_hour*(i+1)*dt
             pred_flux = decode_goes(pred_data[i])
-            pred_curve_t = [pred_begin_t, pred_end_t]
-            pred_curve_y = [pred_flux,pred_flux]
-            ax.plot(pred_curve_t, pred_curve_y, 'g')
-
+            pred_curve_t += [pred_begin_t, pred_end_t]
+            pred_curve_y += [pred_flux,pred_flux]
+        ax.plot(pred_curve_t, pred_curve_y, 'g')
+        for i in range(24):
             pred_begin_t = now
             pred_end_t   = now + t_per_hour*(i+1)*dt
             pred_flux = decode_goes(pred_data[i+24])
@@ -338,14 +338,16 @@ while True:
             ax.plot(pred_curve_t, pred_curve_y, 'r')
 
         days    = mdates.DayLocator()  # every day
-        daysFmt = mdates.DateFormatter('%Y-%m-%d %H:%M')
+        daysFmt = mdates.DateFormatter('%Y-%m-%d')
         hours   = mdates.HourLocator()
         ax.xaxis.set_major_locator(days)
         ax.xaxis.set_major_formatter(daysFmt)
         ax.xaxis.set_minor_locator(hours)
         ax.grid()
         fig.autofmt_xdate()
-
+        ax.set_title('GOES Forecast produced at {}(TAI)'.format(now.strftime('%Y-%m-%d %H:%M:%S')))
+        ax.set_xlabel('International Atomic Time')
+        ax.set_ylabel(u'GOES Long[1-8Å] Xray Flux')
 
         plt.savefig('prediction-result.png', dpi=200)
         subprocess.call('cp prediction-result.png ~/public_html/', shell=True)
