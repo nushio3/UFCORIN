@@ -52,7 +52,7 @@ n_inputs = n_feature
 n_outputs = 48
 n_units = 720
 batchsize = 1
-grad_clip = 40.0 #so that exp(grad_clip**2) < float_max
+grad_clip = 80.0 #so that exp(grad_clip) < float_max
 
 # Convert the raw GOES and HMI data
 # so that they are non-negative numbers of order 1
@@ -77,18 +77,18 @@ for i in range(n_outputs):
         contingency_tables[i,c] = contingency_table.ContingencyTable()
 try:
     with open('contingency_tables.pickle','r') as fp:
-        contingency_tables = pickle.load(fp,protocol=2)
+        contingency_tables = pickle.load(fp)
 except:
-    pass
+    print "cannot load contingency table!"
 
 
 # count the populations for each kind of predicted events
 poptable = n_outputs * [poptbl.PopulationTable()]
 try:
     with open('poptable.pickle','r') as fp:
-        poptable = pickle.load(fp,protocol=2)
+        poptable = pickle.load(fp)
 except:
-    pass
+    print "cannot load poptable!"
 
 
 
@@ -103,7 +103,7 @@ model = chainer.FunctionSet(embed=F.Linear(n_inputs, n_units),
 # Load the model, if available.
 try:
     with open('model.pickle','r') as fp:
-        model = pickle.load(fp,protocol=2)
+        model = pickle.load(fp)
 except:
     print "cannot load model!"
     for param in model.parameters:
@@ -181,10 +181,10 @@ while True:
     d = random.randrange(365*5*24)
     time_begin = datetime.datetime(2011,1,1) +  datetime.timedelta(hours=d)
     time_end   = time_begin +  datetime.timedelta(minutes=window_minutes)
-    print time_begin, time_end
+    print time_begin, time_end,
     ret_goes = session.query(GOES).filter(GOES.t_tai>=time_begin, GOES.t_tai<=time_end).all()
     if len(ret_goes) < 0.8 * window_minutes :
-        print 'too few  GOES data'
+        print 'too few GOES data'
         continue
     ret_hmi = session.query(HMI).filter(HMI.t_tai>=time_begin, HMI.t_tai<=time_end).all()
     if len(ret_hmi)  < 0.8 * window_minutes/12 :
@@ -192,7 +192,10 @@ while True:
         continue
 
     epoch+=1
+    nowmsg=datetime.datetime.strftime(datetime.datetime.now(), '%Y-%m-%d %H:%M:%S')
     print "epoch=", epoch, len(ret_goes), len(ret_hmi)
+    print "WCT=[{}]".format(nowmsg)
+        
 
 
     # fill the feature matrix
@@ -224,7 +227,7 @@ while True:
     state = make_initial_state()
 
     accum_loss = chainer.Variable(mod.zeros((), dtype=np.float32))
-    n_backprop = int(2**random.randrange(1,10))
+    n_backprop = int(2**random.randrange(1,5))
     print 'backprop length = ', n_backprop
     for t in range(window_minutes - 24*60): # future max prediction training
         input_batch = np.array([feature_data[t]], dtype=np.float32)
@@ -271,21 +274,22 @@ while True:
             optimizer.clip_grads(grad_clip)
             optimizer.update()
 
-        if t&(t-1)==0:
+        if (t&(t-1)==0 or t%4096==0) and t>0 and t%128==0:
             print 't=',t,' loss=', loss_iter.data
             for j in [0,4,23]:
                 i = j+24
-                t = j+1
-                print '{}hr:'.format(t),
+                pred_len = j+1
+                print '{}hr:'.format(pred_len),
                 for c in flare_classes:
                     print '{} {}'.format(c,contingency_tables[i,c].tss()),
             print
 
-    if True:
+        if (t%4096==0) and (t>0):
+            print 'dumping...',
             with open('model.pickle','w') as fp:
-                pickle.dump(model,fp,protocol=2)
+                pickle.dump(model,fp,protocol=-1)
             with open('poptable.pickle','w') as fp:
-                pickle.dump(poptable,fp,protocol=2)
+                pickle.dump(poptable,fp,protocol=-1)
             with open('contingency_tables.pickle','w') as fp:
-                pickle.dump(contingency_tables,fp,protocol=2)
+                pickle.dump(contingency_tables,fp,protocol=-1)
             print 'dump done'
