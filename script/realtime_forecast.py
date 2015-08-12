@@ -37,7 +37,8 @@ with open(os.path.expanduser('~')+'/.mysqlpass','r') as fp:
 GOES = goes.GOES
 HMI  = wavelet.db_class('hmi.M_720s_nrt', 'haar')
 
-window_minutes = 2**15 # about 22.7 days, which is more than 1/2 of the Sun's rotation period
+dt = datetime.timedelta(seconds=720.0)
+window_size = 2**11 # about 17 days, which is more than 1/2 of the Sun's rotation period
 hmi_columns = wavelet.subspace_db_columns(2,'S') +  wavelet.subspace_db_columns(2,'NS')
 n_hmi_feature = len(hmi_columns) + 1
 n_goes_feature = 3
@@ -162,7 +163,7 @@ def goes_range_max_inner(begin, end, stride):
 
 def goes_range_max(begin, end):
     if begin < 0: return None
-    if end > window_minutes : return None
+    if end > window_size : return None
     return goes_range_max_inner(begin, end , 2**15)
 
 
@@ -180,7 +181,7 @@ while True:
     # Select the new time range
     d = random.randrange(365*5*24)
     time_begin = datetime.datetime(2011,1,1) +  datetime.timedelta(hours=d)
-    time_end   = time_begin +  datetime.timedelta(minutes=window_minutes)
+    time_end   = time_begin + window_size * dt
     print time_begin, time_end,
     ret_goes = session.query(GOES).filter(GOES.t_tai>=time_begin, GOES.t_tai<=time_end).all()
     if len(ret_goes) < 0.8 * window_minutes :
@@ -195,20 +196,20 @@ while True:
     nowmsg=datetime.datetime.strftime(datetime.datetime.now(), '%Y-%m-%d %H:%M:%S')
     print "epoch=", epoch, len(ret_goes), len(ret_hmi)
     print "WCT=[{}]".format(nowmsg)
-        
+
 
 
     # fill the feature matrix
-    feature_data = window_minutes * [n_feature * [0.0]]
-    target_data = window_minutes * [0.0]
+    feature_data = window_size * [n_feature * [0.0]]
+    target_data = window_size * [0.0]
     for row in ret_goes:
-        idx = int((row.t_tai - time_begin).total_seconds() / 60)
+        idx = int((row.t_tai - time_begin).total_seconds() / dt.total_seconds())
         feature_data[idx][0] = 1.0
-        feature_data[idx][1] = encode_goes(row.xray_flux_long)
-        feature_data[idx][2] = encode_goes(row.xray_flux_short)
-        target_data[idx]     = encode_goes(row.xray_flux_long)
+        feature_data[idx][1] = max(feature_data[idx][1], encode_goes(row.xray_flux_long))
+        feature_data[idx][2] = max(feature_data[idx][2], encode_goes(row.xray_flux_short))
+        target_data[idx]     = feature_data[idx][1]
     for row in ret_hmi:
-        idx = int((row.t_tai - time_begin).total_seconds() / 60)
+        idx = int((row.t_tai - time_begin).total_seconds() / dt.total_seconds())
         o = n_goes_feature
         feature_data[idx][o] = 1.0
         for j in range(len(hmi_columns)):
@@ -229,13 +230,15 @@ while True:
     accum_loss = chainer.Variable(mod.zeros((), dtype=np.float32))
     n_backprop = int(2**random.randrange(1,5))
     print 'backprop length = ', n_backprop
-    for t in range(window_minutes - 24*60): # future max prediction training
+    t_per_hour = 5 # TODO:
+
+    for t in range(window_minutes - 24*t_per_hour): # future max prediction training
         input_batch = np.array([feature_data[t]], dtype=np.float32)
         output_data = []
         for i in range(24):
-            output_data.append(goes_range_max(t+60*i,t+60*(i+1)))
+            output_data.append(goes_range_max(t+t_per_hour*i,t+t_per_hour*(i+1)))
         for i in range(24):
-            output_data.append(goes_range_max(t,t+60*(i+1)))
+            output_data.append(goes_range_max(t,t+t_per_hour*(i+1)))
         output_batch = np.array([output_data], dtype=np.float32)
 
         # count the population in order to learn from imbalanced number of events.
@@ -247,7 +250,7 @@ while True:
 
         state, output_prediction = forward_one_step(input_variable, state)
 
-        # accumulate the gradient, modified by the factor 
+        # accumulate the gradient, modified by the factor
         fac = []
         for i in range(n_outputs):
             b,a = poptable[i].population_ratio(output_data[i])
@@ -274,7 +277,7 @@ while True:
             optimizer.clip_grads(grad_clip)
             optimizer.update()
 
-        if (t&(t-1)==0 or t%4096==0) and t>0 and t%128==0:
+        if (t&(t-1)==0 or t%1024==0) and t>0 and t%64==0:
             print 't=',t,' loss=', loss_iter.data
             for j in [0,4,23]:
                 i = j+24
