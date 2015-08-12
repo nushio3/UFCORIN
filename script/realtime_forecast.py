@@ -184,11 +184,11 @@ while True:
     time_end   = time_begin + window_size * dt
     print time_begin, time_end,
     ret_goes = session.query(GOES).filter(GOES.t_tai>=time_begin, GOES.t_tai<=time_end).all()
-    if len(ret_goes) < 0.8 * window_minutes :
+    if len(ret_goes) < 0.8 * window_size * 12:
         print 'too few GOES data'
         continue
     ret_hmi = session.query(HMI).filter(HMI.t_tai>=time_begin, HMI.t_tai<=time_end).all()
-    if len(ret_hmi)  < 0.8 * window_minutes/12 :
+    if len(ret_hmi)  < 0.8 * window_size:
         print 'too few HMI data'
         continue
 
@@ -203,13 +203,13 @@ while True:
     feature_data = window_size * [n_feature * [0.0]]
     target_data = window_size * [0.0]
     for row in ret_goes:
-        idx = int((row.t_tai - time_begin).total_seconds() / dt.total_seconds())
+        idx = min(window_size-1,int((row.t_tai - time_begin).total_seconds() / dt.total_seconds()))
         feature_data[idx][0] = 1.0
         feature_data[idx][1] = max(feature_data[idx][1], encode_goes(row.xray_flux_long))
         feature_data[idx][2] = max(feature_data[idx][2], encode_goes(row.xray_flux_short))
         target_data[idx]     = feature_data[idx][1]
     for row in ret_hmi:
-        idx = int((row.t_tai - time_begin).total_seconds() / dt.total_seconds())
+        idx = min(window_size-1,int((row.t_tai - time_begin).total_seconds() / dt.total_seconds()))
         o = n_goes_feature
         feature_data[idx][o] = 1.0
         for j in range(len(hmi_columns)):
@@ -219,8 +219,8 @@ while True:
     print 'feature filled.'
 
     while False: # Test code for goes_range_max
-        b = random.randrange(window_minutes)
-        e = random.randrange(window_minutes)
+        b = random.randrange(window_size)
+        e = random.randrange(window_size)
         if not b<e : continue
         print goes_range_max(b,e), max(target_data[b:e])
 
@@ -230,9 +230,9 @@ while True:
     accum_loss = chainer.Variable(mod.zeros((), dtype=np.float32))
     n_backprop = int(2**random.randrange(1,5))
     print 'backprop length = ', n_backprop
-    t_per_hour = 5 # TODO:
+    t_per_hour = int(round(datetime.timedelta(hours=1).total_seconds() / dt.total_seconds())) # TODO:
 
-    for t in range(window_minutes - 24*t_per_hour): # future max prediction training
+    for t in range(window_size - 24*t_per_hour): # future max prediction training
         input_batch = np.array([feature_data[t]], dtype=np.float32)
         output_data = []
         for i in range(24):
@@ -287,7 +287,7 @@ while True:
                     print '{} {}'.format(c,contingency_tables[i,c].tss()),
             print
 
-        if (t%4096==0) and (t>0):
+        if (t%1024==0) and (t>0):
             print 'dumping...',
             with open('model.pickle','w') as fp:
                 pickle.dump(model,fp,protocol=-1)
