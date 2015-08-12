@@ -185,6 +185,10 @@ session = Session()
 
 epoch=0
 while True:
+    for i in range(n_outputs):
+        for c in flare_classes:
+            contingency_tables[i,c].attenuate(1e-3)
+
     # Select the new time range
     d = random.randrange(365*5*24)
     time_begin = datetime.datetime(2011,1,1) +  datetime.timedelta(hours=d)
