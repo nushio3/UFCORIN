@@ -22,7 +22,7 @@ parser.add_argument('--gpu', '-g', default=-1, type=int,
                     help='GPU ID (negative value indicates CPU)')
 parser.add_argument('--optimizer', '-o', default='AdaGrad',
                     help='Name of the optimizer function')
-parser.add_argument('--optimizeroptions', '-p', default='(lr=0.003)',
+parser.add_argument('--optimizeroptions', '-p', default='(lr=0.001)',
                     help='Tuple of options to the optimizer')
 parser.add_argument('--filename', '-f', default='',
                     help='Model dump filename tag')
@@ -51,7 +51,7 @@ n_backprop = 4096
 
 n_inputs = n_feature
 n_outputs = 48
-n_units = 720
+n_units = 777
 batchsize = 1
 grad_clip = 80.0 #so that exp(grad_clip) < float_max
 
@@ -287,7 +287,8 @@ while True:
                     print '{} {}'.format(c,contingency_tables[i,c].tss()),
             print
 
-        if (t%1024==0) and (t>0):
+    if True: # at the end of the loop
+#        if (t%1024==0) and (t>0):
             print 'dumping...',
             with open('model.pickle','w') as fp:
                 pickle.dump(model,fp,protocol=-1)
