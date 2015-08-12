@@ -276,8 +276,10 @@ while True:
             for j in [0,4,23]:
                 i = j+24
                 t = j+1
+                print '{}hr:'.format(t),
                 for c in flare_classes:
-                    print '{} hr forecast, class {} TSS = {}'.format(t,c,contingency_tables[i,c].tss())
+                    print '{} {}'.format(c,contingency_tables[i,c].tss()),
+            print
 
     if True:
             with open('model.pickle','w') as fp:
