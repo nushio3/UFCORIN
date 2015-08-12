@@ -230,7 +230,7 @@ while True:
     accum_loss = chainer.Variable(mod.zeros((), dtype=np.float32))
     n_backprop = int(2**random.randrange(1,5))
     print 'backprop length = ', n_backprop
-    t_per_hour = 5 # TODO:
+    t_per_hour = int(round(datetime.timedelta(hours=1).total_seconds() / dt.total_seconds())) # TODO:
 
     for t in range(window_size - 24*t_per_hour): # future max prediction training
         input_batch = np.array([feature_data[t]], dtype=np.float32)
@@ -287,7 +287,7 @@ while True:
                     print '{} {}'.format(c,contingency_tables[i,c].tss()),
             print
 
-        if (t%4096==0) and (t>0):
+        if (t%1024==0) and (t>0):
             print 'dumping...',
             with open('model.pickle','w') as fp:
                 pickle.dump(model,fp,protocol=-1)
