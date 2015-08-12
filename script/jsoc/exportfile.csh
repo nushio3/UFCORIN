@@ -35,7 +35,8 @@ set notify = `/home/ubuntu/hub/UFCORIN/script/jsoc/url_escape.pl "$2"`
 # files you should use one of the next two methods.
 
 set method=url
-set protocol="FITS"
+set protocol=as-is
+#set protocol="FITS"
 
 # to specify filename formats add the "filenamefmt" command to the cmd line below.
 # you will need to url_escape the filenamefmt.
@@ -78,7 +79,7 @@ if ($method == "url") then
   set qry = "op=exp_status&requestid=$requestid&format=txt"
   while (1)
     sleep 3
-    wget  -O $RESP $FETCH?"$qry"
+    wget -q  -O $RESP $FETCH?"$qry"
     set Status = `grep status $RESP | sed -e s/status/Status/ `
     set $Status
     if ($Status == 0) break
