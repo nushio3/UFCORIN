@@ -37,7 +37,7 @@ from datetime import datetime
 global dlDepth
 global  global_normalization, work_dir, epoch_per_level, training_mode_string
 dlDepth = 10
-global_normalization = 1e-3
+global_normalization = 1e-2
 dl_batch_size = 2
 epoch_per_level = 6000
 training_mode_string = 'i'
@@ -95,6 +95,10 @@ def plot_img(img4,fn,title_str):
 
 batch_location_supply = dlDepth * [None]
 solar_disk_mask= dlDepth * [None]
+
+def nch(d):
+    return min(2**d, 4)
+
 for d in range(dlDepth):
     n=1024/(2**d)
     location_mask_x = np.float32(np.array(n*[n*[0]]))
@@ -119,7 +123,7 @@ for d in range(dlDepth):
                 mask[iy][ix]=0
     batch_location_supply[d] = np.array(dl_batch_size * [[location_mask_x, location_mask_y]])
     batch_location_supply[d] *= global_normalization * 10.0
-    solar_disk_mask[d] = np.array(dl_batch_size * [(2**d)*[mask]]) 
+    solar_disk_mask[d] = np.array(dl_batch_size * [nch(d)*[mask]]) 
     if gpu_flag:
         batch_location_supply[d]=cuda.to_gpu(batch_location_supply[d])
         solar_disk_mask[d]=cuda.to_gpu(solar_disk_mask[d])
@@ -147,9 +151,12 @@ sun_data = []
 
 modelDict = dict()
 for d in range(dlDepth):
-    modelDict['convA{}'.format(d)] = F.Convolution2D( 2**d, 2**(d+1),3,stride=1,pad=1)
-    modelDict['convB{}'.format(d)] = F.Convolution2D( 2**(d+1), 2**(d+1),3,stride=1,pad=1)
-    modelDict['convV{}'.format(d)] = F.Convolution2D( 2**(d+1)+2, 2**d,3,stride=1,pad=1)
+#     modelDict['convA{}'.format(d)] = F.Convolution2D( 2**d, 2**(d+1),3,stride=1,pad=1)
+#     modelDict['convB{}'.format(d)] = F.Convolution2D( 2**(d+1), 2**(d+1),3,stride=1,pad=1)
+#     modelDict['convV{}'.format(d)] = F.Convolution2D( 2**(d+1)+2, 2**d,3,stride=1,pad=1)
+    modelDict['convA{}'.format(d)] = F.Convolution2D( nch(d), nch(d+1),3,stride=1,pad=1)
+    modelDict['convB{}'.format(d)] = F.Convolution2D( nch(d+1), nch(d+1),3,stride=1,pad=1)
+    modelDict['convV{}'.format(d)] = F.Convolution2D( nch(d+1)+2, nch(d),3,stride=1,pad=1)
 
 model=chainer.FunctionSet(**modelDict)
 
