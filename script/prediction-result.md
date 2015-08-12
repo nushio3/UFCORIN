@@ -25,4 +25,8 @@ The green curve is 24-hour forecast.
 The red bars are predicted maxima of next *n*-hours where *n* in [1, .., 24] .
 
 
+One of the first predictions.
+
+<img src='prediction-result-2.png' width='80%'>
+
 Deep Learning Powered by [Chainer](http://chainer.org)

@@ -242,10 +242,11 @@ while True:
     state = make_initial_state()
 
     accum_loss = chainer.Variable(mod.zeros((), dtype=np.float32))
-    n_backprop = int(2**random.randrange(1,5))
+    n_backprop = 1024 #int(2**random.randrange(1,5))
     print 'backprop length = ', n_backprop
 
-    for t in range(window_size - 24*t_per_hour): # future max prediction training
+    last_t = window_size - 24*t_per_hour - 1
+    for t in range(last_t+1): # future max prediction training
         input_batch = np.array([feature_data[t]], dtype=np.float32)
         output_data = []
         for i in range(24):
@@ -287,7 +288,8 @@ while True:
                 contingency_tables[i,c].add(p,o)
 
         # learn
-        if (t+1) % n_backprop == 0:
+        if (t+1) % n_backprop == 0 or t==last_t:
+            print "backprop.."
             optimizer.zero_grads()
             accum_loss.backward()
             accum_loss.unchain_backward()
