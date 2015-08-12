@@ -13,6 +13,7 @@ from   sqlalchemy.ext.declarative import declarative_base
 
 import goes.schema as goes
 import jsoc.wavelet as wavelet
+import population_table as poptbl
 
 # Parse the command line argument
 parser = argparse.ArgumentParser()
@@ -146,6 +147,9 @@ engine = sql.create_engine('mysql+mysqldb://ufcoroot:{}@sun-feature-db.cvxxbx1dl
 Session = sessionmaker(bind=engine)
 session = Session()
 
+# flare_x_posi = session.query(sql.func.count('*')).filter(GOES.xray_flux_long >= 1e-6).all()
+# flare_x_nega = session.query(sql.func.count('*')).filter(GOES.xray_flux_long <  1e-6).all()
+# print flare_x_posi, flare_x_nega
 
 while True:
     # Select the new time range
@@ -182,6 +186,7 @@ while True:
 
     # count the population in order to calculate the TSS.
 
+    
 
     print 'feature filled.'
 
