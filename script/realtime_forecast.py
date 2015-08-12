@@ -31,7 +31,7 @@ parser.add_argument('--optimizeroptions', '-p', default='(lr=0.001)',
                     help='Tuple of options to the optimizer')
 parser.add_argument('--filename', '-f', default='',
                     help='Model dump filename tag')
-parser.add_argument('--realtime', '-r', action='store_true',
+parser.add_argument('--realtime', '-r', default='',
                     help='Perform realtime prediction')
 args = parser.parse_args()
 mod = cuda if args.gpu >= 0 else np
@@ -210,27 +210,27 @@ while True:
 
     epoch+=1
     nowmsg=datetime.datetime.strftime(datetime.datetime.now(), '%Y-%m-%d %H:%M:%S')
-    print "epoch={} {}({:4.2}%) {}({:4.2}%)".format(epoch, len(ret_goes), goes_fill_ratio*100, len(ret_hmi), hmi_fill_ratio*100)
+    print "epoch={} {}({:4.2f}%) {}({:4.2f}%)".format(epoch, len(ret_goes), goes_fill_ratio*100, len(ret_hmi), hmi_fill_ratio*100)
     print "WCT=[{}]".format(nowmsg)
 
 
 
     # fill the feature matrix
-    feature_data = window_size * [n_feature * [0.0]]
-    target_data = window_size * [0.0]
+    feature_data = np.array(window_size * [n_feature * [0.0]], dtype=np.float32)
+    target_data = np.array(window_size * [0.0], dtype=np.float32)
     for row in ret_goes:
         idx = min(window_size-1,int((row.t_tai - time_begin).total_seconds() / dt.total_seconds()))
-        feature_data[idx][0] = 1.0
-        feature_data[idx][1] = max(feature_data[idx][1], encode_goes(row.xray_flux_long))
-        feature_data[idx][2] = max(feature_data[idx][2], encode_goes(row.xray_flux_short))
-        target_data[idx]     = feature_data[idx][1]
+        feature_data[idx, 0] = 1.0
+        feature_data[idx, 1] = max(feature_data[idx, 1], encode_goes(row.xray_flux_long))
+        feature_data[idx, 2] = max(feature_data[idx, 2], encode_goes(row.xray_flux_short))
+        target_data[idx]     = feature_data[idx, 1]
     for row in ret_hmi:
         idx = min(window_size-1,int((row.t_tai - time_begin).total_seconds() / dt.total_seconds()))
         o = n_goes_feature
-        feature_data[idx][o] = 1.0
+        feature_data[idx, o] = 1.0
         for j in range(len(hmi_columns)):
             col_str = hmi_columns[j]
-            feature_data[idx][o+1+j] = encode_hmi(getattr(row,col_str))
+            feature_data[idx, o+1+j] = encode_hmi(getattr(row,col_str))
 
     print 'feature filled.'
 
@@ -269,7 +269,7 @@ while True:
         fac = []
         for i in range(n_outputs):
             b,a = poptable[i].population_ratio(output_data[i])
-            is_overshoot = output_prediction.data[0][i] >= output_data[i]
+            is_overshoot = output_prediction.data[0, i] >= output_data[i]
             fac.append(a if is_overshoot else b)
 
         fac_variable = np.array([fac], dtype=np.float32)
@@ -280,8 +280,8 @@ while True:
         for i in range(n_outputs):
             for c in flare_classes:
                 thre = flare_threshold[c]
-                p = output_prediction.data[0][i] >= thre
-                o = output_variable.data[0][i] >= thre
+                p = output_prediction.data[0, i] >= thre
+                o = output_variable.data[0, i] >= thre
                 contingency_tables[i,c].add(p,o)
 
         # learn
@@ -301,7 +301,7 @@ while True:
                 for c in flare_classes:
                     print '{} {}'.format(c,contingency_tables[i,c].tss()),
             print
-#        if args.realtime : break
+        if args.realtime == 'quick': break
 
     if not args.realtime: # at the end of the loop
         print 'dumping...',
