@@ -59,13 +59,12 @@ feature_data = None
 target_data = None
 n_feature = n_goes_feature + n_hmi_feature
 
-n_backprop = 4096
 
 n_inputs = n_feature
 n_outputs = 48
-n_units = 777
+n_units = 720
 batchsize = 1
-grad_clip = 80.0 #so that exp(grad_clip) < float_max
+grad_clip = 40.0 #so that exp(grad_clip) < float_max
 
 # Convert the raw GOES and HMI data
 # so that they are non-negative numbers of order 1
@@ -302,7 +301,8 @@ while True:
                 for c in flare_classes:
                     print '{} {}'.format(c,contingency_tables[i,c].tss()),
             print
-        if args.realtime: break
+#        if args.realtime : break
+
     if not args.realtime: # at the end of the loop
         print 'dumping...',
         with open('model.pickle','w') as fp:
@@ -316,17 +316,9 @@ while True:
         # visualize forecast
         fig, ax = plt.subplots()
         ax.set_yscale('log')
-        days    = mdates.DayLocator()  # every day
-        daysFmt = mdates.DateFormatter('%Y-%m-%d %H:%M')
-        hours   = mdates.HourLocator()
-        ax.xaxis.set_major_locator(days)
-        ax.xaxis.set_major_formatter(daysFmt)
-        ax.xaxis.set_minor_locator(hours)
-        ax.grid()
-        fig.autofmt_xdate()
 
         goes_curve_t = [time_begin + i*dt for i in range(window_size)]
-        goes_curve_y = [decode_goes(target_data[i]) if feature_data[i][0] > 0 else None for i in range(window_size)]
+        goes_curve_y = [decode_goes(target_data[i]) if target_data[i] != encode_goes(0) else None for i in range(window_size)]
         ax.plot(goes_curve_t, goes_curve_y, 'b')
 
         pred_data = output_prediction.data[0]
@@ -344,6 +336,15 @@ while True:
             pred_curve_t = [pred_begin_t, pred_end_t]
             pred_curve_y = [pred_flux,pred_flux]
             ax.plot(pred_curve_t, pred_curve_y, 'r')
+
+        days    = mdates.DayLocator()  # every day
+        daysFmt = mdates.DateFormatter('%Y-%m-%d %H:%M')
+        hours   = mdates.HourLocator()
+        ax.xaxis.set_major_locator(days)
+        ax.xaxis.set_major_formatter(daysFmt)
+        ax.xaxis.set_minor_locator(hours)
+        ax.grid()
+        fig.autofmt_xdate()
 
 
         plt.savefig('prediction-result.png', dpi=200)
