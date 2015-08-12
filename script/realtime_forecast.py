@@ -14,6 +14,7 @@ from   sqlalchemy.ext.declarative import declarative_base
 import goes.schema as goes
 import jsoc.wavelet as wavelet
 import population_table as poptbl
+import contingency_table
 
 # Parse the command line argument
 parser = argparse.ArgumentParser()
@@ -53,7 +54,6 @@ n_units = 720
 batchsize = 1
 grad_clip = 80.0 #so that exp(grad_clip) < float_max
 
-
 # Convert the raw GOES and HMI data
 # so that they are non-negative numbers of order 1
 def encode_goes(x):
@@ -65,6 +65,30 @@ def encode_hmi(x):
     return math.log(max(1.0,x))
 def decode_goes(x):
     return math.exp(x)
+
+flare_classes = [encode_goes(x) for x in [1e-4,1e-5,1e-6]]
+flare_class_labels = ['X','>=M','>=C']
+
+# maintain the contingency table.
+contingency_tables = dict()
+for i in range(n_outputs):
+    for c in flare_classes:
+        contingency_tables[i,c] = contingency_table.ContingencyTable()
+try:
+    with open('contingency_tables.pickle','r') as fp:
+        contingency_tables = pickle.load(fp,protocol=2)
+except:
+    pass
+
+
+# count the populations for each kind of predicted events
+poptable = n_outputs[poptbl.PopulationTable()]
+try:
+    with open('poptable.pickle','r') as fp:
+        poptable = pickle.load(fp,protocol=2)
+except:
+    pass
+
 
 
 # setup the model
@@ -78,7 +102,7 @@ model = chainer.FunctionSet(embed=F.Linear(n_inputs, n_units),
 # Load the model, if available.
 try:
     with open('model.pickle','r') as fp:
-        model = pickle.load(fp)
+        model = pickle.load(fp,protocol=2)
 except:
     print "cannot load model!"
     for param in model.parameters:
@@ -116,7 +140,6 @@ def make_initial_state(batchsize=batchsize, train=True):
 
 
 goes_range_max_inner_memo = dict()
-
 def goes_range_max_inner(begin, end, stride):
     ret = None
     if begin>=end: return None
@@ -151,6 +174,7 @@ session = Session()
 # flare_x_nega = session.query(sql.func.count('*')).filter(GOES.xray_flux_long <  1e-6).all()
 # print flare_x_posi, flare_x_nega
 
+epoch=0
 while True:
     # Select the new time range
     d = random.randrange(365*5*24)
@@ -165,7 +189,10 @@ while True:
     if len(ret_hmi)  < 0.8 * window_minutes/12 :
         print 'too few HMI data'
         continue
-    print len(ret_goes), len(ret_hmi)
+
+    epoch+=1
+    print "epoch=", epoch, len(ret_goes), len(ret_hmi)
+
 
     # fill the feature matrix
     feature_data = window_minutes * [n_feature * [0.0]]
@@ -183,10 +210,6 @@ while True:
         for j in range(len(hmi_columns)):
             col_str = hmi_columns[j]
             feature_data[idx][o+1+j] = encode_hmi(getattr(row,col_str))
-
-    # count the population in order to calculate the TSS.
-
-    
 
     print 'feature filled.'
 
@@ -211,12 +234,22 @@ while True:
             output_data.append(goes_range_max(t,t+60*(i+1)))
         output_batch = np.array([output_data], dtype=np.float32)
 
+        # count the population in order to learn from imbalanced number of events.
+        for i in range(n_outputs):
+            poptable[i].add_event(output_data[i])
+
         input_variable=chainer.Variable(input_batch)
         output_variable=chainer.Variable(output_batch)
 
         state, output_prediction = forward_one_step(input_variable, state)
+        fac = []
+        for i in range(n_outputs):
+            b,a = poptable[i].population_ratio(output_data[i])
+            is_overshoot = output_prediction.data[0][i] >= output_data[i]
+            fac.append(a if is_overshoot else b)
 
-        loss_iter = F.mean_squared_error(output_variable, output_prediction)
+        fac_variable = np.array([fac], dtype=np.float32)
+        loss_iter = F.sum(output_variable, output_prediction)
         accum_loss += loss_iter
         if t&(t-1)==0:
             print 't=',t,' loss=', loss_iter.data
@@ -227,4 +260,8 @@ while True:
             optimizer.clip_grads(grad_clip)
             optimizer.update()
     with open('model.pickle','w') as fp:
-        pickle.dump(model,fp)
+        pickle.dump(model,fp,protocol=2)
+    with open('poptable.pickle','w') as fp:
+        pickle.dump(poptable,fp,protocol=2)
+    with open('contingency_tables.pickle','w') as fp:
+        pickle.dump(contingency_tables,fp,protocol=2)
