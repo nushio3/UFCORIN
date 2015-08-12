@@ -76,7 +76,7 @@ def decode_goes(x):
 
 def encode_hmi(x):
     return math.log(max(1.0,x))
-def decode_goes(x):
+def decode_hmi(x):
     return math.exp(x)
 
 flare_threshold = {'X': encode_goes(1e-4), '>=M': encode_goes(1e-5),'>=C': encode_goes(1e-6)}
@@ -211,7 +211,7 @@ while True:
 
     epoch+=1
     nowmsg=datetime.datetime.strftime(datetime.datetime.now(), '%Y-%m-%d %H:%M:%S')
-    print "epoch=", epoch, len(ret_goes), len(ret_hmi)
+    print "epoch={} {}({:4.2}%) {}({:4.2}%)".format(epoch, len(ret_goes), goes_fill_ratio*100, len(ret_hmi), hmi_fill_ratio*100)
     print "WCT=[{}]".format(nowmsg)
 
 
@@ -302,7 +302,7 @@ while True:
                 for c in flare_classes:
                     print '{} {}'.format(c,contingency_tables[i,c].tss()),
             print
-
+        if args.realtime: break
     if not args.realtime: # at the end of the loop
         print 'dumping...',
         with open('model.pickle','w') as fp:
@@ -326,28 +326,28 @@ while True:
         fig.autofmt_xdate()
 
         goes_curve_t = [time_begin + i*dt for i in range(window_size)]
-        goes_curve_y = [decode_goes(target_data[i]) if feature_data[idx][0] > 0 else None for i in range(window_size)]
+        goes_curve_y = [decode_goes(target_data[i]) if feature_data[i][0] > 0 else None for i in range(window_size)]
         ax.plot(goes_curve_t, goes_curve_y, 'b')
 
         pred_data = output_prediction.data[0]
         for i in range(24):
-            pred_begin_t = now + t_per_hour*i
-            pred_end_t   = now + t_per_hour*(i+1)
+            pred_begin_t = now + t_per_hour*i*dt
+            pred_end_t   = now + t_per_hour*(i+1)*dt
             pred_flux = decode_goes(pred_data[i])
             pred_curve_t = [pred_begin_t, pred_end_t]
             pred_curve_y = [pred_flux,pred_flux]
-            ax.plot(goes_curve_t, goes_curve_y, 'g')
+            ax.plot(pred_curve_t, pred_curve_y, 'g')
 
             pred_begin_t = now
-            pred_end_t   = now + t_per_hour*(i+1)
+            pred_end_t   = now + t_per_hour*(i+1)*dt
             pred_flux = decode_goes(pred_data[i+24])
             pred_curve_t = [pred_begin_t, pred_end_t]
             pred_curve_y = [pred_flux,pred_flux]
-            ax.plot(goes_curve_t, goes_curve_y, 'g')
+            ax.plot(pred_curve_t, pred_curve_y, 'r')
 
 
         plt.savefig('prediction-result.png', dpi=200)
-        subprocess.call('cp prediction-result.png ~/public_html/'shell=True)
+        subprocess.call('cp prediction-result.png ~/public_html/', shell=True)
         plt.close('all')
 
         exit(0)
