@@ -22,7 +22,7 @@ parser.add_argument('--gpu', '-g', default=-1, type=int,
                     help='GPU ID (negative value indicates CPU)')
 parser.add_argument('--optimizer', '-o', default='AdaGrad',
                     help='Name of the optimizer function')
-parser.add_argument('--optimizeroptions', '-p', default='()',
+parser.add_argument('--optimizeroptions', '-p', default='(lr=0.003)',
                     help='Tuple of options to the optimizer')
 parser.add_argument('--filename', '-f', default='',
                     help='Model dump filename tag')
@@ -52,7 +52,7 @@ n_inputs = n_feature
 n_outputs = 48
 n_units = 720
 batchsize = 1
-grad_clip = 80.0 #so that exp(grad_clip) < float_max
+grad_clip = 40.0 #so that exp(grad_clip**2) < float_max
 
 # Convert the raw GOES and HMI data
 # so that they are non-negative numbers of order 1
@@ -252,7 +252,7 @@ while True:
             fac.append(a if is_overshoot else b)
 
         fac_variable = np.array([fac], dtype=np.float32)
-        loss_iter = F.sum(fac_variable * (output_variable - output_prediction)**2)
+        loss_iter = F.sum(fac_variable * (output_variable - output_prediction)**2)/float(len(fac))
         accum_loss += loss_iter
 
         # collect prediction statistics
