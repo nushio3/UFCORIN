@@ -246,7 +246,7 @@ while True:
     state = make_initial_state()
 
     accum_loss = chainer.Variable(mod.zeros((), dtype=np.float32))
-    n_backprop = 1024 #int(2**random.randrange(1,5))
+    n_backprop = 2 #int(2**random.randrange(1,5))
     print 'backprop length = ', n_backprop
 
     last_t = window_size - 24*t_per_hour - 1
@@ -271,16 +271,16 @@ while True:
         # accumulate the gradient, modified by the factor
         fac = []
         for i in range(n_outputs):
-            b,a = poptable[i].population_ratio(output_data[i])
+            b,a = poptable[i].population_ratio(output_prediction.data[0, i])
             is_overshoot = output_prediction.data[0, i] >= output_data[i]
             if output_data[i] == encode_goes(0) or output_data[i] == None:
                 factor=0
             else:
-                factor=1.0 #a if is_overshoot else b
+                factor=b if is_overshoot else a
             fac.append(factor)
 
         fac_variable = np.array([fac], dtype=np.float32)
-        loss_iter = F.sum(fac_variable * (output_variable - output_prediction)**2)/float(len(fac))
+        loss_iter = F.sum(fac_variable * abs(output_variable - output_prediction))/float(len(fac))
         accum_loss += loss_iter
 
         # collect prediction statistics
@@ -293,7 +293,6 @@ while True:
 
         # learn
         if (t+1) % n_backprop == 0 or t==last_t:
-            print "backprop.."
             optimizer.zero_grads()
             accum_loss.backward()
             accum_loss.unchain_backward()
