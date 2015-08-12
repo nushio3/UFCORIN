@@ -6,10 +6,15 @@ import chainer
 from chainer import cuda
 import chainer.functions as F
 from chainer import optimizers
+import matplotlib as mpl
+mpl.use('Agg')
+import matplotlib.pyplot as plt
+import matplotlib.dates as mdates
 import numpy as np
 import sqlalchemy as sql
 from   sqlalchemy.orm import sessionmaker
 from   sqlalchemy.ext.declarative import declarative_base
+import subprocess
 
 import goes.schema as goes
 import jsoc.wavelet as wavelet
@@ -26,8 +31,13 @@ parser.add_argument('--optimizeroptions', '-p', default='(lr=0.001)',
                     help='Tuple of options to the optimizer')
 parser.add_argument('--filename', '-f', default='',
                     help='Model dump filename tag')
+parser.add_argument('--realtime', '-r', action='store_true',
+                    help='Perform realtime prediction')
 args = parser.parse_args()
 mod = cuda if args.gpu >= 0 else np
+
+
+
 
 # Obtain MySQL Password
 with open(os.path.expanduser('~')+'/.mysqlpass','r') as fp:
@@ -38,6 +48,8 @@ GOES = goes.GOES
 HMI  = wavelet.db_class('hmi.M_720s_nrt', 'haar')
 
 dt = datetime.timedelta(seconds=720.0)
+t_per_hour = int(round(datetime.timedelta(hours=1).total_seconds() / dt.total_seconds()))
+
 window_size = 2**11 # about 17 days, which is more than 1/2 of the Sun's rotation period
 hmi_columns = wavelet.subspace_db_columns(2,'S') +  wavelet.subspace_db_columns(2,'NS')
 n_hmi_feature = len(hmi_columns) + 1
@@ -172,23 +184,28 @@ engine = sql.create_engine('mysql+mysqldb://ufcoroot:{}@sun-feature-db.cvxxbx1dl
 Session = sessionmaker(bind=engine)
 session = Session()
 
-# flare_x_posi = session.query(sql.func.count('*')).filter(GOES.xray_flux_long >= 1e-6).all()
-# flare_x_nega = session.query(sql.func.count('*')).filter(GOES.xray_flux_long <  1e-6).all()
-# print flare_x_posi, flare_x_nega
+
 
 epoch=0
 while True:
     # Select the new time range
     d = random.randrange(365*5*24)
     time_begin = datetime.datetime(2011,1,1) +  datetime.timedelta(hours=d)
+
+    if args.realtime:
+        now = time.Time(datetime.datetime.now(),format='datetime',scale='utc').tai.datetime
+        time_begin = now - (window_size -  24*t_per_hour) * dt
+
     time_end   = time_begin + window_size * dt
     print time_begin, time_end,
     ret_goes = session.query(GOES).filter(GOES.t_tai>=time_begin, GOES.t_tai<=time_end).all()
-    if len(ret_goes) < 0.8 * window_size * 12:
+    goes_fill_ratio = len(ret_goes) / (window_size * 12.0)
+    if goes_fill_ratio < 0.8 and not args.realtime:
         print 'too few GOES data'
         continue
     ret_hmi = session.query(HMI).filter(HMI.t_tai>=time_begin, HMI.t_tai<=time_end).all()
-    if len(ret_hmi)  < 0.8 * window_size:
+    hmi_fill_ratio = len(ret_hmi) / (window_size * 1.0)
+    if hmi_fill_ratio < 0.8 and not args.realtime:
         print 'too few HMI data'
         continue
 
@@ -230,7 +247,6 @@ while True:
     accum_loss = chainer.Variable(mod.zeros((), dtype=np.float32))
     n_backprop = int(2**random.randrange(1,5))
     print 'backprop length = ', n_backprop
-    t_per_hour = int(round(datetime.timedelta(hours=1).total_seconds() / dt.total_seconds())) # TODO:
 
     for t in range(window_size - 24*t_per_hour): # future max prediction training
         input_batch = np.array([feature_data[t]], dtype=np.float32)
@@ -248,7 +264,7 @@ while True:
         input_variable=chainer.Variable(input_batch)
         output_variable=chainer.Variable(output_batch)
 
-        state, output_prediction = forward_one_step(input_variable, state)
+        state, output_prediction = forward_one_step(input_variable, state, train = not args.realtime)
 
         # accumulate the gradient, modified by the factor
         fac = []
@@ -287,13 +303,51 @@ while True:
                     print '{} {}'.format(c,contingency_tables[i,c].tss()),
             print
 
-    if True: # at the end of the loop
-#        if (t%1024==0) and (t>0):
-            print 'dumping...',
-            with open('model.pickle','w') as fp:
-                pickle.dump(model,fp,protocol=-1)
-            with open('poptable.pickle','w') as fp:
-                pickle.dump(poptable,fp,protocol=-1)
-            with open('contingency_tables.pickle','w') as fp:
-                pickle.dump(contingency_tables,fp,protocol=-1)
-            print 'dump done'
+    if not args.realtime: # at the end of the loop
+        print 'dumping...',
+        with open('model.pickle','w') as fp:
+            pickle.dump(model,fp,protocol=-1)
+        with open('poptable.pickle','w') as fp:
+            pickle.dump(poptable,fp,protocol=-1)
+        with open('contingency_tables.pickle','w') as fp:
+            pickle.dump(contingency_tables,fp,protocol=-1)
+        print 'dump done'
+    if args.realtime:
+        # visualize forecast
+        fig, ax = plt.subplots()
+        ax.set_yscale('log')
+        days    = mdates.DayLocator()  # every day
+        daysFmt = mdates.DateFormatter('%Y-%m-%d %H:%M')
+        hours   = mdates.HourLocator()
+        ax.xaxis.set_major_locator(days)
+        ax.xaxis.set_major_formatter(daysFmt)
+        ax.xaxis.set_minor_locator(hours)
+        ax.grid()
+        fig.autofmt_xdate()
+
+        goes_curve_t = [time_begin + i*dt for i in range(window_size)]
+        goes_curve_y = [decode_goes(target_data[i]) if feature_data[idx][0] > 0 else None for i in range(window_size)]
+        ax.plot(goes_curve_t, goes_curve_y, 'b')
+
+        pred_data = output_prediction.data[0]
+        for i in range(24):
+            pred_begin_t = now + t_per_hour*i
+            pred_end_t   = now + t_per_hour*(i+1)
+            pred_flux = decode_goes(pred_data[i])
+            pred_curve_t = [pred_begin_t, pred_end_t]
+            pred_curve_y = [pred_flux,pred_flux]
+            ax.plot(goes_curve_t, goes_curve_y, 'g')
+
+            pred_begin_t = now
+            pred_end_t   = now + t_per_hour*(i+1)
+            pred_flux = decode_goes(pred_data[i+24])
+            pred_curve_t = [pred_begin_t, pred_end_t]
+            pred_curve_y = [pred_flux,pred_flux]
+            ax.plot(goes_curve_t, goes_curve_y, 'g')
+
+
+        plt.savefig('prediction-result.png', dpi=200)
+        subprocess.call('cp prediction-result.png ~/public_html/'shell=True)
+        plt.close('all')
+
+        exit(0)
