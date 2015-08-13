@@ -37,6 +37,33 @@ args = parser.parse_args()
 mod = cuda if args.gpu >= 0 else np
 
 
+class Forecast:
+    def visualize(filename):
+        fig, ax = plt.subplots()
+        ax.set_yscale('log')
+
+        ax.plot(self.goes_curve_t, self.goes_curve_y, 'b')
+        
+        ax.plot(self.pred_curve_t, self.pred_curve_y, 'g')
+        for i in range(24):
+            ax.plot(self.pred_max_t, self.pred_max_y, 'r')
+
+        days    = mdates.DayLocator()  # every day
+        daysFmt = mdates.DateFormatter('%Y-%m-%d')
+        hours   = mdates.HourLocator()
+        ax.xaxis.set_major_locator(days)
+        ax.xaxis.set_major_formatter(daysFmt)
+        ax.xaxis.set_minor_locator(hours)
+        ax.grid()
+        fig.autofmt_xdate()
+        ax.set_title('GOES Forecast at {}(TAI)'.format(now.strftime('%Y-%m-%d %H:%M:%S')))
+        ax.set_xlabel('International Atomic Time')
+        ax.set_ylabel(u'GOES Long[1-8Å] Xray Flux')
+
+        plt.savefig(filename, dpi=200)
+        plt.close('all')
+        
+
 
 
 # Obtain MySQL Password
@@ -246,7 +273,7 @@ while True:
     state = make_initial_state()
 
     accum_loss = chainer.Variable(mod.zeros((), dtype=np.float32))
-    n_backprop = 1024 #int(2**random.randrange(1,5))
+    n_backprop = 2 #int(2**random.randrange(1,5))
     print 'backprop length = ', n_backprop
 
     last_t = window_size - 24*t_per_hour - 1
@@ -329,12 +356,9 @@ while True:
         print 'dump done'
     if args.realtime:
         # visualize forecast
-        fig, ax = plt.subplots()
-        ax.set_yscale('log')
-
-        goes_curve_t = [time_begin + i*dt for i in range(window_size)]
-        goes_curve_y = [decode_goes(target_data[i]) if target_data[i] != encode_goes(0) else None for i in range(window_size)]
-        ax.plot(goes_curve_t, goes_curve_y, 'b')
+        forecast = Forecast()
+        forecast.goes_curve_t = [time_begin + i*dt for i in range(window_size)]
+        forecast.goes_curve_y = [decode_goes(target_data[i]) if target_data[i] != encode_goes(0) else None for i in range(window_size)]
 
         pred_data = output_prediction.data[0]
         pred_curve_t = []
@@ -345,29 +369,31 @@ while True:
             pred_flux = decode_goes(pred_data[i])
             pred_curve_t += [pred_begin_t, pred_end_t]
             pred_curve_y += [pred_flux,pred_flux]
-        ax.plot(pred_curve_t, pred_curve_y, 'g')
+        forecast.pred_curve_t = pred_curve_t
+        forecast.pred_curve_y = pred_curve_y
+        forecast.pred_max_t = []
+        forecast.pred_max_y = []
         for i in range(24):
             pred_begin_t = now
             pred_end_t   = now + t_per_hour*(i+1)*dt
             pred_flux = decode_goes(pred_data[i+24])
-            pred_curve_t = [pred_begin_t, pred_end_t]
-            pred_curve_y = [pred_flux,pred_flux]
-            ax.plot(pred_curve_t, pred_curve_y, 'r')
+            max_line_t = [pred_begin_t, pred_end_t]
+            max_line_y = [pred_flux,pred_flux]
+            forecast.pred_max_t.append(max_line_t)
+            forecast.pred_max_y.append(max_line_y)
 
-        days    = mdates.DayLocator()  # every day
-        daysFmt = mdates.DateFormatter('%Y-%m-%d')
-        hours   = mdates.HourLocator()
-        ax.xaxis.set_major_locator(days)
-        ax.xaxis.set_major_formatter(daysFmt)
-        ax.xaxis.set_minor_locator(hours)
-        ax.grid()
-        fig.autofmt_xdate()
-        ax.set_title('GOES Forecast produced at {}(TAI)'.format(now.strftime('%Y-%m-%d %H:%M:%S')))
-        ax.set_xlabel('International Atomic Time')
-        ax.set_ylabel(u'GOES Long[1-8Å] Xray Flux')
+        archive_dir = now.strftime('archive/%Y/%m/%d')
+        subprocess.call('mkdir -p ' + archive_dir, shell=True)
+        archive_fn  = archive_dir+now.strftime('/%H%M%S.pickle')
+        with open(archive_fn,'w') as fp:
+            pickle.dump(forecast,fp,protocol=-1)
+        with open(archive_fn,'r') as fp:
+            forecast = pickle.load(fp)
 
-        plt.savefig('prediction-result.png', dpi=200)
-        subprocess.call('cp prediction-result.png ~/public_html/', shell=True)
-        plt.close('all')
+
+        pngfn = 'prediction-result.png'
+        forecast.visualize(pngfn)
+        subprocess.call('cp {} ~/public_html/'.format(pngfn), shell=True)
+        
 
         exit(0)
