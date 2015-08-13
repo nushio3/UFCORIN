@@ -292,7 +292,9 @@ while True:
                 contingency_tables[i,c].add(p,o)
 
         # learn
-        if (t+1) % n_backprop == 0 or t==last_t:
+        if args.realtime and t >= last_t - 24*t_per_hour:
+            accum_loss.unchain_backward()
+        elif (t+1) % n_backprop == 0 or t==last_t:
             optimizer.zero_grads()
             accum_loss.backward()
             accum_loss.unchain_backward()
