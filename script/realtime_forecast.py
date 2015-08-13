@@ -46,7 +46,7 @@ class Forecast:
         
         ax.plot(self.pred_curve_t, self.pred_curve_y, 'g')
         for i in range(24):
-            ax.plot(self.pred_max_t, self.pred_max_y, 'r')
+            ax.plot(self.pred_max_t[i], self.pred_max_y[i], 'r')
 
         days    = mdates.DayLocator()  # every day
         daysFmt = mdates.DateFormatter('%Y-%m-%d')
