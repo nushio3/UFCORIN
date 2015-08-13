@@ -303,7 +303,7 @@ while True:
             if output_data[i] == encode_goes(0) or output_data[i] == None:
                 factor=0
             else:
-                factor=a if is_overshoot else b
+                factor = 1.0/b if is_overshoot else 1.0/a
             fac.append(factor)
 
         fac_variable = np.array([fac], dtype=np.float32)
