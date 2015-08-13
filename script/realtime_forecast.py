@@ -281,7 +281,13 @@ while True:
 
         fac_variable = np.array([fac], dtype=np.float32)
         loss_iter = F.sum(fac_variable * abs(output_variable - output_prediction))/float(len(fac))
-        accum_loss += loss_iter
+
+        # Teach the order of future max prediction
+        trash1, prediction_smaller, trash2 = F.split_axis(output_prediction, [24,47], axis=1)
+        trash3, prediction_larger          = F.split_axis(output_prediction, [25], axis=1)
+        loss_iter_2 = F.sum(F.relu(prediction_smaller - prediction_larger))
+        
+        accum_loss += loss_iter + loss_iter_2 + 0.0*F.sum(trash1) + 0.0*F.sum(trash2) + 0.0*F.sum(trash3)
 
         # collect prediction statistics
         for i in range(n_outputs):
