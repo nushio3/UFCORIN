@@ -36,6 +36,16 @@ parser.add_argument('--realtime', '-r', default='',
 args = parser.parse_args()
 mod = cuda if args.gpu >= 0 else np
 
+def to_PU(x):
+    if args.gpu>=0:
+        return cuda.to_gpu(x)
+    else:
+        return x
+def from_PU(x):
+    if args.gpu>=0:
+        return cuda.to_cpu(x)
+    else:
+        return x
 
 class Forecast:
     def visualize(self, filename):
@@ -290,23 +300,24 @@ while True:
         for i in range(n_outputs):
             poptable[i].add_event(output_data[i])
 
-        input_variable=chainer.Variable(input_batch)
-        output_variable=chainer.Variable(output_batch)
+        input_variable=chainer.Variable(to_PU(input_batch))
+        output_variable=chainer.Variable(to_PU(output_batch))
 
         state, output_prediction = forward_one_step(input_variable, state, train = not args.realtime)
 
         # accumulate the gradient, modified by the factor
+        output_prediction_data = from_PU(output_prediction.data)
         fac = []
         for i in range(n_outputs):
-            b,a = poptable[i].population_ratio(output_prediction.data[0, i])
-            is_overshoot = output_prediction.data[0, i] >= output_data[i]
+            b,a = poptable[i].population_ratio(output_prediction_data[0, i])
+            is_overshoot = output_prediction_data[0, i] >= output_data[i]
             if output_data[i] == encode_goes(0) or output_data[i] == None:
                 factor=0
             else:
                 factor = 1.0/b if is_overshoot else 1.0/a
             fac.append(factor)
 
-        fac_variable = np.array([fac], dtype=np.float32)
+        fac_variable = to_PU(np.array([fac], dtype=np.float32))
         loss_iter = F.sum(fac_variable * abs(output_variable - output_prediction))/float(len(fac))
 
         # Teach the order of future max prediction
@@ -320,8 +331,8 @@ while True:
         for i in range(n_outputs):
             for c in flare_classes:
                 thre = flare_threshold[c]
-                p = output_prediction.data[0, i] >= thre
-                o = output_variable.data[0, i] >= thre
+                p = output_prediction_data[0, i] >= thre
+                o = output_data[i] >= thre
                 contingency_tables[i,c].add(p,o)
 
         # learn
@@ -361,7 +372,7 @@ while True:
         forecast.goes_curve_t = [time_begin + i*dt for i in range(window_size)]
         forecast.goes_curve_y = [decode_goes(target_data[i]) if target_data[i] != encode_goes(0) else None for i in range(window_size)]
 
-        pred_data = output_prediction.data[0]
+        pred_data = output_prediction_data[0]
         pred_curve_t = []
         pred_curve_y = []
         for i in range(24):
