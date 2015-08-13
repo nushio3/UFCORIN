@@ -273,7 +273,7 @@ while True:
     state = make_initial_state()
 
     accum_loss = chainer.Variable(mod.zeros((), dtype=np.float32))
-    n_backprop = 2 #int(2**random.randrange(1,5))
+    n_backprop = int(2**random.randrange(1,min(10,int(2+0.1*epoch))))
     print 'backprop length = ', n_backprop
 
     last_t = window_size - 24*t_per_hour - 1
@@ -303,18 +303,18 @@ while True:
             if output_data[i] == encode_goes(0) or output_data[i] == None:
                 factor=0
             else:
-                factor=b if is_overshoot else a
+                factor=a if is_overshoot else b
             fac.append(factor)
 
         fac_variable = np.array([fac], dtype=np.float32)
         loss_iter = F.sum(fac_variable * abs(output_variable - output_prediction))/float(len(fac))
 
         # Teach the order of future max prediction
-        trash1, prediction_smaller, trash2 = F.split_axis(output_prediction, [24,47], axis=1)
-        trash3, prediction_larger          = F.split_axis(output_prediction, [25], axis=1)
+        _, prediction_smaller, _ = F.split_axis(output_prediction, [24,47], axis=1)
+        _, prediction_larger     = F.split_axis(output_prediction, [25], axis=1)
         loss_iter_2 = F.sum(F.relu(prediction_smaller - prediction_larger))
         
-        accum_loss += loss_iter + 1e-2 * loss_iter_2 + 0.0*F.sum(trash1) + 0.0*F.sum(trash2) + 0.0*F.sum(trash3)
+        accum_loss += loss_iter + 1e-2 * loss_iter_2 
 
         # collect prediction statistics
         for i in range(n_outputs):
