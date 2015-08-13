@@ -220,8 +220,8 @@ while True:
     d = random.randrange(365*5*24)
     time_begin = datetime.datetime(2011,1,1) +  datetime.timedelta(hours=d)
 
+    now = time.Time(datetime.datetime.now(),format='datetime',scale='utc').tai.datetime
     if args.realtime:
-        now = time.Time(datetime.datetime.now(),format='datetime',scale='utc').tai.datetime
         time_begin = now - (window_size -  24*t_per_hour) * dt
 
     time_end   = time_begin + window_size * dt
@@ -238,7 +238,7 @@ while True:
         continue
 
     epoch+=1
-    nowmsg=datetime.datetime.strftime(datetime.datetime.now(), '%Y-%m-%d %H:%M:%S')
+    nowmsg=datetime.datetime.strftime(now, '%Y-%m-%d %H:%M:%S')
     print "epoch={} {}({:4.2f}%) {}({:4.2f}%)".format(epoch, len(ret_goes), goes_fill_ratio*100, len(ret_hmi), hmi_fill_ratio*100)
     print "WCT=[{}]".format(nowmsg)
 
