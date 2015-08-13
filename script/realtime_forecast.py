@@ -246,7 +246,7 @@ while True:
     state = make_initial_state()
 
     accum_loss = chainer.Variable(mod.zeros((), dtype=np.float32))
-    n_backprop = 2 #int(2**random.randrange(1,5))
+    n_backprop = 1024 #int(2**random.randrange(1,5))
     print 'backprop length = ', n_backprop
 
     last_t = window_size - 24*t_per_hour - 1
@@ -287,7 +287,7 @@ while True:
         trash3, prediction_larger          = F.split_axis(output_prediction, [25], axis=1)
         loss_iter_2 = F.sum(F.relu(prediction_smaller - prediction_larger))
         
-        accum_loss += loss_iter + loss_iter_2 + 0.0*F.sum(trash1) + 0.0*F.sum(trash2) + 0.0*F.sum(trash3)
+        accum_loss += loss_iter + 1e-2 * loss_iter_2 + 0.0*F.sum(trash1) + 0.0*F.sum(trash2) + 0.0*F.sum(trash3)
 
         # collect prediction statistics
         for i in range(n_outputs):
@@ -308,7 +308,7 @@ while True:
             optimizer.update()
 
         if (t&(t-1)==0 or t%1024==0) and t>0 and t%64==0:
-            print 't=',t,' loss=', loss_iter.data
+            print 't=',t,' loss=', loss_iter.data, loss_iter_2.data
             for j in [0,4,23]:
                 i = j+24
                 pred_len = j+1
