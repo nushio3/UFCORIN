@@ -38,7 +38,7 @@ mod = cuda if args.gpu >= 0 else np
 
 
 class Forecast:
-    def visualize(filename):
+    def visualize(self, filename):
         fig, ax = plt.subplots()
         ax.set_yscale('log')
 
@@ -354,6 +354,7 @@ while True:
         with open('contingency_tables.pickle','w') as fp:
             pickle.dump(contingency_tables,fp,protocol=-1)
         print 'dump done'
+
     if args.realtime:
         # visualize forecast
         forecast = Forecast()
@@ -385,10 +386,13 @@ while True:
         archive_dir = now.strftime('archive/%Y/%m/%d')
         subprocess.call('mkdir -p ' + archive_dir, shell=True)
         archive_fn  = archive_dir+now.strftime('/%H%M%S.pickle')
-        with open(archive_fn,'w') as fp:
-            pickle.dump(forecast,fp,protocol=-1)
-        with open(archive_fn,'r') as fp:
-            forecast = pickle.load(fp)
+        
+        # pickle, then read from the file, to best ensure the reproducibility.
+        if args.realtime != 'quick':
+            with open(archive_fn,'w') as fp:
+                pickle.dump(forecast,fp,protocol=-1)
+            with open(archive_fn,'r') as fp:
+                forecast = pickle.load(fp)
 
 
         pngfn = 'prediction-result.png'
