@@ -147,9 +147,8 @@ model = chainer.FunctionSet(embed=F.Linear(n_inputs, n_units),
                             l1_h=F.Linear(n_units, 4 * n_units),
                             l2_x=F.Linear(n_units, 4 * n_units),
                             l2_h=F.Linear(n_units, 4 * n_units),
-                            l3b=F.Linear(n_units, n_outputs),
-                            l3w=F.Linear(n_units, n_outputs),
-                            l3t=F.Linear(n_units, n_outputs))
+                            l3a=F.Linear(n_units, n_units),
+                            l3=F.Linear(n_units, n_outputs))
 
 # Load the model, if available.
 try:
@@ -178,10 +177,8 @@ def forward_one_step(x, state, train=True):
     h2_in = model.l2_x(F.dropout(h1,ratio=drop_ratio, train=train)) + model.l2_h(state['h2'])
     c2, h2 = F.lstm(state['c2'], h2_in)
 
-    yb = model.l3b(F.dropout(h2,ratio=drop_ratio, train=train))
-    yw = model.l3w(F.dropout(h2,ratio=drop_ratio, train=train))
-    yt = model.l3t(F.dropout(h2,ratio=drop_ratio, train=train))
-    y = F.tanh(yt) * yw + yb
+    ya = F.relu(model.l3a(F.dropout(h2,ratio=drop_ratio, train=train)))
+    y =  model.l3(F.dropout(ya,ratio=drop_ratio, train=train))
     state = {'c1': c1, 'h1': h1, 'c2': c2, 'h2': h2}
     return state, y
 
