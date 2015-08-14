@@ -27,7 +27,7 @@ parser.add_argument('--gpu', '-g', default=-1, type=int,
                     help='GPU ID (negative value indicates CPU)')
 parser.add_argument('--optimizer', '-o', default='AdaGrad',
                     help='Name of the optimizer function')
-parser.add_argument('--optimizeroptions', '-p', default='(lr=0.001)',
+parser.add_argument('--optimizeroptions', '-p', default='()',
                     help='Tuple of options to the optimizer')
 parser.add_argument('--filename', '-f', default='',
                     help='Model dump filename tag')
@@ -101,7 +101,7 @@ n_inputs = n_feature
 n_outputs = 48
 n_units = 720
 batchsize = 1
-grad_clip = 40.0 #so that exp(grad_clip) < float_max
+grad_clip = 5.0 #so that exp(grad_clip) < float_max
 
 # Convert the raw GOES and HMI data
 # so that they are non-negative numbers of order 1
@@ -312,9 +312,10 @@ while True:
             b,a = poptable[i].population_ratio(output_prediction_data[0, i])
             is_overshoot = output_prediction_data[0, i] >= output_data[i]
             if output_data[i] == encode_goes(0) or output_data[i] == None:
-                factor=0
+                factor=0.0
             else:
                 factor = 1.0/b if is_overshoot else 1.0/a
+            factor *= 10.0 ** min(2.0,output_data[i]-4)
             fac.append(factor)
 
         fac_variable = to_PU(np.array([fac], dtype=np.float32))
