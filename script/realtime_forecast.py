@@ -147,7 +147,7 @@ model = chainer.FunctionSet(embed=F.Linear(n_inputs, n_units),
                             l1_h=F.Linear(n_units, 4 * n_units),
                             l2_x=F.Linear(n_units, 4 * n_units),
                             l2_h=F.Linear(n_units, 4 * n_units),
-                            l3a=F.Linear(n_units, n_units),
+#                            l3a=F.Linear(n_units, n_units),
                             l3=F.Linear(n_units, n_outputs))
 
 # Load the model, if available.
@@ -177,8 +177,8 @@ def forward_one_step(x, state, train=True):
     h2_in = model.l2_x(F.dropout(h1,ratio=drop_ratio, train=train)) + model.l2_h(state['h2'])
     c2, h2 = F.lstm(state['c2'], h2_in)
 
-    ya = F.relu(model.l3a(F.dropout(h2,ratio=drop_ratio, train=train)))
-    y =  model.l3(F.dropout(ya,ratio=drop_ratio, train=train))
+#    ya = F.relu(model.l3a(F.dropout(h2,ratio=drop_ratio, train=train)))
+    y =  model.l3(F.dropout(h2,ratio=drop_ratio, train=train))
     state = {'c1': c1, 'h1': h1, 'c2': c2, 'h2': h2}
     return state, y
 
@@ -285,7 +285,7 @@ while True:
     state = make_initial_state()
 
     accum_loss = chainer.Variable(mod.zeros((), dtype=np.float32))
-    n_backprop = int(2**random.randrange(1,min(10,int(2+0.1*epoch))))
+    n_backprop = 512 # int(2**random.randrange(1,min(10,int(2+0.1*epoch))))
     print 'backprop length = ', n_backprop
 
     last_t = window_size - 24*t_per_hour - 1
@@ -317,7 +317,8 @@ while True:
                 factor=0.0
             else:
                 factor = 1.0/b if is_overshoot else 1.0/a
-            factor *= 10.0 ** min(2.0,output_data[i]-4)
+                factor = 1.0
+            factor *= 10.0 ** max(0.0,min(2.0,output_data[i]-4))
             fac.append(factor)
 
         fac_variable = to_PU(np.array([fac], dtype=np.float32))
