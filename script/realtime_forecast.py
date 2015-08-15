@@ -226,7 +226,7 @@ epoch=0
 while True:
     for i in range(n_outputs):
         for c in flare_classes:
-            contingency_tables[i,c].attenuate(1e-3)
+            contingency_tables[i,c].attenuate(1e-2)
 
     # Select the new time range
     d = random.randrange(365*5*24)
@@ -285,7 +285,7 @@ while True:
     state = make_initial_state()
 
     accum_loss = chainer.Variable(mod.zeros((), dtype=np.float32))
-    n_backprop = 1024 # int(2**random.randrange(1,min(10,int(2+0.1*epoch))))
+    n_backprop = int(2**min(10,int(1+0.05*epoch)))
     print 'backprop length = ', n_backprop
 
     last_t = window_size - 24*t_per_hour - 1
