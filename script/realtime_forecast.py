@@ -332,12 +332,13 @@ while True:
         accum_loss += loss_iter #+ 1e-4 * loss_iter_2 
 
         # collect prediction statistics
-        for i in range(n_outputs):
-            for c in flare_classes:
-                thre = flare_threshold[c]
-                p = output_prediction_data[0, i] >= thre
-                o = output_data[i] >= thre
-                contingency_tables[i,c].add(p,o)
+        if not args.realtime and t >= last_t - 24*t_per_hour:
+            for i in range(n_outputs):
+                for c in flare_classes:
+                    thre = flare_threshold[c]
+                    p = output_prediction_data[0, i] >= thre
+                    o = output_data[i] >= thre
+                    contingency_tables[i,c].add(p,o)
 
         # learn
         if args.realtime and t >= last_t - 24*t_per_hour:
@@ -351,6 +352,7 @@ while True:
 
         if (t&(t-1)==0 or t%1024==0) and t>0 and t%64==0:
             print 't=',t,' loss=', loss_iter.data, loss_iter_2.data
+        if t==last_t-1:
             for j in [0,4,23]:
                 i = j+24
                 pred_len = j+1
