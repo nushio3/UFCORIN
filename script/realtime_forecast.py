@@ -215,7 +215,7 @@ def goes_range_max(begin, end):
     return goes_range_max_inner(max(0,begin), min(window_size,end) , 2**15)
 
 
-engine = sql.create_engine('mysql+mysqldb://ufcoroot:{}@sun-feature-db.cvxxbx1dlxvk.us-west-2.rds.amazonaws.com:3306/sun_feature'.format(password))
+engine = sql.create_engine('mysql+pymysql://ufcoroot:{}@sun-feature-db.cvxxbx1dlxvk.us-west-2.rds.amazonaws.com:3306/sun_feature'.format(password))
 
 Session = sessionmaker(bind=engine)
 session = Session()
