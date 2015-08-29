@@ -1,11 +1,12 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-import argparse, datetime, math, os, pickle, random
+import argparse, datetime, math, os, pickle, random,sys
 import astropy.time as time
 import chainer
 from chainer import cuda
 import chainer.functions as F
 from chainer import optimizers
+import hashlib
 import matplotlib as mpl
 mpl.use('Agg')
 import matplotlib.pyplot as plt
@@ -24,7 +25,7 @@ import contingency_table
 # Parse the command line argument
 parser = argparse.ArgumentParser()
 parser.add_argument('--gpu', '-g', default=-1, type=int,
-                    help='GPU ID (negative value indicates CPU)')
+                    help='GPU ID + 1(negative value indicates CPU)')
 parser.add_argument('--optimizer', '-o', default='AdaGrad',
                     help='Name of the optimizer function')
 parser.add_argument('--optimizeroptions', '-p', default='()',
@@ -35,6 +36,15 @@ parser.add_argument('--realtime', '-r', default='',
                     help='Perform realtime prediction')
 args = parser.parse_args()
 mod = cuda if args.gpu >= 0 else np
+
+workdir='result/' + hashlib.sha256("salt{}{}".format(args,random.random())).hexdigest()
+subprocess.call('mkdir -p ' + workdir ,shell=True)
+os.chdir(workdir)
+
+sys.stdout=open("stdout.txt","w")
+
+with open("args.log","w") as fp:
+    fp.write('{}\n'.format(args))
 
 def to_PU(x):
     if args.gpu>=0:
@@ -91,6 +101,8 @@ window_size = 2**11 # about 17 days, which is more than 1/2 of the Sun's rotatio
 hmi_columns = wavelet.subspace_db_columns(2,'S') +  wavelet.subspace_db_columns(2,'NS')
 n_hmi_feature = len(hmi_columns) + 1
 n_goes_feature = 3
+
+global feature_data, target_data
 
 feature_data = None
 target_data = None
@@ -160,7 +172,7 @@ except:
         param[:] = np.random.uniform(-0.1, 0.1, param.shape)
 
 if args.gpu >= 0:
-    cuda.get_device(args.gpu).use()
+    cuda.get_device(args.gpu-1).use()
     model.to_gpu()
 
 # Setup optimizer
@@ -193,6 +205,8 @@ def make_initial_state(batchsize=batchsize, train=True):
 
 goes_range_max_inner_memo = dict()
 def goes_range_max_inner(begin, end, stride):
+    global feature_data, target_data
+
     ret = None
     if begin>=end: return None
     if (begin,end) in goes_range_max_inner_memo: return goes_range_max_inner_memo[(begin,end)]
@@ -220,17 +234,19 @@ engine = sql.create_engine('mysql+pymysql://ufcoroot:{}@sun-feature-db.cvxxbx1dl
 Session = sessionmaker(bind=engine)
 session = Session()
 
-
-
+global epoch
 epoch=0
-while True:
-    for i in range(n_outputs):
-        for c in flare_classes:
-            contingency_tables[i,c].attenuate(1e-2)
 
+# while True:
+#     for i in range(n_outputs):
+#         for c in flare_classes:
+#             contingency_tables[i,c].attenuate(1e-2)
+
+def learn_predict_from_time(timedelta_hours):
+    global feature_data, target_data
+    global epoch
     # Select the new time range
-    d = random.randrange(365*5*24)
-    time_begin = datetime.datetime(2011,1,1) +  datetime.timedelta(hours=d)
+    time_begin = datetime.datetime(2011,1,1) +  datetime.timedelta(hours=timedelta_hours)
 
     now = time.Time(datetime.datetime.now(),format='datetime',scale='utc').tai.datetime
     if args.realtime:
@@ -242,13 +258,12 @@ while True:
     goes_fill_ratio = len(ret_goes) / (window_size * 12.0)
     if goes_fill_ratio < 0.8 and not args.realtime:
         print 'too few GOES data'
-        continue
+        return
     ret_hmi = session.query(HMI).filter(HMI.t_tai>=time_begin, HMI.t_tai<=time_end).all()
     hmi_fill_ratio = len(ret_hmi) / (window_size * 1.0)
     if hmi_fill_ratio < 0.8 and not args.realtime:
         print 'too few HMI data'
-        continue
-
+        return
     epoch+=1
     nowmsg=datetime.datetime.strftime(now, '%Y-%m-%d %H:%M:%S')
     print "epoch={} {}({:4.2f}%) {}({:4.2f}%)".format(epoch, len(ret_goes), goes_fill_ratio*100, len(ret_hmi), hmi_fill_ratio*100)
@@ -290,6 +305,7 @@ while True:
 
     last_t = window_size - 24*t_per_hour - 1
     for t in range(last_t+1): # future max prediction training
+        sys.stdout.flush()
         input_batch = np.array([feature_data[t]], dtype=np.float32)
         output_data = []
         for i in range(24):
@@ -422,3 +438,11 @@ while True:
         
 
         exit(0)
+
+delta_hour = 24*30
+while delta_hour < 4 * 365 * 24:
+    learn_predict_from_time(delta_hour)
+    delta_hour += 24 + random.randrange(8)
+    sys.stdout.flush()
+
+    
