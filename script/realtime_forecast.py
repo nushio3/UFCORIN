@@ -177,6 +177,7 @@ if args.gpu >= 0:
 
 # Setup optimizer
 optimizer_expr = 'optimizers.{}{}'.format(args.optimizer, args.optimizeroptions)
+sys.stderr.write(optimizer_expr)
 optimizer = eval(optimizer_expr)
 optimizer.setup(model.collect_parameters())
 

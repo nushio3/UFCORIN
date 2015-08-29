@@ -1,2 +1,2 @@
-parallel -j4 --joblog parallel.log  'echo python realtime_forecast.py -g {%} {}' :::: argument-list.txt
+parallel --bar --eta -j4 --joblog parallel.log  'echo python realtime_forecast.py -g {%} {} | bash' :::: argument-list.txt
 
