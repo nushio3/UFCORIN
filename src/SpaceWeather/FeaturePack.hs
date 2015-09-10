@@ -13,6 +13,7 @@ import qualified Data.Map.Strict as Map
 import qualified Data.Text as T
 import qualified Data.Text.IO as T
 import qualified Data.Yaml as Yaml
+import qualified Data.Vector as V
 import           System.IO
 import qualified System.IO.Hadoop as HFS
 import System.Random
@@ -100,8 +101,9 @@ loadFeatureWithSchemaT schema0 fp = do
       fluctuateSpace xs = zipWith (\x f -> exp f * x) xs $ randomRs (-spacialNoise, spacialNoise) gen0
 
       fluctuateTime :: [Double] -> [Double]
-      fluctuateTime xs = map fst $ sortBy (compare `on` snd) $ zip xs $
-                         zipWith (+) [0..] $ randomRs (0,1 + temporalNoise) gen1
+      fluctuateTime xs = let  vxs = V.fromList xs in
+        map (\i -> vxs V.! i) $
+        zipWith (\i r -> max 0 $ floor $ i-r) [0..] $ randomRs (0,1 + temporalNoise) gen1
 
 
 
