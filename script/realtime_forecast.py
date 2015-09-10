@@ -16,6 +16,7 @@ import sqlalchemy as sql
 from   sqlalchemy.orm import sessionmaker
 from   sqlalchemy.ext.declarative import declarative_base
 import subprocess
+import tabulate
 
 import goes.schema as goes
 import jsoc.wavelet as wavelet
@@ -148,6 +149,19 @@ try:
 except:
     print "cannot load contingency table!"
 
+# format the contingency table for monitoring.
+def ppr_contingency_table(tbl):
+    i = n_outputs - 1
+    row0 = []
+    row1 = []
+    row2 = []
+    for c in flare_classes:
+        row0 += [c, 'O+', 'O-']
+        row1 += ['P+', tbl[i,c].counter[True,True],tbl[i,c].counter[True,False]]
+        row2 += ['P-', tbl[i,c].counter[False,True],tbl[i,c].counter[False,False]]
+    return tabulate.tabulate([row0,row1,row2],headers='firstrow')
+
+
 
 # count the populations for each kind of predicted events
 poptable = n_outputs * [poptbl.PopulationTable()]
@@ -212,7 +226,7 @@ def make_initial_state(batchsize=batchsize, train=True):
 
 
 
-
+global goes_range_max_inner_memo
 goes_range_max_inner_memo = dict()
 def goes_range_max_inner(begin, end, stride):
     global feature_data, target_data
@@ -300,11 +314,16 @@ def learn_predict_from_time(timedelta_hours):
 
     print 'feature filled.'
 
+    # clear the goes memoization table.
+    global goes_range_max_inner_memo
+    goes_range_max_inner_memo = dict()
+
     while False: # Test code for goes_range_max
         b = random.randrange(window_size)
         e = random.randrange(window_size)
         if not b<e : continue
         print goes_range_max(b,e), max(target_data[b:e])
+
 
     # start BPTT learning anew
     state = make_initial_state()
@@ -390,6 +409,8 @@ def learn_predict_from_time(timedelta_hours):
                 for c in flare_classes:
                     print '{} {}'.format(c,contingency_tables[i,c].tss()),
             print
+            print ppr_contingency_table(contingency_tables)
+
         if args.realtime == 'quick': break
 
     if not args.realtime: # at the end of the loop
