@@ -37,7 +37,7 @@ parser.add_argument('--filename', '-f', default='',
                     help='Model dump filename tag')
 parser.add_argument('--realtime', '-r', default='',
                     help='Perform realtime prediction')
-parser.add_argument('--quiet-log', '-q', default='',
+parser.add_argument('--quiet-log', '-q', action='store_true',
                     help='redirect standard output to log file and be quiet')
 args = parser.parse_args()
 mod = cuda if args.gpu >= GPU_STRIDE else np
