@@ -28,6 +28,9 @@ import GoodSeed(goodSeeds)
 statisticSize :: Int
 statisticSize = 3
 
+populationSize :: Int
+populationSize = 10
+
 infix 6 :±
 data Statistics = Double :± Double deriving (Eq, Show, Ord)
 
@@ -140,7 +143,7 @@ proceed pop = do
   let gs :: [Genome]
       gs = map individualGenome pop
   mutatedGs   <- mapM mutate gs
-  crossoverGs <- replicateM 100 $ do
+  crossoverGs <- replicateM populationSize $ do
     [g1,g2] <- chooseN 2 gs
     crossover g1 g2
   let newGenomes = nub $ mutatedGs ++ crossoverGs
@@ -149,7 +152,7 @@ proceed pop = do
 
   newIndividuals <- P.parallel [evaluate seeds g | g <- newGenomes]
 
-  let tops = take 100 $ reverse $ sortBy (compare `on` individualStatistics) $ pop ++ newIndividuals
+  let tops = take populationSize $ reverse $ sortBy (compare `on` individualStatistics) $ pop ++ newIndividuals
   print $ map individualStatistics tops
   return $ tops
 
