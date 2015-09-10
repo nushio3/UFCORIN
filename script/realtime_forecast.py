@@ -23,9 +23,12 @@ import population_table as poptbl
 import contingency_table
 
 # Parse the command line argument
+
+GPU_STRIDE=2
+
 parser = argparse.ArgumentParser()
 parser.add_argument('--gpu', '-g', default=-1, type=int,
-                    help='GPU ID + 1(negative value indicates CPU)')
+                    help='GPU ID - {}(smaller value indicates CPU)'.format(GPU_STRIDE))
 parser.add_argument('--optimizer', '-o', default='AdaGrad',
                     help='Name of the optimizer function')
 parser.add_argument('--optimizeroptions', '-p', default='()',
@@ -34,25 +37,28 @@ parser.add_argument('--filename', '-f', default='',
                     help='Model dump filename tag')
 parser.add_argument('--realtime', '-r', default='',
                     help='Perform realtime prediction')
+parser.add_argument('--quiet-log', '-q', default='',
+                    help='redirect standard output to log file and be quiet')
 args = parser.parse_args()
-mod = cuda if args.gpu >= 0 else np
+mod = cuda if args.gpu >= GPU_STRIDE else np
 
 workdir='result/' + hashlib.sha256("salt{}{}".format(args,random.random())).hexdigest()
 subprocess.call('mkdir -p ' + workdir ,shell=True)
 os.chdir(workdir)
 
-sys.stdout=open("stdout.txt","w")
+if args.quiet_log:
+    sys.stdout=open("stdout.txt","w")
 
 with open("args.log","w") as fp:
     fp.write('{}\n'.format(args))
 
 def to_PU(x):
-    if args.gpu>=0:
+    if args.gpu>= GPU_STRIDE:
         return cuda.to_gpu(x)
     else:
         return x
 def from_PU(x):
-    if args.gpu>=0:
+    if args.gpu>= GPU_STRIDE:
         return cuda.to_cpu(x)
     else:
         return x
@@ -171,8 +177,8 @@ except:
     for param in model.parameters:
         param[:] = np.random.uniform(-0.1, 0.1, param.shape)
 
-if args.gpu >= 0:
-    cuda.get_device(args.gpu-1).use()
+if args.gpu >= GPU_STRIDE:
+    cuda.get_device(args.gpu- GPU_STRIDE).use()
     model.to_gpu()
 
 # Setup optimizer
@@ -382,10 +388,10 @@ def learn_predict_from_time(timedelta_hours):
     if not args.realtime: # at the end of the loop
         print 'dumping...',
         with open('model.pickle','w') as fp:
-            if args.gpu >= 0:
+            if args.gpu >= GPU_STRIDE:
                 model.to_cpu()
             pickle.dump(model,fp,protocol=-1)
-            if args.gpu >= 0:
+            if args.gpu >= GPU_STRIDE:
                 model.to_gpu()
         with open('poptable.pickle','w') as fp:
             pickle.dump(poptable,fp,protocol=-1)
