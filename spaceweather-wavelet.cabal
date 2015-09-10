@@ -97,6 +97,7 @@ executable prediction-main
 
 executable genetic-algorithm
   main-is: genetic-algorithm.hs
+  Other-Modules: GoodSeed
   hs-source-dirs: exe-src/
   build-depends:
                 base < 6

@@ -25,6 +25,9 @@ import SpaceWeather.SkillScore
 
 import GoodSeed(goodSeeds)
 
+statisticSize :: Int
+statisticSize = 3
+
 infix 6 :±
 data Statistics = Double :± Double deriving (Eq, Show, Ord)
 
@@ -34,12 +37,12 @@ meanDevi xs = let vx = V.fromList xs
               in m :± sqrt v
 
 type Genome = M.Map (String, FilePath) Bool
-type Individual = (Genome, Statistics)
+data Individual = Individual {individualGenome :: Genome, individualStatistics :: Statistics}
+                  deriving (Eq, Show)
 type Population = [Individual]
 
 pprGenome :: Genome -> String
 pprGenome g = concat $ map (show . fromEnum) $ map snd $ M.toList g
-
 
 
 genome :: Lens' PredictionStrategyGS Genome
@@ -128,24 +131,26 @@ evaluateWithSeed seed g = do
 evaluate :: [Int] -> Genome -> IO Individual
 evaluate seeds g = do
   vals <- P.parallel [evaluateWithSeed s g | s <- seeds]
-  return (g,meanDevi vals)
+  return $ Individual g (meanDevi vals)
 
 proceed :: Population -> IO Population
 proceed pop = do
-  let gs = map fst pop
+  appendFile "genetic-algorithm.txt" $ (++"\n") $show $ map individualStatistics pop
+
+  let gs :: [Genome]
+      gs = map individualGenome pop
   mutatedGs   <- mapM mutate gs
   crossoverGs <- replicateM 100 $ do
     [g1,g2] <- chooseN 2 gs
     crossover g1 g2
   let newGenomes = nub $ mutatedGs ++ crossoverGs
 
-  seeds <- goodSeeds 10
+  seeds <- goodSeeds statisticSize
 
   newIndividuals <- P.parallel [evaluate seeds g | g <- newGenomes]
 
-  let tops = take 100 $ reverse $ sort $ pop ++ newIndividuals
-  print $ map snd tops
-  appendFile "genetic-algorithm.txt" $ (++"\n") $show $ map snd tops
+  let tops = take 100 $ reverse $ sortBy (compare `on` individualStatistics) $ pop ++ newIndividuals
+  print $ map individualStatistics tops
   return $ tops
 
 main :: IO ()
@@ -157,7 +162,7 @@ main = do
   let initialGenomes :: [Genome]
       initialGenomes = map (^. genome) [cclass, mclass, xclass :: PredictionStrategyGS]
 
-  seeds <- goodSeeds 10
+  seeds <- goodSeeds statisticSize
 
   initialPopulation <- P.parallel $ map (evaluate seeds) initialGenomes
   print initialPopulation
