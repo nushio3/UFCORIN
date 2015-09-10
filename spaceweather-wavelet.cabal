@@ -80,8 +80,6 @@ Test-Suite spec
               , QuickCheck
               , text
               , transformers
-
-
               , spaceweather-wavelet
 
 executable prediction-main
