@@ -364,8 +364,9 @@ def learn_predict_from_time(timedelta_hours):
                 factor=0.0
             else:
                 factor = 1.0/b if is_overshoot else 1.0/a
-                factor = 1.0
-            factor *= 10.0 ** max(0.0,min(2.0,output_data[i]-4))
+            # Other options to be considered.
+            factor = 1.0
+            # factor *= 10.0 ** max(0.0,min(2.0,output_data[i]-4))
             fac.append(factor)
 
         fac_variable = to_PU(np.array([fac], dtype=np.float32))
@@ -376,7 +377,7 @@ def learn_predict_from_time(timedelta_hours):
         _, prediction_larger     = F.split_axis(output_prediction, [25], axis=1)
         loss_iter_2 = F.sum(F.relu(prediction_smaller - prediction_larger))
         
-        accum_loss += loss_iter #+ 1e-4 * loss_iter_2 
+        accum_loss += loss_iter ## + 1e-4 * loss_iter_2 
 
         # collect prediction statistics
         if not args.realtime and t >= last_t - 24*t_per_hour:
