@@ -479,7 +479,7 @@ def learn_predict_from_time(timedelta_hours):
 delta_hour = 24*30
 while delta_hour < 4 * 365 * 24:
     learn_predict_from_time(delta_hour)
-    delta_hour += 24 
+    delta_hour += 72
     sys.stdout.flush()
 
     
