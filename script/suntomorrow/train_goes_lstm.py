@@ -29,9 +29,9 @@ args = parser.parse_args()
 mod = cuda if args.gpu >= 0 else np
 
 n_epoch = 39     # number of epochs
-n_units = 5     # number of units per layer
-batchsize = 20  # minibatch size
-bprop_len = 1   # length of truncated BPTT
+n_units = 6    # number of units per layer
+batchsize = 20   # minibatch size
+bprop_len = 1  # length of truncated BPTT
 grad_clip = 5    # gradient norm threshold to clip
 n_inputs = 1     # number of input time series
 n_outputs = 1    # number of output time series
@@ -90,9 +90,6 @@ def forward_one_step(x_data, state, train=True):
     h1_in = model.l1_x(F.dropout(h0, train=train)) + model.l1_h(state['h1'])
     c1, h1 = F.lstm(state['c1'], h1_in)
 
-    print c1.data
-    print h1.data
-
     h2_in = model.l2_x(F.dropout(h1, train=train)) + model.l2_h(state['h2'])
     c2, h2 = F.lstm(state['c2'], h2_in)
 
@@ -130,7 +127,7 @@ while True:
         t+=datetime.timedelta(minutes=1)
 
     for r in ret:
-        lightcurve[r.t] = (math.log(max(1e-10,r.xray_flux_long)) / math.log(10.0) + 10)/10.0
+        lightcurve[r.t] = random.random() #(math.log(max(1e-10,r.xray_flux_long)) / math.log(10.0) + 10)/10.0
 
     t_data = []
     goes_flux = []
@@ -154,7 +151,7 @@ while True:
     accum_loss = chainer.Variable(mod.zeros((), dtype=np.float32))
     print('going to train {} iterations'.format(jump * n_epoch))
 
-    for i in range(2): #six.moves.range(jump*n_epoch):
+    for i in six.moves.range(jump*n_epoch):
         print i
         x_batch = np.array([[goes_flux[(jump * j + i) % whole_len]]
                         for j in six.moves.range(batchsize)], dtype=np.float32)

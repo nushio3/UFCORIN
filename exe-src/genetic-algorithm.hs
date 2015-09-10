@@ -8,8 +8,12 @@ import Data.List
 import qualified Data.Map as M
 import qualified Data.Text as T
 import qualified Data.Text.IO as T
+import qualified Data.Vector.Unboxed as V
 import Data.Traversable (traverse)
+import qualified Statistics.Sample as Stat
 import System.Random
+import System.System
+import System.IO.Unsafe
 
 import SpaceWeather.CmdArgs
 import SpaceWeather.FlareClass
@@ -18,15 +22,25 @@ import SpaceWeather.Prediction
 import SpaceWeather.Regressor.General
 import SpaceWeather.FeaturePack
 import SpaceWeather.SkillScore
-import System.System
-import System.IO.Unsafe
+
+import GoodSeed(goodSeeds)
+
+infix 6 :±
+data Statistics = Double :± Double deriving (Eq, Show, Ord)
+
+meanDevi :: [Double] -> Statistics
+meanDevi xs = let vx = V.fromList xs
+                  (m,v) = Stat.meanVarianceUnb vx
+              in m :± sqrt v
 
 type Genome = M.Map (String, FilePath) Bool
+type Individual = (Genome, Statistics)
+type Population = [Individual]
 
 pprGenome :: Genome -> String
 pprGenome g = concat $ map (show . fromEnum) $ map snd $ M.toList g
 
--- data Statistics :±
+
 
 genome :: Lens' PredictionStrategyGS Genome
 genome = featureSchemaPackUsed . fspFilenamePairs . l
@@ -91,13 +105,18 @@ defaultStrategy = unsafePerformIO $ do
   Right s <- fmap decode $ T.readFile "resource/best-strategies-local/CClass.yml"
   return s
 
-evaluate :: Genome -> IO Double
-evaluate g = do
+evaluateWithSeed :: Int -> Genome -> IO Double
+evaluateWithSeed seed g = do
   r <- replicateM 32 $ randomRIO ('a','z')
   let wd = workDir ++ r
       rsc = defaultPredictorResource { _workingDirectory = wd }
   withWorkDirOf wd $  do
-    ses <- performPrediction rsc $ defaultStrategy & genome .~ g
+    let pStrategy :: PredictionStrategyGS
+        pStrategy = defaultStrategy
+                    & genome .~ g
+                    & crossValidationStrategy .~ (CVShuffled (seed) CVWeekly)
+    ses <- performPrediction rsc $ pStrategy
+
     let res :: PredictionResult
         res = ses ^. predictionResult
         val = case res of
@@ -106,23 +125,28 @@ evaluate g = do
           _ -> 0
     return val
 
-proceed :: [Genome] -> IO [Genome]
-proceed gs = do
+evaluate :: [Int] -> Genome -> IO Individual
+evaluate seeds g = do
+  vals <- P.parallel [evaluateWithSeed s g | s <- seeds]
+  return (g,meanDevi vals)
+
+proceed :: Population -> IO Population
+proceed pop = do
+  let gs = map fst pop
   mutatedGs   <- mapM mutate gs
   crossoverGs <- replicateM 100 $ do
     [g1,g2] <- chooseN 2 gs
     crossover g1 g2
-  let newPopulation = nub $ gs ++ mutatedGs ++ crossoverGs
-  mapM_ putStrLn $ map pprGenome newPopulation
+  let newGenomes = nub $ mutatedGs ++ crossoverGs
 
-  egs <- P.parallel $ flip map  newPopulation $ \g -> do
-    e <- evaluate g
-    return (e,g)
+  seeds <- goodSeeds 10
 
-  let tops = take 100 $ reverse $ sort egs
-  print $ map fst tops
-  appendFile "genetic-algorithm.txt" $ (++"\n") $show $ map fst tops
-  return $ map snd tops
+  newIndividuals <- P.parallel [evaluate seeds g | g <- newGenomes]
+
+  let tops = take 100 $ reverse $ sort $ pop ++ newIndividuals
+  print $ map snd tops
+  appendFile "genetic-algorithm.txt" $ (++"\n") $show $ map snd tops
+  return $ tops
 
 main :: IO ()
 main = do
@@ -130,16 +154,19 @@ main = do
   Right mclass <- fmap decode $ T.readFile "resource/best-strategies-local/MClass.yml"
   Right xclass <- fmap decode $ T.readFile "resource/best-strategies-local/XClass.yml"
 
-  let population :: [Genome]
-      population = map (^. genome) [cclass, mclass, xclass :: PredictionStrategyGS]
-  vs <- P.parallel $ map evaluate population
-  print vs
+  let initialGenomes :: [Genome]
+      initialGenomes = map (^. genome) [cclass, mclass, xclass :: PredictionStrategyGS]
 
-  loop population
+  seeds <- goodSeeds 10
+
+  initialPopulation <- P.parallel $ map (evaluate seeds) initialGenomes
+  print initialPopulation
+
+  loop initialPopulation
   P.stopGlobalPool
   return ()
 
-loop :: [Genome] -> IO ()
+loop :: Population -> IO ()
 loop gs = do
   next <- proceed gs
   loop next
