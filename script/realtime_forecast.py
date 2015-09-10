@@ -367,8 +367,8 @@ def learn_predict_from_time(timedelta_hours):
                     p = output_prediction_data[0, i] >= thre
                     o = output_data[i] >= thre
                     contingency_tables[i,c].add(p,o)
-                if i==23:
-                    print "p v.s. o", time_current, decode_goes(output_prediction_data[0, i]), decode_goes(output_data[i])
+                if i==n_outputs-1:
+                    prediction_trace.append([time_current, decode_goes(output_prediction_data[0, i]), decode_goes(output_data[i])])
 
         # learn
         if args.realtime and t >= last_t - 24*t_per_hour:
@@ -404,6 +404,8 @@ def learn_predict_from_time(timedelta_hours):
             pickle.dump(poptable,fp,protocol=-1)
         with open('contingency_tables.pickle','w') as fp:
             pickle.dump(contingency_tables,fp,protocol=-1)
+        with open('prediction_trace.pickle','w') as fp:
+            pickle.dump(prediction_trace,fp,protocol=-1)
         print 'dump done'
 
     if args.realtime:
