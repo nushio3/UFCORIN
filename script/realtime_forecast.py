@@ -157,6 +157,9 @@ try:
 except:
     print "cannot load poptable!"
 
+# track the predicted and observed values.
+global prediction_trace
+prediction_trace = []
 
 
 # setup the model
@@ -250,7 +253,7 @@ epoch=0
 #             contingency_tables[i,c].attenuate(1e-2)
 
 def learn_predict_from_time(timedelta_hours):
-    global feature_data, target_data
+    global feature_data, target_data, prediction_trace
     global epoch
     # Select the new time range
     time_begin = datetime.datetime(2011,1,1) +  datetime.timedelta(hours=timedelta_hours)
@@ -313,6 +316,8 @@ def learn_predict_from_time(timedelta_hours):
     last_t = window_size - 24*t_per_hour - 1
     for t in range(last_t+1): # future max prediction training
         sys.stdout.flush()
+        time_current = time_begin + t * dt
+
         input_batch = np.array([feature_data[t]], dtype=np.float32)
         output_data = []
         for i in range(24):
@@ -362,6 +367,8 @@ def learn_predict_from_time(timedelta_hours):
                     p = output_prediction_data[0, i] >= thre
                     o = output_data[i] >= thre
                     contingency_tables[i,c].add(p,o)
+                if i==23:
+                    print "p v.s. o", time_current, decode_goes(output_prediction_data[0, i]), decode_goes(output_data[i])
 
         # learn
         if args.realtime and t >= last_t - 24*t_per_hour:
@@ -449,7 +456,7 @@ def learn_predict_from_time(timedelta_hours):
 delta_hour = 24*30
 while delta_hour < 4 * 365 * 24:
     learn_predict_from_time(delta_hour)
-    delta_hour += 24 + random.randrange(8)
+    delta_hour += 24 
     sys.stdout.flush()
 
     
