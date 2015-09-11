@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-import argparse, datetime, math, os, pickle, random,sys
+import argparse, copy, datetime, math, os, pickle, random,sys
 import astropy.time as time
 import chainer
 from chainer import cuda
@@ -200,9 +200,9 @@ if args.gpu >= GPU_STRIDE:
 
 # Setup optimizer
 optimizer_expr = 'optimizers.{}{}'.format(args.optimizer, args.optimizeroptions)
-sys.stderr.write(optimizer_expr)
+sys.stderr.write(optimizer_expr+"\n")
 optimizer = eval(optimizer_expr)
-optimizer.setup(model.collect_parameters())
+optimizer.setup(model)
 
 def forward_one_step(x, state, train=True):
     drop_ratio = 0.5
@@ -418,10 +418,11 @@ def learn_predict_from_time(timedelta_hours):
         print 'dumping...',
         with open('model.pickle','w') as fp:
             if args.gpu >= GPU_STRIDE:
-                model.to_cpu()
-            pickle.dump(model,fp,protocol=-1)
-            if args.gpu >= GPU_STRIDE:
-                model.to_gpu()
+                print 'deepcopy...',
+                model_cpu = copy.deepcopy(model).to_cpu()
+            else:
+                model_cpu = model
+            pickle.dump(model_cpu,fp,protocol=-1)
         with open('poptable.pickle','w') as fp:
             pickle.dump(poptable,fp,protocol=-1)
         with open('contingency_tables.pickle','w') as fp:
