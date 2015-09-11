@@ -329,7 +329,7 @@ def learn_predict_from_time(timedelta_hours):
     state = make_initial_state()
 
     accum_loss = chainer.Variable(mod.zeros((), dtype=np.float32))
-    n_backprop = int(2**min(10,int(1+0.05*epoch)))
+    n_backprop = 1024 ### int(2**min(10,int(1+0.05*epoch)))
     print 'backprop length = ', n_backprop
 
     last_t = window_size - 24*t_per_hour - 1
