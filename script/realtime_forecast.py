@@ -341,11 +341,25 @@ def learn_predict_from_time(timedelta_hours):
     print 'backprop length = ', n_backprop
 
     last_t = window_size - 24*t_per_hour - 1
+    noise_switch = False
     for t in range(last_t+1): # future max prediction training
         sys.stdout.flush()
         time_current = time_begin + t * dt
+        learning_stop_time =  last_t - 24*t_per_hour
 
         input_batch = np.array([feature_data[t]], dtype=np.float32)
+        
+        # erase the data
+        if t >= learning_stop_time or noise_switch:
+            input_batch *= 0.0
+
+        # train to ignore the erased data
+        if random.random() < 3e-3:
+            noise_switch = True
+        if random.random() < 1e-2:
+            noise_switch = False
+
+
         output_data = []
         for i in range(24):
             output_data.append(goes_range_max(t+t_per_hour*i,t+t_per_hour*(i+1)))
@@ -390,7 +404,7 @@ def learn_predict_from_time(timedelta_hours):
         accum_loss += loss_iter ## + 1e-4 * loss_iter_2 
 
         # collect prediction statistics
-        if not args.realtime and t >= last_t - 24*t_per_hour:
+        if not args.realtime and t >= learning_stop_time:
             for i in range(n_outputs):
                 for c in flare_classes:
                     thre = flare_threshold[c]
@@ -401,9 +415,9 @@ def learn_predict_from_time(timedelta_hours):
                     prediction_trace.append([time_current, decode_goes(output_prediction_data[0, i]), decode_goes(output_data[i])])
 
         # learn
-        if args.realtime and t >= last_t - 24*t_per_hour:
+        if t >= learning_stop_time:
             accum_loss.unchain_backward()
-        elif (t+1) % n_backprop == 0 or t==last_t:
+        elif (t+1) % n_backprop == 0: 
             optimizer.zero_grads()
             accum_loss.backward()
             accum_loss.unchain_backward()
