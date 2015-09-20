@@ -40,6 +40,11 @@ parser.add_argument('--realtime', '-r', default='',
                     help='Perform realtime prediction')
 parser.add_argument('--quiet-log', '-q', action='store_true',
                     help='redirect standard output to log file and be quiet')
+parser.add_argument('--grad-factor', default='ab',
+                    help='gradient priority factor (ab/flat/severe)')
+parser.add_argument('--backprop-length',default='accel',
+                    help='gradually increase backprop length (accel) or let it be constant (number)')
+
 args = parser.parse_args()
 mod = cuda if args.gpu >= GPU_STRIDE else np
 
@@ -329,7 +334,10 @@ def learn_predict_from_time(timedelta_hours):
     state = make_initial_state()
 
     accum_loss = chainer.Variable(mod.zeros((), dtype=np.float32))
-    n_backprop = 1024 ### int(2**min(10,int(1+0.05*epoch)))
+    if args.backprop_length == 'accel':
+        n_backprop = int(2**min(10,int(1+0.05*epoch)))
+    else:
+        n_backprop = int(args.backprop_length)
     print 'backprop length = ', n_backprop
 
     last_t = window_size - 24*t_per_hour - 1
@@ -365,8 +373,10 @@ def learn_predict_from_time(timedelta_hours):
             else:
                 factor = 1.0/b if is_overshoot else 1.0/a
             # Other options to be considered.
-            factor = 1.0
-            # factor *= 10.0 ** max(0.0,min(2.0,output_data[i]-4))
+            if args.grad_factor == 'plain':
+                factor = 1.0
+            if args.grad_factor == 'severe':
+                factor = 10.0 ** max(0.0,min(2.0,output_data[i]-4))
             fac.append(factor)
 
         fac_variable = to_PU(np.array([fac], dtype=np.float32))

@@ -28,4 +28,4 @@ for path in  glob.glob('result/*'):
     result.tss_m = float(ws[3])
     result.tss_c = float(ws[5])
 
-    print result.backprop_length, result.grad_factor, result.optimizer + result.optimizeroptions, result.tss_x, result.tss_m, result.tss_c
+    print result.backprop_length, result.grad_factor, result.optimizer + result.optimizeroptions, result.tss_x, result.tss_m, result.tss_c,path 
