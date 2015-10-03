@@ -29,7 +29,7 @@ statisticSize :: Int
 statisticSize = 3
 
 populationSize :: Int
-populationSize = 10
+populationSize = 5
 
 infix 6 :±
 data Statistics = Double :± Double deriving (Eq, Show, Ord)
@@ -59,13 +59,15 @@ genome = featureSchemaPackUsed . fspFilenamePairs . l
     s :: [(String, FilePath)] -> Genome -> [(String, FilePath)]
     s _ xs = map fst $ filter snd $ M.toList xs
 
-mutate :: Genome -> IO Genome
-mutate g = traverse flipper g
+mutate :: Int -> Genome -> IO Genome
+mutate genCt g = traverse flipper g
   where
     flipper :: Bool -> IO Bool
     flipper x = do
       r <- randomRIO (0,1 :: Double)
-      return $ if r < 0.01 then (not x) else x
+      return $ if r < mutateProb then (not x) else x
+    mutateProb :: Double
+    mutateProb = min 0.5 (0.01 * (1 + fromIntegral genCt / 2))
 
 crossover :: Genome -> Genome -> IO Genome
 crossover g1 g2 = traverse selecter $ M.unionWith justSame (setJust g1) (setJust g2)
@@ -106,11 +108,20 @@ defaultGenome = unsafePerformIO $ do
     map (,False) $
     featuresB ++ featuresW
 
+{-# NOINLINE defaultStrategy #-}
 defaultStrategy :: PredictionStrategyGS
 defaultStrategy = unsafePerformIO $ do
   Right s <- fmap decode $ T.readFile "resource/best-strategies-local/CClass.yml"
   return s
 
+evaluateWithSeed :: Int -> Genome -> IO Double
+evaluateWithSeed s g = do
+  r <- randomRIO (0, 0.1)
+  let cnt = length $ filter id $ map snd $ M.toList g
+  return $ fromIntegral cnt / 100 + r
+
+
+{-
 evaluateWithSeed :: Int -> Genome -> IO Double
 evaluateWithSeed seed g = do
   r <- replicateM 32 $ randomRIO ('a','z')
@@ -130,19 +141,20 @@ evaluateWithSeed seed g = do
             prMap M.! MClassFlare M.! TrueSkillStatistic ^. scoreValue
           _ -> 0
     return val
+-}
 
 evaluate :: [Int] -> Genome -> IO Individual
 evaluate seeds g = do
   vals <- P.parallel [evaluateWithSeed s g | s <- seeds]
   return $ Individual g (meanDevi vals)
 
-proceed :: Population -> IO Population
-proceed pop = do
+proceed :: Int -> Population -> IO Population
+proceed genCt pop = do
   appendFile "genetic-algorithm.txt" $ (++"\n") $show $ map individualStatistics pop
 
   let gs :: [Genome]
       gs = map individualGenome pop
-  mutatedGs   <- mapM mutate gs
+  mutatedGs   <- mapM (mutate genCt) gs
   crossoverGs <- replicateM populationSize $ do
     [g1,g2] <- chooseN 2 gs
     crossover g1 g2
@@ -170,11 +182,10 @@ main = do
   initialPopulation <- P.parallel $ map (evaluate seeds) initialGenomes
   print initialPopulation
 
-  loop initialPopulation
+  loop 1 initialPopulation
   P.stopGlobalPool
   return ()
-
-loop :: Population -> IO ()
-loop gs = do
-  next <- proceed gs
-  loop next
+loop :: Int -> Population -> IO ()
+loop genCt gs = do
+  next <- proceed genCt gs
+  loop (genCt+1) next
