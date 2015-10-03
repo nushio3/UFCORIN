@@ -31,7 +31,7 @@ stubMode = True
 
 goodSeeds :: Int -> IO [Int]
 goodSeeds n
-  | stubMode  = return []
+  | stubMode  = return $ replicate n 0
   | otherwise = GoodSeed.goodSeeds n
 
 statisticSize :: Int
@@ -125,9 +125,10 @@ defaultStrategy = unsafePerformIO $ do
 
 evaluateWithSeed :: Int -> Genome -> IO Double
 evaluateWithSeed s g = do
-  r <- randomRIO (0, 0.1)
+  r <- randomRIO (-0.1, 0.1)
   let cnt = length $ filter id $ map snd $ M.toList g
-  return $ fromIntegral cnt / 100 + r
+      cntMax = length $ M.toList $ defaultGenome
+  return $ fromIntegral cnt / fromIntegral cntMax + r
 
 
 {-
@@ -197,4 +198,4 @@ main = do
 loop :: Int -> Population -> IO ()
 loop genCt gs = do
   next <- proceed genCt gs
-  when (genCt<100) $ loop (genCt+1) next
+  when (genCt<10) $ loop (genCt+1) next
