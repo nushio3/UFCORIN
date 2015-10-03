@@ -11,7 +11,9 @@ caseFlat = 0
 
 def judge(vals):
     c0 = classify(vals[0])
+    print c0,
     for v in vals[1:]:
+        print classify(v),
         if classify(v) != c0:
             caseJump += 1
             return
