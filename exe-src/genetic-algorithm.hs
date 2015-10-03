@@ -23,7 +23,16 @@ import SpaceWeather.Regressor.General
 import SpaceWeather.FeaturePack
 import SpaceWeather.SkillScore
 
-import GoodSeed(goodSeeds)
+import qualified GoodSeed
+
+
+stubMode :: Bool
+stubMode = True
+
+goodSeeds :: Int -> IO [Int]
+goodSeeds n
+  | stubMode  = return []
+  | otherwise = GoodSeed.goodSeeds n
 
 statisticSize :: Int
 statisticSize = 3
@@ -188,4 +197,4 @@ main = do
 loop :: Int -> Population -> IO ()
 loop genCt gs = do
   next <- proceed genCt gs
-  loop (genCt+1) next
+  when (genCt<100) $ loop (genCt+1) next

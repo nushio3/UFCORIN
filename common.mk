@@ -5,7 +5,7 @@ init:
 	cabal configure --enable-tests
 
 build: init
-	cabal build
+	stack build
 
 clean:
 	cabal clean
@@ -23,4 +23,3 @@ sync:
 	git pull
 
 CI: sync test
-
