@@ -47,8 +47,8 @@ GOES = goes.GOES
 
 dat = pickle.load(open(sys.argv[1]))
 
-# dat=dat[-5*24*10:-1]
-dat=dat[0:5*24*10]
+dat=dat[-5*24*10:-1]
+#dat=dat[0:5*24*10]
 
 curves = []
 ct = []; cp = []; co = []

@@ -17,7 +17,7 @@ for path in  glob.glob('result/*'):
             progress = "DONE"
         else:
             progress = "WIP"
-            continue
+            #continue
         for l in log.split('\n'):
             ma = re.search('24hr\: (.*)', l)
             if ma:
@@ -28,4 +28,4 @@ for path in  glob.glob('result/*'):
     result.tss_m = float(ws[3])
     result.tss_c = float(ws[5])
 
-    print result.backprop_length, result.grad_factor, result.optimizer + result.optimizeroptions, result.tss_x, result.tss_m, result.tss_c,path 
+    print progress,result.backprop_length, result.grad_factor, result.optimizer + result.optimizeroptions, result.tss_x, result.tss_m, result.tss_c,path 
