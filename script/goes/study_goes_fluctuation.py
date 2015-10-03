@@ -1,17 +1,22 @@
 #!/usr/bin/env python
 import urllib2
 import math
-
+import re
 def classify(x):
-    return floor(math.log(x) / math.log(10))
+    return int(math.log(x) / math.log(10))
 
+global caseJump, caseFlat
 
 caseJump = 0
 caseFlat = 0
 
 def judge(vals):
+    print vals
+    global caseJump, caseFlat
     c0 = classify(vals[0])
     for v in vals[1:]:
+        if v <= 0:
+            continue
         if classify(v) != c0:
             caseJump += 1
             return
@@ -45,10 +50,13 @@ for year in range(2011,2012):
     for month in range(1,13):
         for day in range(1,32):
             url='http://satdat.ngdc.noaa.gov/sem/goes/data/new_full/{y}/{m:02d}/goes15/csv/g15_xrs_2s_{y}{m:02d}{d:02d}_{y}{m:02d}{d:02d}.csv'.format(y=year,m=month,d=day)
+            cont = ''
             try:
                 fp = urllib2.urlopen(url)
-                analyze(fp.read())
+                con = fp.read()
                 fp.close()
             except:
                 pass
+            if con :
+                analyze(con)
             print year,month,day, caseJump, caseFlat

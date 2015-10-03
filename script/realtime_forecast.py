@@ -354,11 +354,12 @@ def learn_predict_from_time(timedelta_hours):
             input_batch *= 0.0
 
         # train to ignore the erased data
-        if random.random() < 3e-3:
+        if t % 400==300:
             noise_switch = True
-        if random.random() < 1e-2:
+        if t % 400 == 399:
             noise_switch = False
-
+        if t >= learning_stop_time -300:
+            noise_switch = False            
 
         output_data = []
         for i in range(24):
