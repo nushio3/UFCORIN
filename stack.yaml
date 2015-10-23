@@ -7,6 +7,4 @@ packages:
 extra-deps:
 - bindings-gsl-0.2.1
 - cmaes-0.2.2
-- text-1.1.1.4
-- integer-gmp-1.0.0.0
 resolver: lts-3.10
