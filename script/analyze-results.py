@@ -1,6 +1,11 @@
 #!/usr/bin/env python
 
 import argparse, glob, os, re
+import matplotlib as mpl
+mpl.use('Agg')
+import matplotlib.pyplot as plt
+
+tss_samples = {'x':{},'m':{},'c':{}}
 
 for path in  glob.glob('result/*'):
     log_fn = path + '/stdout.txt'
@@ -23,9 +28,38 @@ for path in  glob.glob('result/*'):
             if ma:
                 last_line = ma.group(1)
         ws = last_line.split()
-        
+
     result.tss_x = float(ws[1])
     result.tss_m = float(ws[3])
     result.tss_c = float(ws[5])
 
-    print progress,result.backprop_length, result.grad_factor, result.optimizer + result.optimizeroptions, result.tss_x, result.tss_m, result.tss_c,path 
+    category = result.grad_factor
+
+    if category not in tss_samples['x']:
+        tss_samples['x'][category] = []
+        tss_samples['m'][category] = []
+        tss_samples['c'][category] = []
+
+    tss_samples['x'][category].append(result.tss_x)
+    tss_samples['m'][category].append(result.tss_m)
+    tss_samples['c'][category].append(result.tss_c)
+
+    #print progress,result.backprop_length, result.grad_factor, result.optimizer, result.optimizeroptions, result.tss_x, result.tss_m, result.tss_c,path
+
+exit
+
+f, axarr = plt.subplots(3,3, sharex=True, sharey=True)
+mpl.rcParams.update({'font.size': 7})
+j = 0
+for kc in ['x','m','c']:
+    ctr = 0
+    for k,v in sorted(tss_samples[kc].iteritems()):
+        axarr[ctr][j].hist(v, bins=20, range=(0,1))
+        if j==0 : axarr[ctr][j].set_ylabel(k)
+        if ctr==5 : axarr[ctr][j].set_xlabel('TSS')
+        if ctr==0 : axarr[ctr][j].set_title(kc + ' class')
+        axarr[ctr][j].set_ylim((0,20))
+        ctr+=1
+    j+=1
+plt.savefig('results-histogram.png', dpi=200)
+plt.close('all')

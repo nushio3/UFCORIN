@@ -27,7 +27,7 @@ import qualified GoodSeed
 
 
 stubMode :: Bool
-stubMode = True
+stubMode = False
 
 goodSeeds :: Int -> IO [Int]
 goodSeeds n
@@ -35,10 +35,10 @@ goodSeeds n
   | otherwise = GoodSeed.goodSeeds n
 
 statisticSize :: Int
-statisticSize = 3
+statisticSize = 10
 
 populationSize :: Int
-populationSize = 5
+populationSize = 100
 
 infix 6 :±
 data Statistics = Double :± Double deriving (Eq, Show, Ord)
@@ -123,6 +123,7 @@ defaultStrategy = unsafePerformIO $ do
   Right s <- fmap decode $ T.readFile "resource/best-strategies-local/CClass.yml"
   return s
 
+{-
 evaluateWithSeed :: Int -> Genome -> IO Double
 evaluateWithSeed s g = do
   r <- randomRIO (-0.1, 0.1)
@@ -130,8 +131,8 @@ evaluateWithSeed s g = do
       cntMax = length $ M.toList $ defaultGenome
   return $ fromIntegral cnt / fromIntegral cntMax + r
 
+-}
 
-{-
 evaluateWithSeed :: Int -> Genome -> IO Double
 evaluateWithSeed seed g = do
   r <- replicateM 32 $ randomRIO ('a','z')
@@ -151,7 +152,6 @@ evaluateWithSeed seed g = do
             prMap M.! MClassFlare M.! TrueSkillStatistic ^. scoreValue
           _ -> 0
     return val
--}
 
 evaluate :: [Int] -> Genome -> IO Individual
 evaluate seeds g = do
@@ -187,7 +187,9 @@ main = do
   let initialGenomes :: [Genome]
       initialGenomes = map (^. genome) [cclass, mclass, xclass :: PredictionStrategyGS]
 
+  putStrLn "PROG: seed"
   seeds <- goodSeeds statisticSize
+  putStrLn "PROG: seed done"
 
   initialPopulation <- P.parallel $ map (evaluate seeds) initialGenomes
   print initialPopulation
@@ -198,4 +200,4 @@ main = do
 loop :: Int -> Population -> IO ()
 loop genCt gs = do
   next <- proceed genCt gs
-  when (genCt<10) $ loop (genCt+1) next
+  when (genCt<100) $ loop (genCt+1) next

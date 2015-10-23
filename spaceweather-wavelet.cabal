@@ -63,7 +63,7 @@ library
               , unix
               , vector
               , yaml
-  ghc-options:       -Wall -O2  -threaded
+  ghc-options:       -Wall -O2  -threaded -fprof-auto
 
 Test-Suite spec
   Type:                 exitcode-stdio-1.0
@@ -109,7 +109,20 @@ executable genetic-algorithm
               , spaceweather-wavelet
               , statistics
               , vector
+  ghc-options:       -Wall -O2  -threaded -prof -fprof-auto -rtsopts
+
+executable minimum-working
+  main-is: minimum-working.hs
+  hs-source-dirs: exe-src/
+  build-depends:
+                base < 6
+              , containers
+              , lens
+              , text
+              , spaceweather-wavelet
+
   ghc-options:       -Wall -O2  -threaded
+                     --
 
 executable find-best-TSS
   main-is: find-best-TSS.hs

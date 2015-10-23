@@ -21,6 +21,7 @@ goodSeeds n = do
                        (strategy ^. predictionTargetSchema)
                        (strategy ^. predictionTargetFile)
   return (strategy :: PredictionStrategyGS)
+  putStrLn "PROG: begin generate seed"
   collectIO n $ getGoodSeed goesFeature
 
 collectIO :: Int -> IO [a] -> IO [a]
@@ -34,6 +35,7 @@ collectIO n m
 getGoodSeed :: Feature -> IO [Int]
 getGoodSeed goesFeature = do
   seed <- randomIO
+
   let
     cvstr = CVShuffled seed CVWeekly
     pred :: TimeBin -> Bool
