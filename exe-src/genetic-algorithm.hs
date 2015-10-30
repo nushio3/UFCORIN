@@ -29,16 +29,25 @@ import qualified GoodSeed
 stubMode :: Bool
 stubMode = False
 
+mutationRateDefault :: Double
+mutationRateDefault = 0.01
+
+mutationRateThreshold :: Double
+mutationRateThreshold = 0.001
+
+mutationRateOfChange :: Double
+mutationRateOfChange = 1.0
+
 goodSeeds :: Int -> IO [Int]
 goodSeeds n
   | stubMode  = return $ replicate n 0
   | otherwise = GoodSeed.goodSeeds n
 
 statisticSize :: Int
-statisticSize = 10
+statisticSize = 1
 
 populationSize :: Int
-populationSize = 100
+populationSize = 5
 
 infix 6 :±
 data Statistics = Double :± Double deriving (Eq, Show, Ord)
@@ -68,15 +77,19 @@ genome = featureSchemaPackUsed . fspFilenamePairs . l
     s :: [(String, FilePath)] -> Genome -> [(String, FilePath)]
     s _ xs = map fst $ filter snd $ M.toList xs
 
-mutate :: Int -> Genome -> IO Genome
-mutate genCt g = traverse flipper g
+mutate :: (Int, Double) -> Genome -> IO Genome
+mutate (genCt, bfValueGap) g = traverse flipper g
   where
     flipper :: Bool -> IO Bool
     flipper x = do
       r <- randomRIO (0,1 :: Double)
       return $ if r < mutateProb then (not x) else x
     mutateProb :: Double
-    mutateProb = min 0.5 (0.01 * (1 + fromIntegral genCt / 2))
+    mutateProb = min 0.5 (mRate * (1 + fromIntegral genCt) / 2)
+    mRate :: Double
+    mRate
+      | bfValueGap >= mutationRateThreshold     = mutationRateDefault
+      | otherwise                               = mutationRateDefault * mutationRateOfChange
 
 crossover :: Genome -> Genome -> IO Genome
 crossover g1 g2 = traverse selecter $ M.unionWith justSame (setJust g1) (setJust g2)
@@ -122,7 +135,6 @@ defaultStrategy :: PredictionStrategyGS
 defaultStrategy = unsafePerformIO $ do
   Right s <- fmap decode $ T.readFile "resource/best-strategies-local/CClass.yml"
   return s
-
 {-
 evaluateWithSeed :: Int -> Genome -> IO Double
 evaluateWithSeed s g = do
@@ -130,53 +142,65 @@ evaluateWithSeed s g = do
   let cnt = length $ filter id $ map snd $ M.toList g
       cntMax = length $ M.toList $ defaultGenome
   return $ fromIntegral cnt / fromIntegral cntMax + r
-
 -}
 
-evaluateWithSeed :: Int -> Genome -> IO Double
-evaluateWithSeed seed g = do
-  r <- replicateM 32 $ randomRIO ('a','z')
-  let wd = workDir ++ r
-      rsc = defaultPredictorResource { _workingDirectory = wd }
-  withWorkDirOf wd $  do
-    let pStrategy :: PredictionStrategyGS
-        pStrategy = defaultStrategy
-                    & genome .~ g
-                    & crossValidationStrategy .~ (CVShuffled (seed) CVWeekly)
-    ses <- performPrediction rsc $ pStrategy
 
-    let res :: PredictionResult
-        res = ses ^. predictionResult
-        val = case res of
-          PredictionSuccess prMap ->
-            prMap M.! MClassFlare M.! TrueSkillStatistic ^. scoreValue
-          _ -> 0
-    return val
+evaluateWithSeed :: Int -> Genome -> IO Double
+evaluateWithSeed seed g
+  | stubMode = do
+    r <- randomRIO (-0.1, 0.1)
+    let cnt = length $ filter id $ map snd $ M.toList g
+        cntMax = length $ M.toList $ defaultGenome
+    return $ fromIntegral cnt / fromIntegral cntMax + r
+  | otherwise = do
+    r <- replicateM 32 $ randomRIO ('a','z')
+    let wd = workDir ++ r
+        rsc = defaultPredictorResource { _workingDirectory = wd }
+    withWorkDirOf wd $  do
+      let pStrategy :: PredictionStrategyGS
+          pStrategy = defaultStrategy
+                      & genome .~ g
+                      & crossValidationStrategy .~ (CVShuffled (seed) CVWeekly)
+      ses <- performPrediction rsc $ pStrategy
+
+      let res :: PredictionResult
+          res = ses ^. predictionResult
+          val = case res of
+            PredictionSuccess prMap ->
+              prMap M.! MClassFlare M.! TrueSkillStatistic ^. scoreValue
+            _ -> 0
+      return val
+
 
 evaluate :: [Int] -> Genome -> IO Individual
 evaluate seeds g = do
   vals <- P.parallel [evaluateWithSeed s g | s <- seeds]
   return $ Individual g (meanDevi vals)
 
-proceed :: Int -> Population -> IO Population
-proceed genCt pop = do
+proceed :: (Int, (Double, Double)) -> [Genome] -> Population -> IO (Population, [Genome], (Double, Double))
+proceed (genCt, (p2BfValue, p1BfValue)) tabooList pop = do
   appendFile "genetic-algorithm.txt" $ (++"\n") $show $ map individualStatistics pop
 
   let gs :: [Genome]
       gs = map individualGenome pop
-  mutatedGs   <- mapM (mutate genCt) gs
+      bfValueGap :: Double
+      bfValueGap = p1BfValue - p2BfValue
+  mutatedGs   <- mapM (mutate (genCt, bfValueGap)) gs
   crossoverGs <- replicateM populationSize $ do
     [g1,g2] <- chooseN 2 gs
     crossover g1 g2
-  let newGenomes = nub $ mutatedGs ++ crossoverGs
-
+  let newGenomes = filter (not. isTaboo) $ nub $ mutatedGs ++ crossoverGs  --nub:delete same genomes
+      isTaboo :: Genome -> Bool --Taboo List
+      isTaboo _ = False
   seeds <- goodSeeds statisticSize
 
   newIndividuals <- P.parallel [evaluate seeds g | g <- newGenomes]
 
   let tops = take populationSize $ reverse $ sortBy (compare `on` individualStatistics) $ pop ++ newIndividuals
+      (newBfValue :± xs) = individualStatistics $ head $ take 1 tops
   print $ map individualStatistics tops
-  return $ tops
+  return $ (tops, tabooList, (p1BfValue, newBfValue))
+  
 
 main :: IO ()
 main = do
@@ -187,17 +211,16 @@ main = do
   let initialGenomes :: [Genome]
       initialGenomes = map (^. genome) [cclass, mclass, xclass :: PredictionStrategyGS]
 
-  putStrLn "PROG: seed"
   seeds <- goodSeeds statisticSize
-  putStrLn "PROG: seed done"
 
   initialPopulation <- P.parallel $ map (evaluate seeds) initialGenomes
   print initialPopulation
 
-  loop 1 initialPopulation
+  loop (1, (0.0, 0.0)) [] initialPopulation
   P.stopGlobalPool
   return ()
-loop :: Int -> Population -> IO ()
-loop genCt gs = do
-  next <- proceed genCt gs
-  when (genCt<100) $ loop (genCt+1) next
+  
+loop :: (Int, (Double, Double)) -> [Genome] -> Population -> IO ()
+loop (genCt, (bfValue, newBfValue)) tabooList gs = do
+  (next, newTabooList, (bfValue, newBfValue)) <- proceed (genCt, (bfValue, newBfValue)) tabooList  gs
+  when (genCt <10) $ loop (genCt +1, (bfValue, newBfValue)) newTabooList next
