@@ -13,6 +13,31 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy.ext.declarative import declarative_base
 import wavelet
 
+from functools import wraps
+
+def on_timeout(limit, handler, hint=None):
+    '''                                                 
+    call handler with a hint on timeout(seconds)
+    http://qiita.com/siroken3/items/4bb937fcfd4c2489d10a
+    '''
+    def notify_handler(signum, frame):
+        handler("'%s' is not finished in %d second(s)." % (hint, limit))
+
+    def __decorator(function):
+        def __wrapper(*args, **kwargs):
+            import signal
+            signal.signal(signal.SIGALRM, notify_handler)
+            signal.alarm(limit)
+            result = function(*args, **kwargs)
+            signal.alarm(0)
+            return result
+        return wraps(function)(__wrapper)
+    return __decorator
+
+def abort_handler(msg):
+    sys.stderr.write(msg)
+    sys.exit(1)
+
 class WatchState:
     last_success_time = None
     last_cached_time = None
@@ -37,6 +62,7 @@ except:
     pass
 
 
+@on_timeout(limit=3600, handler = abort_handler, hint='system call')
 def system(cmd):
     subprocess.call(cmd, shell=True)
 
