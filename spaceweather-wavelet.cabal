@@ -110,6 +110,7 @@ executable genetic-algorithm
               , statistics
               , vector
   ghc-options:       -Wall -O2  -threaded -fprof-auto -rtsopts
+  ghc-options:       -Wall -O2  -threaded  -fprof-auto -rtsopts
 
 executable minimum-working
   main-is: minimum-working.hs
