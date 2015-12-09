@@ -7,6 +7,10 @@ import matplotlib.pyplot as plt
 
 tss_samples = {'x':{},'m':{},'c':{}}
 
+tss_max_x = 0.0
+tss_max_m = 0.0
+tss_max_c = 0.0
+
 for path in  glob.glob('result/*'):
     log_fn = path + '/stdout.txt'
     args_fn = path + '/args.log'
@@ -33,6 +37,10 @@ for path in  glob.glob('result/*'):
     result.tss_m = float(ws[3])
     result.tss_c = float(ws[5])
 
+    tss_max_x = max(tss_max_x, result.tss_x)
+    tss_max_m = max(tss_max_m, result.tss_m)
+    tss_max_c = max(tss_max_c, result.tss_c)
+
     category = result.grad_factor
 
     if category not in tss_samples['x']:
@@ -45,6 +53,8 @@ for path in  glob.glob('result/*'):
     tss_samples['c'][category].append(result.tss_c)
 
     #print progress,result.backprop_length, result.grad_factor, result.optimizer, result.optimizeroptions, result.tss_x, result.tss_m, result.tss_c,path
+
+print tss_max_x,tss_max_m,tss_max_c
 
 exit
 
