@@ -7,9 +7,13 @@ import matplotlib.pyplot as plt
 
 tss_samples = {'x':{},'m':{},'c':{}}
 
-tss_max_x = 0.0
-tss_max_m = 0.0
-tss_max_c = 0.0
+flare_classes = ['x','m','c']
+
+tss_max = {}
+best_option = {}
+
+for c in flare_classes:
+    tss_max[c] = 0.0
 
 for path in  glob.glob('result/*'):
     log_fn = path + '/stdout.txt'
@@ -18,7 +22,8 @@ for path in  glob.glob('result/*'):
     if not os.path.exists(args_fn): continue
 
     with open(args_fn) as fp:
-        result = eval('argparse.' + fp.read())
+        args_str=fp.read()
+        result = eval('argparse.' + args_str)
 
     with open(log_fn) as fp:
         log = fp.read()
@@ -32,29 +37,30 @@ for path in  glob.glob('result/*'):
             if ma:
                 last_line = ma.group(1)
         ws = last_line.split()
+    result.tss = {}
+    result.tss['x'] = float(ws[1])
+    result.tss['m'] = float(ws[3])
+    result.tss['c'] = float(ws[5])
 
-    result.tss_x = float(ws[1])
-    result.tss_m = float(ws[3])
-    result.tss_c = float(ws[5])
-
-    tss_max_x = max(tss_max_x, result.tss_x)
-    tss_max_m = max(tss_max_m, result.tss_m)
-    tss_max_c = max(tss_max_c, result.tss_c)
+    for c in flare_classes:
+        tss_max[c] = max(tss_max[c], result.tss[c])
+        if tss_max[c] == result.tss[c]:
+            best_option[c] = args_str
 
     category = result.grad_factor
+    for c in flare_classes:
+        if category not in tss_samples[c]:
+            tss_samples[c][category] = []
 
-    if category not in tss_samples['x']:
-        tss_samples['x'][category] = []
-        tss_samples['m'][category] = []
-        tss_samples['c'][category] = []
+    for c in flare_classes:
+        tss_samples[c][category].append(result.tss[c])
 
-    tss_samples['x'][category].append(result.tss_x)
-    tss_samples['m'][category].append(result.tss_m)
-    tss_samples['c'][category].append(result.tss_c)
 
     #print progress,result.backprop_length, result.grad_factor, result.optimizer, result.optimizeroptions, result.tss_x, result.tss_m, result.tss_c,path
 
-print tss_max_x,tss_max_m,tss_max_c
+for c in flare_classes:
+    print c,tss_max[c], best_option[c]
+
 
 exit
 
