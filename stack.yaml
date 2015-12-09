@@ -1,3 +1,5 @@
+ghc-options:
+  "*": -O2
 flags:
   text:
     integer-simple: false
