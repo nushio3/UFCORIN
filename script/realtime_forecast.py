@@ -1,11 +1,12 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-import argparse, datetime, math, os, pickle, random
+import argparse, copy, datetime, math, os, pickle, random,sys
 import astropy.time as time
 import chainer
 from chainer import cuda
 import chainer.functions as F
 from chainer import optimizers
+import hashlib
 import matplotlib as mpl
 mpl.use('Agg')
 import matplotlib.pyplot as plt
@@ -15,6 +16,7 @@ import sqlalchemy as sql
 from   sqlalchemy.orm import sessionmaker
 from   sqlalchemy.ext.declarative import declarative_base
 import subprocess
+import tabulate
 
 import goes.schema as goes
 import jsoc.wavelet as wavelet
@@ -22,9 +24,12 @@ import population_table as poptbl
 import contingency_table
 
 # Parse the command line argument
+
+GPU_STRIDE=2
+
 parser = argparse.ArgumentParser()
 parser.add_argument('--gpu', '-g', default=-1, type=int,
-                    help='GPU ID (negative value indicates CPU)')
+                    help='GPU ID - {}(smaller value indicates CPU)'.format(GPU_STRIDE))
 parser.add_argument('--optimizer', '-o', default='AdaGrad',
                     help='Name of the optimizer function')
 parser.add_argument('--optimizeroptions', '-p', default='()',
@@ -33,16 +38,33 @@ parser.add_argument('--filename', '-f', default='',
                     help='Model dump filename tag')
 parser.add_argument('--realtime', '-r', default='',
                     help='Perform realtime prediction')
+parser.add_argument('--quiet-log', '-q', action='store_true',
+                    help='redirect standard output to log file and be quiet')
+parser.add_argument('--grad-factor', default='ab',
+                    help='gradient priority factor (ab/flat/severe)')
+parser.add_argument('--backprop-length',default='accel',
+                    help='gradually increase backprop length (accel) or let it be constant (number)')
+
 args = parser.parse_args()
-mod = cuda if args.gpu >= 0 else np
+mod = cuda if args.gpu >= GPU_STRIDE else np
+
+workdir='result/' + hashlib.sha256("salt{}{}".format(args,random.random())).hexdigest()
+subprocess.call('mkdir -p ' + workdir ,shell=True)
+os.chdir(workdir)
+
+if args.quiet_log:
+    sys.stdout=open("stdout.txt","w")
+
+with open("args.log","w") as fp:
+    fp.write('{}\n'.format(args))
 
 def to_PU(x):
-    if args.gpu>=0:
+    if args.gpu>= GPU_STRIDE:
         return cuda.to_gpu(x)
     else:
         return x
 def from_PU(x):
-    if args.gpu>=0:
+    if args.gpu>= GPU_STRIDE:
         return cuda.to_cpu(x)
     else:
         return x
@@ -92,6 +114,8 @@ hmi_columns = wavelet.subspace_db_columns(2,'S') +  wavelet.subspace_db_columns(
 n_hmi_feature = len(hmi_columns) + 1
 n_goes_feature = 3
 
+global feature_data, target_data
+
 feature_data = None
 target_data = None
 n_feature = n_goes_feature + n_hmi_feature
@@ -130,6 +154,19 @@ try:
 except:
     print "cannot load contingency table!"
 
+# format the contingency table for monitoring.
+def ppr_contingency_table(tbl):
+    i = n_outputs - 1
+    row0 = []
+    row1 = []
+    row2 = []
+    for c in flare_classes:
+        row0 += [c, 'O+', 'O-']
+        row1 += ['P+', tbl[i,c].counter[True,True],tbl[i,c].counter[True,False]]
+        row2 += ['P-', tbl[i,c].counter[False,True],tbl[i,c].counter[False,False]]
+    return tabulate.tabulate([row0,row1,row2],headers='firstrow')
+
+
 
 # count the populations for each kind of predicted events
 poptable = n_outputs * [poptbl.PopulationTable()]
@@ -139,6 +176,9 @@ try:
 except:
     print "cannot load poptable!"
 
+# track the predicted and observed values.
+global prediction_trace
+prediction_trace = []
 
 
 # setup the model
@@ -159,14 +199,15 @@ except:
     for param in model.parameters:
         param[:] = np.random.uniform(-0.1, 0.1, param.shape)
 
-if args.gpu >= 0:
-    cuda.init(args.gpu)
+if args.gpu >= GPU_STRIDE:
+    cuda.get_device(args.gpu- GPU_STRIDE).use()
     model.to_gpu()
 
 # Setup optimizer
 optimizer_expr = 'optimizers.{}{}'.format(args.optimizer, args.optimizeroptions)
+sys.stderr.write(optimizer_expr+"\n")
 optimizer = eval(optimizer_expr)
-optimizer.setup(model.collect_parameters())
+optimizer.setup(model)
 
 def forward_one_step(x, state, train=True):
     drop_ratio = 0.5
@@ -190,9 +231,11 @@ def make_initial_state(batchsize=batchsize, train=True):
 
 
 
-
+global goes_range_max_inner_memo
 goes_range_max_inner_memo = dict()
 def goes_range_max_inner(begin, end, stride):
+    global feature_data, target_data
+
     ret = None
     if begin>=end: return None
     if (begin,end) in goes_range_max_inner_memo: return goes_range_max_inner_memo[(begin,end)]
@@ -215,22 +258,24 @@ def goes_range_max(begin, end):
     return goes_range_max_inner(max(0,begin), min(window_size,end) , 2**15)
 
 
-engine = sql.create_engine('mysql+mysqldb://ufcoroot:{}@sun-feature-db.cvxxbx1dlxvk.us-west-2.rds.amazonaws.com:3306/sun_feature'.format(password))
+engine = sql.create_engine('mysql+pymysql://ufcoroot:{}@sun-feature-db.cvxxbx1dlxvk.us-west-2.rds.amazonaws.com:3306/sun_feature'.format(password))
 
 Session = sessionmaker(bind=engine)
 session = Session()
 
-
-
+global epoch
 epoch=0
-while True:
-    for i in range(n_outputs):
-        for c in flare_classes:
-            contingency_tables[i,c].attenuate(1e-2)
 
+# while True:
+#     for i in range(n_outputs):
+#         for c in flare_classes:
+#             contingency_tables[i,c].attenuate(1e-2)
+
+def learn_predict_from_time(timedelta_hours):
+    global feature_data, target_data, prediction_trace
+    global epoch
     # Select the new time range
-    d = random.randrange(365*5*24)
-    time_begin = datetime.datetime(2011,1,1) +  datetime.timedelta(hours=d)
+    time_begin = datetime.datetime(2011,1,1) +  datetime.timedelta(hours=timedelta_hours)
 
     now = time.Time(datetime.datetime.now(),format='datetime',scale='utc').tai.datetime
     if args.realtime:
@@ -242,13 +287,12 @@ while True:
     goes_fill_ratio = len(ret_goes) / (window_size * 12.0)
     if goes_fill_ratio < 0.8 and not args.realtime:
         print 'too few GOES data'
-        continue
+        return
     ret_hmi = session.query(HMI).filter(HMI.t_tai>=time_begin, HMI.t_tai<=time_end).all()
     hmi_fill_ratio = len(ret_hmi) / (window_size * 1.0)
     if hmi_fill_ratio < 0.8 and not args.realtime:
         print 'too few HMI data'
-        continue
-
+        return
     epoch+=1
     nowmsg=datetime.datetime.strftime(now, '%Y-%m-%d %H:%M:%S')
     print "epoch={} {}({:4.2f}%) {}({:4.2f}%)".format(epoch, len(ret_goes), goes_fill_ratio*100, len(ret_hmi), hmi_fill_ratio*100)
@@ -275,22 +319,48 @@ while True:
 
     print 'feature filled.'
 
+    # clear the goes memoization table.
+    global goes_range_max_inner_memo
+    goes_range_max_inner_memo = dict()
+
     while False: # Test code for goes_range_max
         b = random.randrange(window_size)
         e = random.randrange(window_size)
         if not b<e : continue
         print goes_range_max(b,e), max(target_data[b:e])
 
+
     # start BPTT learning anew
     state = make_initial_state()
 
     accum_loss = chainer.Variable(mod.zeros((), dtype=np.float32))
-    n_backprop = int(2**min(10,int(1+0.05*epoch)))
+    if args.backprop_length == 'accel':
+        n_backprop = int(2**min(10,int(1+0.05*epoch)))
+    else:
+        n_backprop = int(args.backprop_length)
     print 'backprop length = ', n_backprop
 
     last_t = window_size - 24*t_per_hour - 1
+    noise_switch = False
     for t in range(last_t+1): # future max prediction training
+        sys.stdout.flush()
+        time_current = time_begin + t * dt
+        learning_stop_time =  last_t - 24*t_per_hour
+
         input_batch = np.array([feature_data[t]], dtype=np.float32)
+        
+        # erase the data
+        if t >= learning_stop_time or noise_switch:
+            input_batch *= 0.0
+
+        # train to ignore the erased data
+        if t % 400==300:
+            noise_switch = True
+        if t % 400 == 399:
+            noise_switch = False
+        if t >= learning_stop_time -300:
+            noise_switch = False            
+
         output_data = []
         for i in range(24):
             output_data.append(goes_range_max(t+t_per_hour*i,t+t_per_hour*(i+1)))
@@ -317,8 +387,11 @@ while True:
                 factor=0.0
             else:
                 factor = 1.0/b if is_overshoot else 1.0/a
+            # Other options to be considered.
+            if args.grad_factor == 'plain':
                 factor = 1.0
-            factor *= 10.0 ** max(0.0,min(2.0,output_data[i]-4))
+            if args.grad_factor == 'severe':
+                factor = 10.0 ** max(0.0,min(2.0,output_data[i]-4))
             fac.append(factor)
 
         fac_variable = to_PU(np.array([fac], dtype=np.float32))
@@ -329,21 +402,23 @@ while True:
         _, prediction_larger     = F.split_axis(output_prediction, [25], axis=1)
         loss_iter_2 = F.sum(F.relu(prediction_smaller - prediction_larger))
         
-        accum_loss += loss_iter #+ 1e-4 * loss_iter_2 
+        accum_loss += loss_iter ## + 1e-4 * loss_iter_2 
 
         # collect prediction statistics
-        if not args.realtime and t >= last_t - 24*t_per_hour:
+        if not args.realtime and t >= learning_stop_time:
             for i in range(n_outputs):
                 for c in flare_classes:
                     thre = flare_threshold[c]
                     p = output_prediction_data[0, i] >= thre
                     o = output_data[i] >= thre
                     contingency_tables[i,c].add(p,o)
+                if i==n_outputs-1:
+                    prediction_trace.append([time_current, decode_goes(output_prediction_data[0, i]), decode_goes(output_data[i])])
 
         # learn
-        if args.realtime and t >= last_t - 24*t_per_hour:
+        if t >= learning_stop_time:
             accum_loss.unchain_backward()
-        elif (t+1) % n_backprop == 0 or t==last_t:
+        elif (t+1) % n_backprop == 0: 
             optimizer.zero_grads()
             accum_loss.backward()
             accum_loss.unchain_backward()
@@ -360,20 +435,25 @@ while True:
                 for c in flare_classes:
                     print '{} {}'.format(c,contingency_tables[i,c].tss()),
             print
+            print ppr_contingency_table(contingency_tables)
+
         if args.realtime == 'quick': break
 
     if not args.realtime: # at the end of the loop
         print 'dumping...',
         with open('model.pickle','w') as fp:
-            if args.gpu >= 0:
-                model.to_cpu()
-            pickle.dump(model,fp,protocol=-1)
-            if args.gpu >= 0:
-                model.to_gpu()
+            if args.gpu >= GPU_STRIDE:
+                print 'deepcopy...',
+                model_cpu = copy.deepcopy(model).to_cpu()
+            else:
+                model_cpu = model
+            pickle.dump(model_cpu,fp,protocol=-1)
         with open('poptable.pickle','w') as fp:
             pickle.dump(poptable,fp,protocol=-1)
         with open('contingency_tables.pickle','w') as fp:
             pickle.dump(contingency_tables,fp,protocol=-1)
+        with open('prediction_trace.pickle','w') as fp:
+            pickle.dump(prediction_trace,fp,protocol=-1)
         print 'dump done'
 
     if args.realtime:
@@ -422,3 +502,11 @@ while True:
         
 
         exit(0)
+
+delta_hour = 24*30
+while delta_hour < 4 * 365 * 24:
+    learn_predict_from_time(delta_hour)
+    delta_hour += 72
+    sys.stdout.flush()
+
+    

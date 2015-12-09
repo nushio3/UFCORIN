@@ -61,8 +61,9 @@ library
               , time
               , transformers
               , unix
+              , vector
               , yaml
-  ghc-options:       -Wall -O2  -threaded
+  ghc-options:       -Wall -O2  -threaded  -fprof-auto  -rtsopts
 
 Test-Suite spec
   Type:                 exitcode-stdio-1.0
@@ -79,8 +80,6 @@ Test-Suite spec
               , QuickCheck
               , text
               , transformers
-
-
               , spaceweather-wavelet
 
 executable prediction-main
@@ -96,6 +95,38 @@ executable prediction-main
 
 executable genetic-algorithm
   main-is: genetic-algorithm.hs
+  Other-Modules: GoodSeed
+  hs-source-dirs: exe-src/
+  build-depends:
+                base < 6
+              , lens
+              , containers >= 0.5
+              , text
+              , process
+              , parallel-io
+              , random
+              , safe
+              , spaceweather-wavelet
+              , statistics
+              , vector
+  ghc-options:       -Wall -O2  -threaded -fprof-auto -rtsopts
+  ghc-options:       -Wall -O2  -threaded  -fprof-auto -rtsopts
+
+executable minimum-working
+  main-is: minimum-working.hs
+  hs-source-dirs: exe-src/
+  build-depends:
+                base < 6
+              , containers
+              , lens
+              , text
+              , spaceweather-wavelet
+
+
+                     --
+
+executable find-best-TSS
+  main-is: find-best-TSS.hs
   hs-source-dirs: exe-src/
   build-depends:
                 base < 6
