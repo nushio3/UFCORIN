@@ -38,17 +38,24 @@ parser.add_argument('--filename', '-f', default='',
                     help='Model dump filename tag')
 parser.add_argument('--realtime', '-r', default='',
                     help='Perform realtime prediction')
+parser.add_argument('--learn-interval',  default='random',
+                    help='learning interval, in hours')
 parser.add_argument('--quiet-log', '-q', action='store_true',
                     help='redirect standard output to log file and be quiet')
 parser.add_argument('--grad-factor', default='ab',
                     help='gradient priority factor (ab/flat/severe)')
 parser.add_argument('--backprop-length',default='accel',
                     help='gradually increase backprop length (accel) or let it be constant (number)')
+parser.add_argument('--work-dir', default='',
+                    help='working directory')
+
 
 args = parser.parse_args()
 mod = cuda if args.gpu >= GPU_STRIDE else np
 
 workdir='result/' + hashlib.sha256("salt{}{}".format(args,random.random())).hexdigest()
+if args.work_dir != '':
+    workdir = args.work_dir
 subprocess.call('mkdir -p ' + workdir ,shell=True)
 os.chdir(workdir)
 
@@ -71,6 +78,7 @@ def from_PU(x):
 
 class Forecast:
     def visualize(self, filename):
+        now = time.Time(datetime.datetime.now(),format='datetime',scale='utc').tai.datetime
         fig, ax = plt.subplots()
         ax.set_yscale('log')
 
@@ -503,10 +511,17 @@ def learn_predict_from_time(timedelta_hours):
 
         exit(0)
 
-delta_hour = 24*30
-while delta_hour < 4 * 365 * 24:
-    learn_predict_from_time(delta_hour)
-    delta_hour += 72
-    sys.stdout.flush()
+
+if args.learn_interval == 'random':
+    while True:
+        learn_predict_from_time(5*365*24 * random.random())
+        sys.stdout.flush()
+else:
+    delta_hour = 24*30
+    hour_interval = int(args.learn_interval)
+    while delta_hour < 4 * 365 * 24:
+        learn_predict_from_time(delta_hour)
+        delta_hour += hour_interval
+        sys.stdout.flush()
 
     

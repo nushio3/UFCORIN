@@ -14,20 +14,30 @@ HMI images, as described in Muranushi et al (2015):
 The source code is available under MIT license at
 [https://github.com/nushio3/UFCORIN/tree/master/script](https://github.com/nushio3/UFCORIN/tree/master/script) .
 
-
+<font size='+2'>
+<DIV align="center">
+<table><tr>
+<td>Largest flare in next 24 hours</td><td>W/m²</td>
+</tr><tr>
+<td>Flare category forecast</td>
+<td>C class</td>
+</tr>
+</table>
+</DIV>
+</font>
 
 <img src='prediction-result.png' width='80%'>
 
 The above figure is updated every 12 minutes.
 
-The blue curve is the observed data:
-The green curve is 24-hour forecast.
-The red bars are predicted maxima of next *n*-hours where *n* in [1, .., 24] .
+The <font color='blue'>blue curve</font> is the observed data:
+The <font color='green'>green curve</font> is 24-hour forecast.
+The <font color='red'>red bars</font> are predicted maxima of next *n*-hours where *n* in [1, .., 24] .
 
 
-Below is one of the first predictions.
+Below is the comparison of the past predictions with the reality.
 
-<img src='prediction-result-2.png' width='80%'>
+<img src='review-forecast.png' width='80%'>
 
 Deep Learning Powered by 
 <a href='http://chainer.org'><img src='https://raw.githubusercontent.com/pfnet/chainer/gh-pages/images/logo.png' height=32px></a>
