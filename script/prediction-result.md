@@ -7,7 +7,7 @@
 
 <body>
 
-Realtime Solar X-ray Flux Forecast using Deep-LSTM Network
+Realtime Solar X-ray Flux Forecast using Deep Learning
 =====
 
 We present the 24-hour forecast of GOES X-ray flux,
