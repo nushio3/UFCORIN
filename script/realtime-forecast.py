@@ -106,7 +106,7 @@ class Forecast:
         with open("prediction-result.md","r") as fp:
             md_template=fp.read()
 
-        predicted_goes_flux = self.pred_max_y[-1]
+        predicted_goes_flux = self.pred_max_y[-1][-1]
         predicted_class = "Quiet"
         if predicted_goes_flux >= 1e-6: predicted_class = "C Class"
         if predicted_goes_flux >= 1e-5: predicted_class = "M Class"
