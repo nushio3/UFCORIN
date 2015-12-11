@@ -103,8 +103,18 @@ class Forecast:
         plt.savefig(filename, dpi=200)
         plt.close('all')
         
+        with open("prediction-result.md","r") as fp:
+            md_template=fp.read()
 
-
+        predicted_goes_flux = self.pred_max_y[-1]
+        predicted_class = "Quiet"
+        if predicted_goes_flux >= 1e-6: predicted_class = "C Class"
+        if predicted_goes_flux >= 1e-5: predicted_class = "M Class"
+        if predicted_goes_flux >= 1e-4: predicted_class = "X Class"
+        md_new = md_template.replace('{{GOES_FLUX}}','{:0.2}'.format(predicted_goes_flux)).replace('{{FLARE_CLASS}}',predicted_class)
+        with open("prediction-result-filled.md","w") as fp:
+            fp.write(md_new)
+        subprocess.call('pandoc prediction-result-filled.md -o ~/public_html/prediction-result.html'  , shell=True)        
 
 # Obtain MySQL Password
 with open(os.path.expanduser('~')+'/.mysqlpass','r') as fp:

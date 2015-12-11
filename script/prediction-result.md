@@ -1,3 +1,12 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<head>
+<META http-equiv="Content-Style-Type" content="text/css">
+<META http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>Automated Solar Flare Forecast</title>
+</head>
+
+<body>
+
 Realtime Solar X-ray Flux Forecast using Deep-LSTM Network
 =====
 
@@ -14,17 +23,18 @@ HMI images, as described in Muranushi et al (2015):
 The source code is available under MIT license at
 [https://github.com/nushio3/UFCORIN/tree/master/script](https://github.com/nushio3/UFCORIN/tree/master/script) .
 
-<font size='+2'>
-<DIV align="center">
-<table><tr>
-<td>Largest flare in next 24 hours</td><td>W/m²</td>
+<DIV align="center" style="font-size:200%;">
+<table style="font-size:x-large;"><tr>
+<td>Largest flare in next 24 hours:</td><td>{{GOES_FLUX}} W/m²</td>
 </tr><tr>
-<td>Flare category forecast</td>
-<td>C class</td>
+<td>Flare category forecast:</td>
+<td>{{FLARE_CLASS}}</td>
 </tr>
 </table>
 </DIV>
-</font>
+
+
+
 
 <img src='prediction-result.png' width='80%'>
 
@@ -41,3 +51,5 @@ Below is the comparison of the past predictions with the reality.
 
 Deep Learning Powered by 
 <a href='http://chainer.org'><img src='https://raw.githubusercontent.com/pfnet/chainer/gh-pages/images/logo.png' height=32px></a>
+
+</body>
