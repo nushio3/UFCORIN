@@ -17,13 +17,13 @@ set noglob
 # get desired recordset and encode for transmitting
 # you can get the following url_escape script at http://jsoc.stanford.edu/ajax/
 
-set ds=`/home/ubuntu/hub/UFCORIN/script/jsoc/url_escape.pl "$1"`
+set ds=`$HOME/hub/UFCORIN/script/jsoc/url_escape.pl "$1"`
 
 # You MUST now include a valid registered email address.  You can use a prior exportdata "notify" email address
 # or just make one via http://jsoc2.stanford.edu/ajax/register_email.html
 # Change the '$2' in the line below to your notify address if you want the script to not need a second argument.
 
-set notify = `/home/ubuntu/hub/UFCORIN/script/jsoc/url_escape.pl "$2"`
+set notify = `$HOME/hub/UFCORIN/script/jsoc/url_escape.pl "$2"`
 
 # for FITS without full headers use fastest method use the next 2 lines:
 
@@ -36,14 +36,14 @@ set notify = `/home/ubuntu/hub/UFCORIN/script/jsoc/url_escape.pl "$2"`
 
 set method=url
 #set protocol=as-is
-#set protocol=`/home/ubuntu/hub/UFCORIN/script/jsoc/url_escape.pl 'FITS,compress Rice'`
+#set protocol=`$HOME/hub/UFCORIN/script/jsoc/url_escape.pl 'FITS,compress Rice'`
 set protocol=FITS
 
 # to specify filename formats add the "filenamefmt" command to the cmd line below.
 # you will need to url_escape the filenamefmt.
 
-#set ffmt = `/home/ubuntu/hub/UFCORIN/script/jsoc/url_escape.pl '{seriesname}.{T_REC:A}.{segment}'`
-set ffmt = `/home/ubuntu/hub/UFCORIN/script/jsoc/url_escape.pl '{seriesname}.{T_REC:A}.{WAVELNTH}.{segment}'`
+#set ffmt = `$HOME/hub/UFCORIN/script/jsoc/url_escape.pl '{seriesname}.{T_REC:A}.{segment}'`
+set ffmt = `$HOME/hub/UFCORIN/script/jsoc/url_escape.pl '{seriesname}.{T_REC:A}.{WAVELNTH}.{segment}'`
 
 set op=exp_request
 
@@ -122,7 +122,7 @@ while ($count > 0)
   set QUERY = $REC[1]
   set FILE = $REC[2]
   set URL = $JSOC$dir/$FILE
-  set OFN = `/home/ubuntu/hub/UFCORIN/script/jsoc/url_escape.pl "$FILE"`
+  set OFN = `$HOME/hub/UFCORIN/script/jsoc/url_escape.pl "$FILE"`
   echo Fetching $QUERY as `basename $FILE`
   wget -nv $URL -O $OFN
   @ count = $count - 1
