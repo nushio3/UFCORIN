@@ -36,7 +36,7 @@ UFCORINの実行
 レポジトリにはローカルファイルでの動作検証用の `./resource/sample-strategy-local.yml` という戦略ファイルが付属しています。このファイルを引数にとって予報機を動作させてみます。
 
 ```bash
-UFCORIN$ ./dist/build/prediction-main/prediction-main ./resource/sample-strategy-local.yml 
+UFCORIN$ ./dist/build/prediction-main/prediction-main ./resource/sample-strategy-local.yml
 using workdir: /tmp/spaceweather-10179
 loading: file://./forecast-features/backcast-goes-24.txt
 loading: file://./forecast-features/backcast-goes-48.txt
@@ -173,14 +173,16 @@ loading: /user/nushio/forecast/forecast-goes-24.txt
 ...
 ```
 
-ここで、「良い」データの基準としては、「X,≧M,≧Cクラスイベントのいずれについても、訓練データと試験データに含まれるイベント数の差が10%以内である」を採用しています。`generate-survey`プログラムは、「良い」乱数種に加えて、それぞれの種に対するイベント数の情報を出力します。訓練データと試験データに含まれるイベント数を揃えるのは、各イベントの予報精度を安定して測定するために必要です。
+上記出力は、≧C,≧M,Xクラスイベントのそれぞれについて、(訓練データに含まれる正例の数, 試験データに含まれる正例の数)、および当該の乱数種を出力しています。
+
+ここで、「良い」データの基準としては、「X,≧M,≧Cクラスイベントのいずれについても、訓練データと試験データに含まれる正例の数の差が10%以内である」を採用しています。`generate-survey`プログラムは、「良い」乱数種に加えて、それぞれの種に対するイベント数の情報を出力します。訓練データと試験データに含まれるイベント数を揃えるのは、各イベントの予報精度を安定して測定するために必要です。
 
 交差検定データの生成にこれらの乱数種を使用させている例が、`resource/sample-strategy-local-S1.yml`  および`resource/sample-strategy-local-S2.yml`です。私の環境で実行させてみた結果は以下のとおりです。
 ２つのファイルに記述されている予報戦略は、利用した入力時系列データやその重みなども含めてまったく同一のものです。
 同一の予報戦略であっても、交差検定データにシャッフルを施せば、予報のTSSがばらつくことがわかっていただけるかと思います。
 
 ````
-$ ./dist/build/prediction-main/prediction-main resource/sample-strategy-local-S1.yml 
+$ ./dist/build/prediction-main/prediction-main resource/sample-strategy-local-S1.yml
 using workdir: /tmp/spaceweather-5639
 loading: file://./forecast-features/backcast-goes-24.txt
 loading: file://./forecast-features/backcast-goes-48.txt
@@ -203,7 +205,7 @@ sum TSS : 1.7326988701457469
 
 
 ````
-nushio@nushio16k:UFCORIN$ ./dist/build/prediction-main/prediction-main resource/sample-strategy-local-S2.yml 
+nushio@nushio16k:UFCORIN$ ./dist/build/prediction-main/prediction-main resource/sample-strategy-local-S2.yml
 using workdir: /tmp/spaceweather-5851
 loading: file://./forecast-features/backcast-goes-24.txt
 loading: file://./forecast-features/backcast-goes-48.txt
@@ -227,3 +229,119 @@ sum TSS : 1.7628628775025483
 このように、予報戦略のTSSの推定には、交差検定データの選び方からくる分散がかならず含まれています。予報戦略のTSSを評価するにあたっては、TSSを単一の値と捉えるのではなく、かならず十分な数の「良い」乱数種を生成してTSS測定を繰り返し、TSSの分布を把握するようにしてください。
 
 
+モジュール一覧
+======
+
+
+* SpaceWeather.CmdArgs
+  コマンドライン引数をパーズするモジュールです。
+
+* SpaceWeather.DefaultFeatureSchemaPack
+  入力ファイルの集合が与えられなかった場合や、プログラム試験時などにデフォルトで使用されるファイル名を集めたモジュールです。
+
+* SpaceWeather.FlareClass
+  太陽フレアのクラスを定義し、そのX線fluxなど属性を定義しているモジュールです。
+
+* SpaceWeather.Feature
+  時系列データとしての特徴量(Feature)や特徴量集合、その入出力フォーマットなどを定義しているモジュールです。
+
+* SpaceWeather.FeaturePack
+  Featureやその集合の扱い、戦略ファイルで読み方を指定するときに利用するスキーマの型(FeatureSchema)を定義しているモジュールです。FeatureSchemaは次のようなレコードを持ち、
+
+```haskell
+data FeatureSchema
+  = FeatureSchema
+  { _colT           :: Int
+  , _colX           :: Int
+  , _scaling        :: Double
+  , _isLog          :: Bool
+  } deriving (Eq, Ord, Show, Read)
+```
+スキーマでは、ファイルを読み込むときに、タイムスタンプおよび実データとして解釈すべき列の番号、データのスケーリング、対数を取るか否かなどを指定できます。
+
+
+* SpaceWeather.Format
+
+型クラスFormatおよびそれにまつわるユーティリティ関数を定義しているモジュールです。Format型クラスは、Haskellの高速な文字列型である
+Text型と相互変換できる型を意味します。
+
+```haskell
+class Format a where
+  encode :: a -> T.Text
+  decode :: T.Text -> Either String a
+```
+
+`decode`関数の型`decode :: T.Text -> Either String a`において、返り値の型`Either String a`は「`String`または`a`」が返ることを表しており、HaskellのEitherモナドの通常の用法に従い、`String`はフォーマット不一致等に起因する読み取り失敗時のエラーメッセージを意味し、`a`は読み取りに成功した場合の読み取られた値を意味します。
+
+* SpaceWeather.Prediction
+
+このモジュールはUFCORINの中枢となる予報に関するモジュールです。
+このモジュールでは抽象的な予報機のインターフェイスである`Predictor`型クラスを定義しています。
+
+```haskell
+class Predictor a
+```
+
+また、予報戦略を指定する`PredictionStrategy`データ型、予報結果を表現する
+`PredictionResult`データ型、一つの予報実験の過程を記録する
+`PredictionSession`データ型なども含まれます。`PredictionSession`は実質的に、`PredictionStrategy`と`PredictionResult`の組であり、「この予報戦略を利用して予報実験を行ったところ、この予報結果が得られた」ということを意味します。
+```haskell
+data PredictionStrategy a
+data PredictionResult
+data PredictionSession a
+```
+
+`PredictionResult`には、予報実験がなんらかの原因で失敗した場合にはそのエラーメッセージが含まれ、成功した場合には`predictionResultMap`が含まれます。
+
+```haskell
+data PredictionResult
+  = PredictionFailure _predictionFailureMessage :: String
+  | PredictionSuccess _predictionResultMap
+    :: Map.Map FlareClass ScoreMap
+```
+
+`predictionResultMap`は、`FlareClass`ごとに`ScoreMap`を保持します。
+`ScoreMap`には、contingency tableやHSS、TSSなどの情報が含まれます。
+
+
+* SpaceWeather.Regressor.General
+
+このモジュールでは、UFCORINで定義しているすべての回帰エンジンを切り替えて使えるよう、それらの直和型(`Either`)である`GeneralRegressor`を定義しています。また、
+`GeneralRegressor`は
+`Predictor`であり、`GeneralRegressor`のリスト
+`[GeneralRegressor]`もまた
+`Predictor` である、といった関係も定義しています。
+
+```haskell
+data GeneralRegressor
+  = LibSVMRegressor LibSVMOption
+  | LinearRegressor LinearOption
+```
+
+* SpaceWeather.Regressor.Linear
+
+`Predictor`の一種である線形回帰エンジンが定義されているモジュールでしたが、現在のところ未実装となっています。
+
+* SpaceWeather.Regressor.LibSVM
+
+`Predictor`の一種であるSVM(Support Vector Machine)回帰エンジンが定義されているモジュールです。このモジュールでは、内部でChang & LinによるLibSVMを呼び出しており、そのインターフェイスおよびドライバなどが定義されています。
+
+* SpaceWeather.SkillScore
+
+このモジュールでは、予報結果を評価するための基準であるcontingency table、および予報結果の指標であるHeidke Skill Score, True Skill Statisticsを定義しています。
+
+* SpaceWeather.TimeLine
+
+このモジュールでは時系列データ型を定義しています。
+
+* SpaceWeather.Wavelet
+
+何も入っていません。
+
+* System.IO.Hadoop
+
+Hadoopファイルシステムを通常のHaskellのファイル関数と同様のインターフェイスで入出力できるようにする関数群を収めたモジュールです。遠隔のファイルシステムにアクセスする場合には、帯域を節約し高速化するべく、ローカルにキャッシュを設ける処理も行います。
+
+* System.System
+
+システムコールを行うためのユーティリティ関数群です。
