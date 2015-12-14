@@ -11,6 +11,7 @@ flare_classes = ['x','m','c']
 
 tss_max = {}
 best_option = {}
+best_path = {}
 
 for c in flare_classes:
     tss_max[c] = 0.0
@@ -46,6 +47,7 @@ for path in  glob.glob('result/*'):
         tss_max[c] = max(tss_max[c], result.tss[c])
         if tss_max[c] == result.tss[c]:
             best_option[c] = args_str
+            best_path[c]=path
 
     category = result.grad_factor
     for c in flare_classes:
@@ -60,6 +62,7 @@ for path in  glob.glob('result/*'):
 
 for c in flare_classes:
     print c,tss_max[c], best_option[c]
+    print best_path[c]
 
 
 exit
