@@ -57,8 +57,9 @@ with open(os.path.expanduser('~')+'/.mysqlpass','r') as fp:
 
 original_working_directory = os.getcwd()
 watch_state=WatchState()
+state_filename = 'download.state'
 try:
-    with open('download-hmi-nrt.state','r') as fp:
+    with open(state_filename,'r') as fp:
         watch_state = pickle.load(fp)
 except:
     pass
@@ -230,5 +231,5 @@ for fn in sorted(glob.glob('*.fits')):
         print e
 
 os.chdir(original_working_directory)
-with open('download-hmi-nrt.state','w') as fp:
+with open(state_filename,'w') as fp:
     pickle.dump(watch_state,fp)

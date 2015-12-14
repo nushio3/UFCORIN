@@ -64,7 +64,7 @@ except:
     pass
 
 
-@on_timeout(limit=1, handler = abort_handler, hint='system call')
+@on_timeout(limit=3600, handler = abort_handler, hint='system call')
 def system(cmd):
     global child_proc
     # The os.setsid() is passed in the argument preexec_fn so
