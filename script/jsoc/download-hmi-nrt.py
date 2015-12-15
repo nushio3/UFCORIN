@@ -92,7 +92,7 @@ else:
 
 print "last success " , watch_state.last_success_time
 series_name = "hmi.M_720s_nrt"
-query = series_name + "[2015.09.25_00:00:00-2015.09.26_03:00:00]"
+query = series_name + "[2015.12.01_00:00:00-2015.12.02_03:00:00]"
 if watch_state.last_success_time:
     watch_state.last_cached_time += time.TimeDelta(1, format='sec')
     t_begin = watch_state.last_success_time.datetime + datetime.timedelta(minutes=1)

@@ -96,13 +96,14 @@ def fits2npz(newfn, npzfn):
     img = np.where( np.isnan(img), 0.0, img)
     img2=intp.zoom(img,zoom=zoom_ratio)
 
-    for y in range(reso_new):
-        for x in range(reso_new):
-            x0=reso_new/2.0-0.5
-            y0=reso_new/2.0-0.5
-            r2 = (x-x0)**2 + (y-y0)**2
-            r0 = 1800.0*zoom_ratio
-            if r2 >= r0**2 : img2[y][x]=0.0
+    if args.series=='hmi':
+        for y in range(reso_new):
+            for x in range(reso_new):
+                x0=reso_new/2.0-0.5
+                y0=reso_new/2.0-0.5
+                r2 = (x-x0)**2 + (y-y0)**2
+                r0 = 1800.0*zoom_ratio
+                if r2 >= r0**2 : img2[y][x]=0.0
     img32 = np.float32(img2)
     np.savez_compressed(npzfn, img=img32)
 
