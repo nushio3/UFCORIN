@@ -250,6 +250,6 @@ for iteration_ctr in range(iteration_n):
             print traceback.format_exc()
             print e
     
-    os.chdir(original_working_directory)
     with open(state_filename,'w') as fp:
         pickle.dump(watch_state,fp)
+os.chdir(original_working_directory)
