@@ -207,8 +207,8 @@ parser.add_argument('--fresh-start', '-f', action='store_true',
 args = parser.parse_args()
 
 global month,day
-month=1
-day=0
+month=np.random.randint(12)+1
+day=np.random.randint(31)+1
 
 def load_movie():
     global month,day
@@ -221,14 +221,13 @@ def load_movie():
 
     print "now loading... %d/%d"%(month,day)
     subprocess.call('rm aia193/*', shell=True)
-    subprocess.call('aws s3 sync "s3://sdo/aia193/720s-x1024/2011/%02d/%02d/" aia193 --region us-west-2'%(month,day), shell=True)
+    subprocess.call('aws s3 sync "s3://sdo/aia193/720s-x1024/2011/%02d/%02d/" aia193 --region us-west-2 --quiet'%(month,day), shell=True)
     current_movie = n_movie*[None]
     for hr in range(n_movie/5):
         for step in range(5):
             fn = 'aia193/%02d%02d.npz'%(hr,step*12)
             if os.path.exists(fn):
                 current_movie[hr*5+step] = dual_log(500,np.load(fn)['img'])
-    print "...loaded"
     return current_movie
 
 def create_batch(current_movie, current_movie_out):
