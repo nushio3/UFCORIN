@@ -3,7 +3,7 @@
 import astropy.time as time
 import calendar
 import datetime
-import re
+import re,os
 import sqlalchemy as sql
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.ext.declarative import declarative_base
@@ -69,9 +69,9 @@ def write_db(con):
     session.commit()
 
 
-for year in reversed(range(2011,2016)):
-    for month in reversed(range(1,13)):
-        if year==2015 and month > 8: continue
+for year in reversed(range(2015,2016)):
+    for month in reversed(range(12,13)):
+        # if year==2015 and month > 8: continue
         (_, day_end) = calendar.monthrange(year,month)
         url = 'http://satdat.ngdc.noaa.gov/sem/goes/data/new_avg/{year}/{month:02d}/goes15/csv/g15_xrs_1m_{year}{month:02d}{day_begin:02d}_{year}{month:02d}{day_end:02d}.csv'.format(year=year,month=month,day_begin=1,day_end=day_end)
 

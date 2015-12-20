@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-import argparse, datetime, glob, os, pickle, re, shutil, subprocess, sys, traceback
+import argparse, datetime, glob, os, pickle, re, shutil, subprocess, signal, sys, traceback
 from astropy.io import fits
 import astropy.time as time
 import matplotlib as mpl
@@ -12,6 +12,33 @@ import sqlalchemy as sql
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.ext.declarative import declarative_base
 import wavelet
+
+from functools import wraps
+
+def on_timeout(limit, handler, hint=None):
+    '''                                                 
+    call handler with a hint on timeout(seconds)
+    http://qiita.com/siroken3/items/4bb937fcfd4c2489d10a
+    '''
+    def notify_handler(signum, frame):
+        handler("'%s' is not finished in %d second(s)." % (hint, limit))
+
+    def __decorator(function):
+        def __wrapper(*args, **kwargs):
+            import signal
+            signal.signal(signal.SIGALRM, notify_handler)
+            signal.alarm(limit)
+            result = function(*args, **kwargs)
+            signal.alarm(0)
+            return result
+        return wraps(function)(__wrapper)
+    return __decorator
+
+def abort_handler(msg):
+    global child_proc
+    sys.stderr.write(msg)
+    child_proc.kill()
+    sys.exit(1)
 
 class WatchState:
     last_success_time = None
@@ -37,8 +64,13 @@ except:
     pass
 
 
+@on_timeout(limit=3600, handler = abort_handler, hint='system call')
 def system(cmd):
-    subprocess.call(cmd, shell=True)
+    global child_proc
+    # The os.setsid() is passed in the argument preexec_fn so
+    # it's run after the fork() and before  exec() to run the shell.
+    child_proc = subprocess.Popen("exec " + cmd, shell=True)
+    child_proc.wait()
 
 path= '/home/ubuntu/hub/UFCORIN/script/jsoc/'
 
@@ -60,7 +92,7 @@ else:
 
 print "last success " , watch_state.last_success_time
 series_name = "hmi.M_720s_nrt"
-query = series_name + "[2015.08.10_15:55:00-2015.08.13_06:00:00]"
+query = series_name + "[2015.12.01_00:00:00-2015.12.02_03:00:00]"
 if watch_state.last_success_time:
     watch_state.last_cached_time += time.TimeDelta(1, format='sec')
     t_begin = watch_state.last_success_time.datetime + datetime.timedelta(minutes=1)
