@@ -39,7 +39,7 @@ batchsize=25
 patch_pixelsize=128
 n_epoch=10000
 n_train=2000
-save_interval =200
+save_interval =20
 
 n_timeseries = 6
 n_movie=120
@@ -301,6 +301,9 @@ def train_dcgan_labeled(evol, dis, epoch0=0):
             movie_out_predict=None
             for train_offset in range(0,n_movie-n_timeseries):
               for mode in ['hard','normal']:
+                sys.stdout.write('%d %s\r'%(train_offset,mode))
+                sys.stdout.flush()
+
                 movie_clip = current_movie[train_offset:train_offset+n_timeseries]
                 if mode == 'normal':
                     movie_clip_out = movie_clip
