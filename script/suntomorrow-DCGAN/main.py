@@ -39,7 +39,7 @@ batchsize=25
 patch_pixelsize=128
 n_epoch=10000
 n_train=200000
-save_interval =1000
+save_interval =20000
 
 n_timeseries = 6
 
@@ -339,8 +339,10 @@ def train_dcgan_labeled(evol, dis, epoch0=0):
                 history_dir = 'history/' #%d-%d'%(epoch,  train_ctr)
                 subprocess.call("mkdir -p %s "%(history_dir),shell=True)
                 subprocess.call("cp %s/*.h5 %s "%(out_model_dir,history_dir),shell=True)
+                
+                if epoch==0 && train_ctr==0:
+                    continue # no sense to save the initial state.
                 print 'saving model...'
-                continue
                 serializers.save_hdf5("%s/dcgan_model_dis.h5"%(out_model_dir),dis)
                 serializers.save_hdf5("%s/dcgan_model_evol.h5"%(out_model_dir),evol)
                 serializers.save_hdf5("%s/dcgan_state_dis.h5"%(out_model_dir),o_dis)
