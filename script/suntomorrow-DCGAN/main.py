@@ -215,7 +215,7 @@ def load_images():
     current_movie[4] = np.load('aia193/0100.npz')['img']
     current_movie[5] = np.load('aia193/0112.npz')['img']
 
-    return dual_log(current_movie)
+    return [dual_log(500,i) for i in current_movie]
 
 def create_batch(current_movie):
     pw=patch_pixelsize
