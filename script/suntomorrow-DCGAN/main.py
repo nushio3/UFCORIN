@@ -142,9 +142,9 @@ class Evolver(chainer.Chain):
         h = h48 + 1e-1*F.relu(self.bn0(self.dc1(h), test=test))
         ret=self.dc0(h)
         
-        #return ret
+        return ret
 
-        return F.split_axis(x,[1],1)[0]+ret
+        #return F.split_axis(x,[1],1)[0]+ret
         #return Variable(xp.zeros((batchsize, 1, 128,128), dtype=np.float32))
 
 
@@ -240,8 +240,8 @@ def train_dcgan_labeled(evol, dis, epoch0=0):
     for epoch in xrange(epoch0,n_epoch):
         print "epoch:", epoch
         
-        for i in xrange(0, n_train, batchsize):
-            print "train:",i
+        for train_ctr in xrange(0, n_train, batchsize):
+            print "train:",train_ctr
             # discriminator
             # 0: from dataset
             # 1: from noise
@@ -253,9 +253,6 @@ def train_dcgan_labeled(evol, dis, epoch0=0):
             
             movie_out_predict = evol(movie_in)
             yl = dis(movie_in,movie_out_predict)
-
-
-            print yl.data.shape
 
             L_evol = F.softmax_cross_entropy(yl, Variable(xp.zeros(batchsize, dtype=np.int32)))
             L_dis  = F.softmax_cross_entropy(yl, Variable(xp.ones(batchsize, dtype=np.int32)))
@@ -272,6 +269,47 @@ def train_dcgan_labeled(evol, dis, epoch0=0):
             o_dis.zero_grads()
             L_dis.backward()
             o_dis.update()
+
+            if train_ctr%save_interval==0:
+                imgfn = '%s/vis_%d_%d.png'%(out_image_dir, epoch,train_ctr)
+
+                plt.close('all')
+                n_col=n_timeseries+2
+                plt.rcParams['figure.figsize'] = (1.0*n_col,1.0*batchsize)
+
+                movie_data=movie_in.data.get()
+                movie_out_data=movie_out.data.get()
+                movie_pred_data=movie_out_predict.data.get()
+                for ib in range(batchsize):
+                    for j in range(n_timeseries-1):
+                        plt.subplot(batchsize,n_col,1 + ib*n_col + j)
+                        plt.imshow(movie_data[ib,j,:,:])
+                        plt.axis('off')
+
+                    plt.subplot(batchsize,n_col,1 + ib*n_col + n_timeseries-1)
+                    plt.imshow(movie_pred_data[ib,0,:,:])
+                    plt.axis('off')
+
+                    plt.subplot(batchsize,n_col,1 + ib*n_col + n_timeseries+1)
+                    plt.imshow(movie_out_data[ib,0,:,:])
+                    plt.axis('off')
+                
+                plt.suptitle(imgfn)
+                plt.savefig(imgfn)
+                print imgfn
+
+                subprocess.call("cp %s ~/public_html/suntomorrow-%d.png"%(imgfn,args.gpu),shell=True)
+
+                # we don't have enough disk for history
+                history_dir = 'history/' #%d-%d'%(epoch,  train_ctr)
+                subprocess.call("mkdir -p %s "%(history_dir),shell=True)
+                subprocess.call("cp %s/*.h5 %s "%(out_model_dir,history_dir),shell=True)
+                print 'saving model...'
+                serializers.save_hdf5("%s/dcgan_model_dis.h5"%(out_model_dir),dis)
+                serializers.save_hdf5("%s/dcgan_model_evol.h5"%(out_model_dir),evol)
+                serializers.save_hdf5("%s/dcgan_state_dis.h5"%(out_model_dir),o_dis)
+                serializers.save_hdf5("%s/dcgan_state_evol.h5"%(out_model_dir),o_evol)
+                print '...saved.'
 
 
 
