@@ -42,7 +42,7 @@ n_train=2000
 save_interval =200
 
 n_timeseries = 6
-n_movie=20
+n_movie=120
 
 out_image_dir = './out_images_%s'%(args.gpu)
 out_model_dir = './out_models_%s'%(args.gpu)
@@ -207,8 +207,8 @@ parser.add_argument('--fresh-start', '-f', action='store_true',
 args = parser.parse_args()
 
 global month,day
-month=np.random.randint(12)+1
-day=np.random.randint(31)+1
+month=1 #np.random.randint(12)+1
+day=1 #np.random.randint(31)+1
 
 def load_movie():
     global month,day
