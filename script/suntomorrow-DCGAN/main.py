@@ -156,7 +156,8 @@ class Evolver(chainer.Chain):
 class Discriminator(chainer.Chain):
     def __init__(self):
         super(Discriminator, self).__init__(
-            c0 = L.Convolution2D(n_timeseries, 64, 4, stride=2, pad=1, wscale=0.02*math.sqrt(4*4*3)),
+            c0i = L.Convolution2D(n_timeseries-1, 64, 4, stride=2, pad=1, wscale=0.02*math.sqrt(4*4*3)),
+            c0o = L.Convolution2D(1, 64, 4, stride=2, pad=1, wscale=0.02*math.sqrt(4*4*3)),
             c1 = L.Convolution2D(64, 128, 4, stride=2, pad=1, wscale=0.02*math.sqrt(4*4*64)),
             c2 = L.Convolution2D(128, 256, 4, stride=2, pad=1, wscale=0.02*math.sqrt(4*4*128)),
             c3 = L.Convolution2D(256, 512, 4, stride=2, pad=1, wscale=0.02*math.sqrt(4*4*256)),
@@ -167,8 +168,10 @@ class Discriminator(chainer.Chain):
             bn3 = L.BatchNormalization(512),
         )
         
-    def __call__(self, x, test=False):
-        h = elu(self.c0(x))     # no bn because images from generator will katayotteru?
+    def __call__(self, x1,x2, test=False):
+        
+        x=self.c0i(x1)+self.c0o(x2)
+        h = elu(x)     # no bn because images from generator will katayotteru?
         h = elu(self.bn1(self.c1(h), test=test))
         h = elu(self.bn2(self.c2(h), test=test))
         h = elu(self.bn3(self.c3(h), test=test))
@@ -215,9 +218,6 @@ def load_dataset():
                 ret_out[j,0,:,:]=img[t][top:top+ph, left:left+pw]
             else:
                 ret_in[j,t,:,:]=img[t][top:top+ph, left:left+pw]
-    print "input flags"
-    print ret_in.flags.c_contiguous
-    print ret_out.flags.c_contiguous
     return (ret_in, ret_out)
 
 
@@ -246,16 +246,13 @@ def train_dcgan_labeled(evol, dis, epoch0=0):
             # 0: from dataset
             # 1: from noise
 
-            #print "load image start ", i
             data_in, data_out = load_dataset()
             movie_in = Variable(cuda.to_gpu(data_in))
             movie_out = Variable(cuda.to_gpu(data_out))
-            movie_train = F.concat([movie_in, movie_out])
-            #print "load image done"
+            #movie_train = F.concat([movie_in, movie_out])
             
             movie_out_predict = evol(movie_in)
-            movie_predict = F.concat([movie_in, movie_out_predict])
-            yl = dis(movie_predict)
+            yl = dis(movie_in,movie_out_predict)
 
 
             print yl.data.shape
@@ -264,14 +261,8 @@ def train_dcgan_labeled(evol, dis, epoch0=0):
             L_dis  = F.softmax_cross_entropy(yl, Variable(xp.ones(batchsize, dtype=np.int32)))
 
             # train discriminator
-            yl_train = dis(movie_train)
+            yl_train = dis(movie_in,movie_out)
             L_dis += F.softmax_cross_entropy(yl_train, Variable(xp.zeros(batchsize, dtype=np.int32)))
-            
-
-            print "mp",movie_predict.data.flags.c_contiguous
-            print "yl",yl.data.flags.c_contiguous
-            print "Le",L_evol.data.flags.c_contiguous
-            print "Le",L_evol.data.shape
             
             
             o_evol.zero_grads()
