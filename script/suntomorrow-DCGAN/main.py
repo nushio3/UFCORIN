@@ -207,8 +207,8 @@ parser.add_argument('--fresh-start', '-f', action='store_true',
 args = parser.parse_args()
 
 global month,day
-month=1 #np.random.randint(12)+1
-day=1 #np.random.randint(31)+1
+month=1#np.random.randint(12)+1
+day=0#np.random.randint(31)+1
 
 def load_movie():
     global month,day
@@ -218,6 +218,9 @@ def load_movie():
         day=1
     if month>=13:
         month=1
+    # trial mode
+    month=np.random.randint(12)+1
+    day=np.random.randint(31)+1
 
     print "now loading... %d/%d"%(month,day)
     subprocess.call('rm aia193/*', shell=True)
@@ -231,6 +234,10 @@ def load_movie():
     return current_movie
 
 def create_batch(current_movie, current_movie_out):
+    for t in range(n_timeseries):
+        if current_movie[t] is None:
+            return None
+
     pw=patch_pixelsize
     ph=patch_pixelsize
 
@@ -242,8 +249,6 @@ def create_batch(current_movie, current_movie_out):
         left  = np.random.randint(ow-pw)
         top   = np.random.randint(oh-ph)
         for t in range(n_timeseries):
-            if current_movie[t] is None:
-                return None
             if t==n_timeseries -1:
                 ret_out[j,0,:,:]=current_movie[t][top:top+ph, left:left+pw]
             else:
@@ -335,7 +340,10 @@ def train_dcgan_labeled(evol, dis, epoch0=0):
                 o_dis.zero_grads()
                 L_dis.backward()
                 o_dis.update()
-    
+                
+                movie_out_predict.unchain_backward()
+                yl.unchain_backward()
+                yl_train.unchain_backward()
                 L_evol.unchain_backward()
                 L_dis.unchain_backward()
 
