@@ -29,7 +29,7 @@ import numpy
 parser = argparse.ArgumentParser()
 parser.add_argument('--gpu', '-g', default=0, type=int,
                     help='GPU ID')
-parser.add_argument('--fresh-start', '-f', action='store_true',
+parser.add_argument('--fresh-start', action='store_true',
                     help='Start simulation anew')
 args = parser.parse_args()
 
@@ -39,9 +39,9 @@ batchsize=25
 patch_pixelsize=128
 n_epoch=10000
 n_train=200000
-save_interval =20000
+save_interval =1000
 
-n_timeseries = 4
+n_timeseries = 6
 
 out_image_dir = './out_images_%s'%(args.gpu)
 out_model_dir = './out_models_%s'%(args.gpu)
@@ -54,6 +54,13 @@ subprocess.call("mkdir -p %s "%(out_model_dir),shell=True)
 ################################################################
 ## Additional Combinators
 ################################################################
+
+def dual_log(scale, x):
+    x2 = x/scale
+    #not implemented error!
+    #return F.where(x>0,F.log(x2+1),-F.log(1-x2))
+    return F.log(1+F.relu(x2))-F.log(1+F.relu(-x2))
+
 
 class ELU(function.Function):
 
@@ -121,6 +128,10 @@ class Evolver(chainer.Chain):
             dc2 = L.Deconvolution2D(256, 128, 4, stride=2, pad=1, wscale=0.02*math.sqrt(4*4*256)),
             dc1 = L.Deconvolution2D(128, 64, 4, stride=2, pad=1, wscale=0.02*math.sqrt(4*4*128)),
             dc0 = L.Deconvolution2D(64, 1, 4, stride=2, pad=1, wscale=0.02*math.sqrt(4*4*64)),
+            dc3h = L.Deconvolution2D(512, 256, 4, stride=2, pad=1, wscale=0.02*math.sqrt(4*4*512)),
+            dc2h = L.Deconvolution2D(256, 128, 4, stride=2, pad=1, wscale=0.02*math.sqrt(4*4*256)),
+            dc1h = L.Deconvolution2D(128, 64, 4, stride=2, pad=1, wscale=0.02*math.sqrt(4*4*128)),
+            dc0h = L.Deconvolution2D(64, 1, 4, stride=2, pad=1, wscale=0.02*math.sqrt(4*4*64)),
             bn0 = L.BatchNormalization(64),
             bn1 = L.BatchNormalization(128),
             bn2 = L.BatchNormalization(256),
@@ -129,18 +140,18 @@ class Evolver(chainer.Chain):
         )
         
     def __call__(self, x, test=False):
-        h48 = elu(self.c0(x))     # no bn because images from generator will katayotteru?
-        h24 = elu(self.bn1(self.c1(h48), test=test))
-        h12 = elu(self.bn2(self.c2(h24), test=test))
-        h6 = elu(self.bn3(self.c3(h12), test=test))
-        h1 = elu(self.bn4(self.c4(h6), test=test))
+        h64 = elu(self.c0(x))     # no bn because images from generator will katayotteru?
+        h32 = elu(self.bn1(self.c1(h64), test=test))
+        h16 = elu(self.bn2(self.c2(h32), test=test))
+        h8 = elu(self.bn3(self.c3(h16), test=test))
+        h1 = elu(self.bn4(self.c4(h8), test=test))
         
         # idea: not simple addition, but concatenation?
-        h = h6 + 1e-1*F.relu(self.bn3(self.dc4(h1), test=test))
-        h = h12 + 1e-1*F.relu(self.bn2(self.dc3(h), test=test))
-        h = h24 + 1e-1*F.relu(self.bn1(self.dc2(h), test=test))
-        h = h48 + 1e-1*F.relu(self.bn0(self.dc1(h), test=test))
-        ret=self.dc0(h)
+        h = F.relu(self.bn3(self.dc4(h1), test=test))
+        h = F.relu(self.bn2(self.dc3(h), test=test)) + F.relu(self.bn2(self.dc3h(h8), test=test))
+        h = F.relu(self.bn1(self.dc2(h), test=test)) + F.relu(self.bn1(self.dc2h(h16), test=test))
+        h = F.relu(self.bn0(self.dc1(h), test=test)) + F.relu(self.bn0(self.dc1h(h32), test=test))
+        ret=self.dc0(h) + self.dc0h(h64) 
         
         return ret
 
@@ -195,32 +206,43 @@ parser.add_argument('--fresh-start', '-f', action='store_true',
 args = parser.parse_args()
 
 
+def load_images():
+    current_movie = n_timeseries*[None]
+    current_movie[0] = np.load('aia193/0012.npz')['img']
+    current_movie[1] = np.load('aia193/0024.npz')['img']
+    current_movie[2] = np.load('aia193/0036.npz')['img']
+    current_movie[3] = np.load('aia193/0048.npz')['img']
+    current_movie[4] = np.load('aia193/0100.npz')['img']
+    current_movie[5] = np.load('aia193/0112.npz')['img']
 
-def load_dataset():
+    return current_movie
+
+def create_batch(current_movie):
     pw=patch_pixelsize
     ph=patch_pixelsize
 
     ret_in  = np.zeros((batchsize, n_timeseries-1, ph, pw), dtype=np.float32)
     ret_out = np.zeros((batchsize, 1, ph, pw), dtype=np.float32)
-
-    img = n_timeseries*[None]
-    img[0] = np.load('aia193/0012.npz')['img']
-    img[1] = np.load('aia193/0024.npz')['img']
-    img[2] = np.load('aia193/0036.npz')['img']
-    img[3] = np.load('aia193/0048.npz')['img']
-
+    
     for j in range(batchsize):
-        oh, ow = img[0].shape
+        oh, ow = current_movie[0].shape
         left  = np.random.randint(ow-pw)
         top   = np.random.randint(oh-ph)
         for t in range(n_timeseries):
             if t==n_timeseries -1:
-                ret_out[j,0,:,:]=img[t][top:top+ph, left:left+pw]
+                ret_out[j,0,:,:]=current_movie[t][top:top+ph, left:left+pw]
             else:
-                ret_in[j,t,:,:]=img[t][top:top+ph, left:left+pw]
+                ret_in[j,t,:,:]=current_movie[t][top:top+ph, left:left+pw]
     return (ret_in, ret_out)
 
 
+# map a seris of image to image at the next, using the chainer function evol
+def evolve_image(evol,imgs):
+    h,w=imgs[0].shape
+    input_val = Variable(cuda.to_gpu(np.reshape(np.concatenate(imgs), (1,n_timeseries-1,h,w))))
+    output_val = evol(input_val,test=True)
+    return np.reshape(output_val.data.get(), (h,w))
+    
 
 def train_dcgan_labeled(evol, dis, epoch0=0):
     o_evol = optimizers.Adam(alpha=0.0002, beta1=0.5)
@@ -246,9 +268,11 @@ def train_dcgan_labeled(evol, dis, epoch0=0):
             # 0: from dataset
             # 1: from noise
 
-            data_in, data_out = load_dataset()
-            movie_in = Variable(cuda.to_gpu(data_in))
-            movie_out = Variable(cuda.to_gpu(data_out))
+            current_movie = load_images()
+
+            data_in, data_out = create_batch(current_movie)
+            movie_in =  dual_log(500,Variable(cuda.to_gpu(data_in)))
+            movie_out = dual_log(500,Variable(cuda.to_gpu(data_out)))
             #movie_train = F.concat([movie_in, movie_out])
             
             movie_out_predict = evol(movie_in)
@@ -270,12 +294,15 @@ def train_dcgan_labeled(evol, dis, epoch0=0):
             L_dis.backward()
             o_dis.update()
 
+            L_evol.unchain_backward()
+            L_dis.unchain_backward()
+
             if train_ctr%save_interval==0:
                 imgfn = '%s/vis_%d_%d.png'%(out_image_dir, epoch,train_ctr)
 
-                plt.close('all')
                 n_col=n_timeseries+2
                 plt.rcParams['figure.figsize'] = (1.0*n_col,1.0*batchsize)
+                plt.close('all')
 
                 movie_data=movie_in.data.get()
                 movie_out_data=movie_out.data.get()
@@ -283,21 +310,29 @@ def train_dcgan_labeled(evol, dis, epoch0=0):
                 for ib in range(batchsize):
                     for j in range(n_timeseries-1):
                         plt.subplot(batchsize,n_col,1 + ib*n_col + j)
-                        plt.imshow(movie_data[ib,j,:,:])
+                        plt.imshow(movie_data[ib,j,:,:],vmin=0,vmax=1.4)
                         plt.axis('off')
 
                     plt.subplot(batchsize,n_col,1 + ib*n_col + n_timeseries-1)
-                    plt.imshow(movie_pred_data[ib,0,:,:])
+                    plt.imshow(movie_pred_data[ib,0,:,:],vmin=0,vmax=1.4)
                     plt.axis('off')
 
                     plt.subplot(batchsize,n_col,1 + ib*n_col + n_timeseries+1)
-                    plt.imshow(movie_out_data[ib,0,:,:])
+                    plt.imshow(movie_out_data[ib,0,:,:],vmin=0,vmax=1.4)
                     plt.axis('off')
                 
                 plt.suptitle(imgfn)
                 plt.savefig(imgfn)
+                subprocess.call("cp %s ~/public_html/suntomorrow-batch-%d.png"%(imgfn,args.gpu),shell=True)
                 print imgfn
 
+                imgfn = '%s/futuresun_%d_%d.png'%(out_image_dir, epoch,train_ctr)
+                plt.rcParams['figure.figsize'] = (12.0, 12.0)
+                plt.close('all')
+                img_prediction = evolve_image(evol,current_movie[0:n_timeseries-1])
+                plt.imshow(img_prediction,vmin=0,vmax=1.4)
+                plt.suptitle(imgfn)
+                plt.savefig(imgfn)
                 subprocess.call("cp %s ~/public_html/suntomorrow-%d.png"%(imgfn,args.gpu),shell=True)
 
                 # we don't have enough disk for history
@@ -305,6 +340,7 @@ def train_dcgan_labeled(evol, dis, epoch0=0):
                 subprocess.call("mkdir -p %s "%(history_dir),shell=True)
                 subprocess.call("cp %s/*.h5 %s "%(out_model_dir,history_dir),shell=True)
                 print 'saving model...'
+                continue
                 serializers.save_hdf5("%s/dcgan_model_dis.h5"%(out_model_dir),dis)
                 serializers.save_hdf5("%s/dcgan_model_evol.h5"%(out_model_dir),evol)
                 serializers.save_hdf5("%s/dcgan_state_dis.h5"%(out_model_dir),o_dis)
