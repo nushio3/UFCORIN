@@ -42,6 +42,7 @@ n_train=200000
 save_interval =20000
 
 n_timeseries = 6
+n_movie=120
 
 out_image_dir = './out_images_%s'%(args.gpu)
 out_model_dir = './out_models_%s'%(args.gpu)
@@ -206,18 +207,16 @@ parser.add_argument('--fresh-start', '-f', action='store_true',
 args = parser.parse_args()
 
 
-def load_images():
-    current_movie = n_timeseries*[None]
-    current_movie[0] = np.load('aia193/0012.npz')['img']
-    current_movie[1] = np.load('aia193/0024.npz')['img']
-    current_movie[2] = np.load('aia193/0036.npz')['img']
-    current_movie[3] = np.load('aia193/0048.npz')['img']
-    current_movie[4] = np.load('aia193/0100.npz')['img']
-    current_movie[5] = np.load('aia193/0112.npz')['img']
+def load_movie():
+    current_movie = n_movie*[None]
+    for hr in range(24):
+        for step in range(5):
+            fn = 'aia193/%02d%02d.npz'%(hr,step*12)
+            if os.path.exists(fn):
+                current_movie[hr*6+step] = dual_log(500,np.load(fn)['img'])
+    return current_movie
 
-    return [dual_log(500,i) for i in current_movie]
-
-def create_batch(current_movie):
+def create_batch(current_movie, current_movie_out):
     pw=patch_pixelsize
     ph=patch_pixelsize
 
@@ -229,10 +228,12 @@ def create_batch(current_movie):
         left  = np.random.randint(ow-pw)
         top   = np.random.randint(oh-ph)
         for t in range(n_timeseries):
+            if current_movie[t] == None:
+                return None, None
             if t==n_timeseries -1:
                 ret_out[j,0,:,:]=current_movie[t][top:top+ph, left:left+pw]
             else:
-                ret_in[j,t,:,:]=current_movie[t][top:top+ph, left:left+pw]
+                ret_in[j,t,:,:]=current_movie_out[t][top:top+ph, left:left+pw]
     return (ret_in, ret_out)
 
 
@@ -268,34 +269,50 @@ def train_dcgan_labeled(evol, dis, epoch0=0):
             # 0: from dataset
             # 1: from noise
 
-            current_movie = load_images()
-
-            data_in, data_out = create_batch(current_movie)
-            movie_in =  Variable(cuda.to_gpu(data_in))
-            movie_out = Variable(cuda.to_gpu(data_out))
-            #movie_train = F.concat([movie_in, movie_out])
+            good_movie=True
+            prediction_movie=n_movie*[None]
+            current_movie = load_movie()
+            for i in range(n_timeseries-1):
+                if current_movie[i]==None:
+                    good_movie=False
+                else:
+                    prediction_movie[i]=current_movie[i]
+            if not good_movie: continue
+            for i in range(n_timeseries-1,n_movie):
+                prediction_movie[i] = evolve_image(evol,prediction_movie[i-n_timeseries+1 : i])
             
-            movie_out_predict = evol(movie_in)
-            yl = dis(movie_in,movie_out_predict)
 
-            L_evol = F.softmax_cross_entropy(yl, Variable(xp.zeros(batchsize, dtype=np.int32)))
-            L_dis  = F.softmax_cross_entropy(yl, Variable(xp.ones(batchsize, dtype=np.int32)))
-
-            # train discriminator
-            yl_train = dis(movie_in,movie_out)
-            L_dis += F.softmax_cross_entropy(yl_train, Variable(xp.zeros(batchsize, dtype=np.int32)))
-            
-            
-            o_evol.zero_grads()
-            L_evol.backward()
-            o_evol.update()
-            
-            o_dis.zero_grads()
-            L_dis.backward()
-            o_dis.update()
-
-            L_evol.unchain_backward()
-            L_dis.unchain_backward()
+            for train_offset in range(i,n_movie-n_timeseries): for mode in ['normal','hard']:
+                movie_clip = current_movie[i:i+n_timeseries]
+                if mode == 'normal':
+                    movie_clip_out = movie_clip
+                else:
+                    movie_clip_out = prediction_movie[i:i+n_timeseries]
+                data_in, data_out = create_batch(movie_clip, movie_clip_out)
+                movie_in =  Variable(cuda.to_gpu(data_in))
+                movie_out = Variable(cuda.to_gpu(data_out))
+                
+                movie_out_predict = evol(movie_in)
+                yl = dis(movie_in,movie_out_predict)
+    
+                L_evol = F.softmax_cross_entropy(yl, Variable(xp.zeros(batchsize, dtype=np.int32)))
+                L_dis  = F.softmax_cross_entropy(yl, Variable(xp.ones(batchsize, dtype=np.int32)))
+    
+                # train discriminator
+                yl_train = dis(movie_in,movie_out)
+                L_dis += F.softmax_cross_entropy(yl_train, Variable(xp.zeros(batchsize, dtype=np.int32)))
+                
+                
+                o_evol.zero_grads()
+                L_evol.backward()
+                o_evol.update()
+                
+                o_dis.zero_grads()
+                L_dis.backward()
+                o_dis.update()
+    
+                L_evol.unchain_backward()
+                L_dis.unchain_backward()
 
             if train_ctr%save_interval==0:
                 imgfn = '%s/vis_%d_%d.png'%(out_image_dir, epoch,train_ctr)
@@ -326,14 +343,15 @@ def train_dcgan_labeled(evol, dis, epoch0=0):
                 subprocess.call("cp %s ~/public_html/suntomorrow-batch-%d.png"%(imgfn,args.gpu),shell=True)
                 print imgfn
 
-                imgfn = '%s/futuresun_%d_%d.png'%(out_image_dir, epoch,train_ctr)
-                plt.rcParams['figure.figsize'] = (12.0, 12.0)
-                plt.close('all')
-                img_prediction = evolve_image(evol,current_movie[0:n_timeseries-1])
-                plt.imshow(img_prediction)
-                plt.suptitle(imgfn)
-                plt.savefig(imgfn)
-                subprocess.call("cp %s ~/public_html/suntomorrow-%d.png"%(imgfn,args.gpu),shell=True)
+                for offset in [6,16,32,64,119]:
+                    imgfn = '%s/futuresun+%d_%d_%d.png'%(offset,out_image_dir, epoch,train_ctr)
+                    plt.rcParams['figure.figsize'] = (12.0, 12.0)
+                    plt.close('all')
+                    img_prediction = prediction_movie[offset]
+                    plt.imshow(img_prediction,vmin=0,vmax=1.4)
+                    plt.suptitle(imgfn)
+                    plt.savefig(imgfn)
+                    subprocess.call("cp %s ~/public_html/"%(imgfn),shell=True)
 
                 # we don't have enough disk for history
                 history_dir = 'history/' #%d-%d'%(epoch,  train_ctr)
