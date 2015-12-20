@@ -38,8 +38,8 @@ nz = 100          # # of dim for final layer
 batchsize=25
 patch_pixelsize=128
 n_epoch=10000
-n_train=200000
-save_interval =20000
+n_train=2000
+save_interval =200
 
 n_timeseries = 6
 n_movie=120
@@ -213,7 +213,7 @@ def load_movie():
         for step in range(5):
             fn = 'aia193/%02d%02d.npz'%(hr,step*12)
             if os.path.exists(fn):
-                current_movie[hr*6+step] = dual_log(500,np.load(fn)['img'])
+                current_movie[hr*5+step] = dual_log(500,np.load(fn)['img'])
     return current_movie
 
 def create_batch(current_movie, current_movie_out):
@@ -228,8 +228,8 @@ def create_batch(current_movie, current_movie_out):
         left  = np.random.randint(ow-pw)
         top   = np.random.randint(oh-ph)
         for t in range(n_timeseries):
-            if current_movie[t] == None:
-                return None, None
+            if current_movie[t] is None:
+                return None
             if t==n_timeseries -1:
                 ret_out[j,0,:,:]=current_movie[t][top:top+ph, left:left+pw]
             else:
@@ -273,7 +273,7 @@ def train_dcgan_labeled(evol, dis, epoch0=0):
             prediction_movie=n_movie*[None]
             current_movie = load_movie()
             for i in range(n_timeseries-1):
-                if current_movie[i]==None:
+                if current_movie[i] is None:
                     good_movie=False
                 else:
                     prediction_movie[i]=current_movie[i]
@@ -282,13 +282,21 @@ def train_dcgan_labeled(evol, dis, epoch0=0):
                 prediction_movie[i] = evolve_image(evol,prediction_movie[i-n_timeseries+1 : i])
             
 
-            for train_offset in range(i,n_movie-n_timeseries): for mode in ['normal','hard']:
+            movie_in = None
+            movie_out = None
+            movie_out_predict=None
+            for train_offset in range(i,n_movie-n_timeseries):
+              for mode in ['hard','normal']:
                 movie_clip = current_movie[i:i+n_timeseries]
                 if mode == 'normal':
                     movie_clip_out = movie_clip
                 else:
                     movie_clip_out = prediction_movie[i:i+n_timeseries]
-                data_in, data_out = create_batch(movie_clip, movie_clip_out)
+                maybe_dat = create_batch(movie_clip, movie_clip_out)
+                if not maybe_dat : 
+                    print "Warning: skip offset", train_offset, "because of unavailable data."
+                    continue
+                data_in, data_out = maybe_dat
                 movie_in =  Variable(cuda.to_gpu(data_in))
                 movie_out = Variable(cuda.to_gpu(data_out))
                 
