@@ -59,7 +59,7 @@ def dual_log(scale, x):
     x2 = x/scale
     #not implemented error!
     #return F.where(x>0,F.log(x2+1),-F.log(1-x2))
-    return F.log(1+F.relu(x2))-F.log(1+F.relu(-x2))
+    return np.log(1+np.maximum(0,x2))-np.log(1+np.maximum(0,-x2))
 
 
 class ELU(function.Function):
@@ -122,8 +122,8 @@ class Evolver(chainer.Chain):
             c1 = L.Convolution2D(64, 128, 4, stride=2, pad=1, wscale=0.02*math.sqrt(4*4*64)),
             c2 = L.Convolution2D(128, 256, 4, stride=2, pad=1, wscale=0.02*math.sqrt(4*4*128)),
             c3 = L.Convolution2D(256, 512, 4, stride=2, pad=1, wscale=0.02*math.sqrt(4*4*256)),
-            c4 = L.Convolution2D(512, 1024, 8, stride=1, pad=0, wscale=0.02*math.sqrt(4*4*512)),
-            dc4 = L.Deconvolution2D(1024,512, 8, stride=1, pad=0, wscale=0.02*math.sqrt(4*4*1024)),
+            c4 = L.Convolution2D(512, 1024, 8, stride=8, pad=0, wscale=0.02*math.sqrt(4*4*512)),
+            dc4 = L.Deconvolution2D(1024,512, 8, stride=8, pad=0, wscale=0.02*math.sqrt(4*4*1024)),
             dc3 = L.Deconvolution2D(512, 256, 4, stride=2, pad=1, wscale=0.02*math.sqrt(4*4*512)),
             dc2 = L.Deconvolution2D(256, 128, 4, stride=2, pad=1, wscale=0.02*math.sqrt(4*4*256)),
             dc1 = L.Deconvolution2D(128, 64, 4, stride=2, pad=1, wscale=0.02*math.sqrt(4*4*128)),
@@ -215,7 +215,7 @@ def load_images():
     current_movie[4] = np.load('aia193/0100.npz')['img']
     current_movie[5] = np.load('aia193/0112.npz')['img']
 
-    return current_movie
+    return dual_log(current_movie)
 
 def create_batch(current_movie):
     pw=patch_pixelsize
@@ -271,8 +271,8 @@ def train_dcgan_labeled(evol, dis, epoch0=0):
             current_movie = load_images()
 
             data_in, data_out = create_batch(current_movie)
-            movie_in =  dual_log(500,Variable(cuda.to_gpu(data_in)))
-            movie_out = dual_log(500,Variable(cuda.to_gpu(data_out)))
+            movie_in =  Variable(cuda.to_gpu(data_in))
+            movie_out = Variable(cuda.to_gpu(data_out))
             #movie_train = F.concat([movie_in, movie_out])
             
             movie_out_predict = evol(movie_in)
@@ -330,7 +330,7 @@ def train_dcgan_labeled(evol, dis, epoch0=0):
                 plt.rcParams['figure.figsize'] = (12.0, 12.0)
                 plt.close('all')
                 img_prediction = evolve_image(evol,current_movie[0:n_timeseries-1])
-                plt.imshow(img_prediction,vmin=0,vmax=1.4)
+                plt.imshow(img_prediction)
                 plt.suptitle(imgfn)
                 plt.savefig(imgfn)
                 subprocess.call("cp %s ~/public_html/suntomorrow-%d.png"%(imgfn,args.gpu),shell=True)
@@ -340,7 +340,7 @@ def train_dcgan_labeled(evol, dis, epoch0=0):
                 subprocess.call("mkdir -p %s "%(history_dir),shell=True)
                 subprocess.call("cp %s/*.h5 %s "%(out_model_dir,history_dir),shell=True)
                 
-                if epoch==0 && train_ctr==0:
+                if epoch==0 and train_ctr==0:
                     continue # no sense to save the initial state.
                 print 'saving model...'
                 serializers.save_hdf5("%s/dcgan_model_dis.h5"%(out_model_dir),dis)
