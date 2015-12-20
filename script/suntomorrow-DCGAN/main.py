@@ -206,9 +206,22 @@ parser.add_argument('--fresh-start', '-f', action='store_true',
                     help='Start simulation anew')
 args = parser.parse_args()
 
+global month,day
+month=1
+day=0
 
 def load_movie():
-    print "now loading..."
+    global month,day
+    day+=1
+    if day>=32:
+        month+=1
+        day=1
+    if month>=13:
+        month=1
+
+    print "now loading... %d/%d"%(month,day)
+    subprocess.call('rm aia193/*', shell=True)
+    subprocess.call('aws s3 sync "s3://sdo/aia193/720s-x1024/2011/%02d/%02d/" aia193 --region us-west-2'%(month,day), shell=True)
     current_movie = n_movie*[None]
     for hr in range(n_movie/5):
         for step in range(5):
@@ -289,8 +302,6 @@ def train_dcgan_labeled(evol, dis, epoch0=0):
             movie_out_predict=None
             for train_offset in range(0,n_movie-n_timeseries):
               for mode in ['hard','normal']:
-                print train_offset, mode
-
                 movie_clip = current_movie[train_offset:train_offset+n_timeseries]
                 if mode == 'normal':
                     movie_clip_out = movie_clip
@@ -327,33 +338,34 @@ def train_dcgan_labeled(evol, dis, epoch0=0):
                 L_dis.unchain_backward()
 
             if train_ctr%save_interval==0:
-                imgfn = '%s/vis_%d_%d.png'%(out_image_dir, epoch,train_ctr)
-
-                n_col=n_timeseries+2
-                plt.rcParams['figure.figsize'] = (1.0*n_col,1.0*batchsize)
-                plt.close('all')
-
-                movie_data=movie_in.data.get()
-                movie_out_data=movie_out.data.get()
-                movie_pred_data=movie_out_predict.data.get()
-                for ib in range(batchsize):
-                    for j in range(n_timeseries-1):
-                        plt.subplot(batchsize,n_col,1 + ib*n_col + j)
-                        plt.imshow(movie_data[ib,j,:,:],vmin=0,vmax=1.4)
+                if movie_in is not None:
+                    imgfn = '%s/vis_%d_%d.png'%(out_image_dir, epoch,train_ctr)
+    
+                    n_col=n_timeseries+2
+                    plt.rcParams['figure.figsize'] = (1.0*n_col,1.0*batchsize)
+                    plt.close('all')
+    
+                    movie_data=movie_in.data.get()
+                    movie_out_data=movie_out.data.get()
+                    movie_pred_data=movie_out_predict.data.get()
+                    for ib in range(batchsize):
+                        for j in range(n_timeseries-1):
+                            plt.subplot(batchsize,n_col,1 + ib*n_col + j)
+                            plt.imshow(movie_data[ib,j,:,:],vmin=0,vmax=1.4)
+                            plt.axis('off')
+    
+                        plt.subplot(batchsize,n_col,1 + ib*n_col + n_timeseries-1)
+                        plt.imshow(movie_pred_data[ib,0,:,:],vmin=0,vmax=1.4)
                         plt.axis('off')
-
-                    plt.subplot(batchsize,n_col,1 + ib*n_col + n_timeseries-1)
-                    plt.imshow(movie_pred_data[ib,0,:,:],vmin=0,vmax=1.4)
-                    plt.axis('off')
-
-                    plt.subplot(batchsize,n_col,1 + ib*n_col + n_timeseries+1)
-                    plt.imshow(movie_out_data[ib,0,:,:],vmin=0,vmax=1.4)
-                    plt.axis('off')
-                
-                plt.suptitle(imgfn)
-                plt.savefig(imgfn)
-                subprocess.call("cp %s ~/public_html/suntomorrow-batch-%d.png"%(imgfn,args.gpu),shell=True)
-                print imgfn
+    
+                        plt.subplot(batchsize,n_col,1 + ib*n_col + n_timeseries+1)
+                        plt.imshow(movie_out_data[ib,0,:,:],vmin=0,vmax=1.4)
+                        plt.axis('off')
+                    
+                    plt.suptitle(imgfn)
+                    plt.savefig(imgfn)
+                    subprocess.call("cp %s ~/public_html/suntomorrow-batch-%d.png"%(imgfn,args.gpu),shell=True)
+                    print imgfn
 
                 for answer_mode in ['predict','observe']:
                     for offset in [6,16,32,64,119]:
@@ -362,7 +374,7 @@ def train_dcgan_labeled(evol, dis, epoch0=0):
                         if answer_mode == 'observe':
                             img_prediction = current_movie[offset]                            
                         if img_prediction is None: continue
-                        imgfn = '%s/futuresun_%s+%d_%d_%d.png'%(out_image_dir,answer_mode,offset, epoch,train_ctr)
+                        imgfn = '%s/futuresun_%s+%03d_%d_%d.png'%(out_image_dir,answer_mode,offset, epoch,train_ctr)
                         plt.rcParams['figure.figsize'] = (12.0, 12.0)
                         plt.close('all')
                         plt.imshow(img_prediction,vmin=0,vmax=1.4)
