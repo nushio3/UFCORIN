@@ -42,7 +42,7 @@ n_train=2000
 save_interval =200
 
 n_timeseries = 6
-n_movie=120
+n_movie=20
 
 out_image_dir = './out_images_%s'%(args.gpu)
 out_model_dir = './out_models_%s'%(args.gpu)
@@ -208,12 +208,14 @@ args = parser.parse_args()
 
 
 def load_movie():
+    print "now loading..."
     current_movie = n_movie*[None]
-    for hr in range(24):
+    for hr in range(n_movie/5):
         for step in range(5):
             fn = 'aia193/%02d%02d.npz'%(hr,step*12)
             if os.path.exists(fn):
                 current_movie[hr*5+step] = dual_log(500,np.load(fn)['img'])
+    print "...loaded"
     return current_movie
 
 def create_batch(current_movie, current_movie_out):
@@ -285,13 +287,15 @@ def train_dcgan_labeled(evol, dis, epoch0=0):
             movie_in = None
             movie_out = None
             movie_out_predict=None
-            for train_offset in range(i,n_movie-n_timeseries):
+            for train_offset in range(0,n_movie-n_timeseries):
               for mode in ['hard','normal']:
-                movie_clip = current_movie[i:i+n_timeseries]
+                print train_offset, mode
+
+                movie_clip = current_movie[train_offset:train_offset+n_timeseries]
                 if mode == 'normal':
                     movie_clip_out = movie_clip
                 else:
-                    movie_clip_out = prediction_movie[i:i+n_timeseries]
+                    movie_clip_out = prediction_movie[train_offset:train_offset+n_timeseries]
                 maybe_dat = create_batch(movie_clip, movie_clip_out)
                 if not maybe_dat : 
                     print "Warning: skip offset", train_offset, "because of unavailable data."
@@ -351,15 +355,20 @@ def train_dcgan_labeled(evol, dis, epoch0=0):
                 subprocess.call("cp %s ~/public_html/suntomorrow-batch-%d.png"%(imgfn,args.gpu),shell=True)
                 print imgfn
 
-                for offset in [6,16,32,64,119]:
-                    imgfn = '%s/futuresun+%d_%d_%d.png'%(offset,out_image_dir, epoch,train_ctr)
-                    plt.rcParams['figure.figsize'] = (12.0, 12.0)
-                    plt.close('all')
-                    img_prediction = prediction_movie[offset]
-                    plt.imshow(img_prediction,vmin=0,vmax=1.4)
-                    plt.suptitle(imgfn)
-                    plt.savefig(imgfn)
-                    subprocess.call("cp %s ~/public_html/"%(imgfn),shell=True)
+                for answer_mode in ['predict','observe']:
+                    for offset in [6,16,32,64,119]:
+                        if offset >= n_movie: continue
+                        img_prediction = prediction_movie[offset]
+                        if answer_mode == 'observe':
+                            img_prediction = current_movie[offset]                            
+                        if img_prediction is None: continue
+                        imgfn = '%s/futuresun_%s+%d_%d_%d.png'%(out_image_dir,answer_mode,offset, epoch,train_ctr)
+                        plt.rcParams['figure.figsize'] = (12.0, 12.0)
+                        plt.close('all')
+                        plt.imshow(img_prediction,vmin=0,vmax=1.4)
+                        plt.suptitle(imgfn)
+                        plt.savefig(imgfn)
+                        subprocess.call("cp %s ~/public_html/"%(imgfn),shell=True)
 
                 # we don't have enough disk for history
                 history_dir = 'history/' #%d-%d'%(epoch,  train_ctr)
