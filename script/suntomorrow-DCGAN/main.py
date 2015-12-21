@@ -310,9 +310,10 @@ def train_dcgan_labeled(evol, dis, epoch0=0):
             movie_in = None
             movie_out = None
             movie_out_predict=None
+            evol_scores = [1.0]
             for train_offset in range(0,n_movie-n_timeseries):
-              for mode in ['hard','normal']:
-                sys.stdout.write('%d %s\r'%(train_offset,mode))
+              for mode in ['normal']:
+                sys.stdout.write('%d %s %f %f\r'%(train_offset,mode, evol_scores[0], np.average(evol_scores)))
                 sys.stdout.flush()
 
                 movie_clip = current_movie[train_offset:train_offset+n_timeseries]
@@ -329,32 +330,35 @@ def train_dcgan_labeled(evol, dis, epoch0=0):
                 movie_out = Variable(cuda.to_gpu(data_out))
                 
                 movie_out_predict = evol(movie_in)
-                yl = dis(movie_in,movie_out_predict)
-    
-                L_evol = F.softmax_cross_entropy(yl, Variable(xp.zeros(batchsize, dtype=np.int32)))
-                L_dis  = F.softmax_cross_entropy(yl, Variable(xp.ones(batchsize, dtype=np.int32)))
+                # yl = dis(movie_in,movie_out_predict)
+                L2norm = (movie_out - movie_out_predict)**2
+                yl = F.sum(L2norm) / L2norm.data.size
+                L_evol = yl
 
-                evol_scores = np.average(F.softmax(yl).data.get()[:,0])
-                print evol_scores
-    
+                # L_evol = F.softmax_cross_entropy(yl, Variable(xp.zeros(batchsize, dtype=np.int32)))
+                # L_dis  = F.softmax_cross_entropy(yl, Variable(xp.ones(batchsize, dtype=np.int32)))
+
+                evol_scores += [yl.data.get()] # np.average(F.softmax(yl).data.get()[:,0])
+
                 # train discriminator
-                yl_train = dis(movie_in,movie_out)
-                L_dis += F.softmax_cross_entropy(yl_train, Variable(xp.zeros(batchsize, dtype=np.int32)))
+                # yl_train = dis(movie_in,movie_out)
+                # L_dis += F.softmax_cross_entropy(yl_train, Variable(xp.zeros(batchsize, dtype=np.int32)))
                 
                 
                 o_evol.zero_grads()
                 L_evol.backward()
                 o_evol.update()
                 
-                o_dis.zero_grads()
-                L_dis.backward()
-                o_dis.update()
+                # o_dis.zero_grads()
+                # L_dis.backward()
+                # o_dis.update()
                 
                 movie_out_predict.unchain_backward()
                 yl.unchain_backward()
-                yl_train.unchain_backward()
+                # yl_train.unchain_backward()
                 L_evol.unchain_backward()
-                L_dis.unchain_backward()
+                # L_dis.unchain_backward()
+
 
             if train_ctr%save_interval==0:
                 if movie_in is not None:
