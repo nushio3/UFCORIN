@@ -39,7 +39,7 @@ batchsize=25
 patch_pixelsize=128
 n_epoch=10000
 n_train=2000
-save_interval =20
+save_interval =25
 
 n_timeseries = 6
 
@@ -126,8 +126,8 @@ class Evolver(chainer.Chain):
             c1 = L.Convolution2D(64, 128, 4, stride=2, pad=1, wscale=0.02*math.sqrt(4*4*64)),
             c2 = L.Convolution2D(128, 256, 4, stride=2, pad=1, wscale=0.02*math.sqrt(4*4*128)),
             c3 = L.Convolution2D(256, 512, 4, stride=2, pad=1, wscale=0.02*math.sqrt(4*4*256)),
-            c4 = L.Convolution2D(512, 1024, 8, stride=8, pad=0, wscale=0.02*math.sqrt(4*4*512)),
-            dc4 = L.Deconvolution2D(1024,512, 8, stride=8, pad=0, wscale=0.02*math.sqrt(4*4*1024)),
+            c4 = L.Convolution2D(512, 1024, 4, stride=2, pad=1, wscale=0.02*math.sqrt(4*4*512)),
+            dc4 = L.Deconvolution2D(1024,512, 4, stride=2, pad=1, wscale=0.02*math.sqrt(4*4*1024)),
             dc3 = L.Deconvolution2D(512, 256, 4, stride=2, pad=1, wscale=0.02*math.sqrt(4*4*512)),
             dc2 = L.Deconvolution2D(256, 128, 4, stride=2, pad=1, wscale=0.02*math.sqrt(4*4*256)),
             dc1 = L.Deconvolution2D(128, 64, 4, stride=2, pad=1, wscale=0.02*math.sqrt(4*4*128)),
