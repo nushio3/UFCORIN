@@ -39,7 +39,7 @@ batchsize=25
 patch_pixelsize=128
 n_epoch=10000
 n_train=2000
-save_interval =25
+save_interval =500
 
 n_timeseries = 6
 
