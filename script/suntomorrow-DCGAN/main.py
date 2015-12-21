@@ -264,9 +264,9 @@ def create_batch(current_movie, current_movie_out):
 def evolve_image(evol,imgs):
     h,w=imgs[0].shape
     n = w / patch_pixelsize
-    batch_in = np.zeros((n*n, n_timeseries-1, ph,pw ), dtype=np.float32)
     pw=patch_pixelsize
     ph=patch_pixelsize
+    batch_in = np.zeros((n*n, n_timeseries-1, ph,pw ), dtype=np.float32)
     for j in range(n):
         for i in range(n):
             for t in range(n_timeseries-1):
@@ -275,7 +275,7 @@ def evolve_image(evol,imgs):
                 batch_in[j*n+i, t, :, :] = imgs[t][top:top+ph, left:left+pw]
 
     input_val=Variable(cuda.to_gpu(batch_in))
-    output_data=evol(input_val,test=True).data.get()
+    output_data=evol(input_val).data.get()
     
     ret = np.zeros((h,w), dtype=np.float32)
     for j in range(n):
@@ -305,7 +305,6 @@ def train_dcgan_labeled(evol, dis, epoch0=0):
     o_evol.add_hook(chainer.optimizer.WeightDecay(0.00001))
     o_dis.add_hook(chainer.optimizer.WeightDecay(0.00001))
 
-    evol_score_running_average=0.1
 
     for epoch in xrange(epoch0,n_epoch):
         print "epoch:", epoch
@@ -335,7 +334,7 @@ def train_dcgan_labeled(evol, dis, epoch0=0):
             evol_scores = [1.0]
             for train_offset in range(0,n_movie-n_timeseries):
               for mode in ['normal']:
-                sys.stdout.write('%d %s %f %f\r'%(train_offset,mode, evol_scores[0], np.average(evol_scores)))
+                sys.stdout.write('%d %s %f %f\r'%(train_offset,mode, evol_scores[-1], np.average(evol_scores)))
                 sys.stdout.flush()
 
                 movie_clip = current_movie[train_offset:train_offset+n_timeseries]
