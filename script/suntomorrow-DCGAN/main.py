@@ -333,8 +333,8 @@ def train_dcgan_labeled(evol, dis, epoch0=0):
             movie_out_predict=None
             evol_scores = [1.0]
             for train_offset in range(0,n_movie-n_timeseries):
-              for mode in ['normal']:
-                sys.stdout.write('%d %s %f %f\r'%(train_offset,mode, evol_scores[-1], np.average(evol_scores)))
+              for mode in ['normal','hard']:
+                sys.stdout.write('%d %6s %f %f\r'%(train_offset,mode, evol_scores[-1], np.average(evol_scores)))
                 sys.stdout.flush()
 
                 movie_clip = current_movie[train_offset:train_offset+n_timeseries]
@@ -450,4 +450,4 @@ dis = Discriminator()
 evol.to_gpu()
 dis.to_gpu()
 
-train_dcgan_labeled(evol,dis)
+train_dcgan_labeled(evol,dis,epoch0=3)
