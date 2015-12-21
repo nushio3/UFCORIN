@@ -266,28 +266,28 @@ def evolve_image(evol,imgs):
     n = w / patch_pixelsize
     pw=patch_pixelsize
     ph=patch_pixelsize
-    batch_in = np.zeros((n*n, n_timeseries-1, ph,pw ), dtype=np.float32)
-    for j in range(n):
-        for i in range(n):
-            for t in range(n_timeseries-1):
-                top=j*ph
-                left=i*pw
-                batch_in[j*n+i, t, :, :] = imgs[t][top:top+ph, left:left+pw]
+    #  batch_in = np.zeros((n*n, n_timeseries-1, ph,pw ), dtype=np.float32)
+    #  for j in range(n):
+    #      for i in range(n):
+    #          for t in range(n_timeseries-1):
+    #              top=j*ph
+    #              left=i*pw
+    #              batch_in[j*n+i, t, :, :] = imgs[t][top:top+ph, left:left+pw]
+    #  
+    #  input_val=Variable(cuda.to_gpu(batch_in))
+    #  output_data=evol(input_val).data.get()
+    #  
+    #  ret = np.zeros((h,w), dtype=np.float32)
+    #  for j in range(n):
+    #      for i in range(n):
+    #          top=j*ph
+    #          left=i*pw
+    #          ret[top:top+ph, left:left+pw] = output_data[j*n+i, 0, :, :]
+    #  return ret
 
-    input_val=Variable(cuda.to_gpu(batch_in))
-    output_data=evol(input_val).data.get()
-    
-    ret = np.zeros((h,w), dtype=np.float32)
-    for j in range(n):
-        for i in range(n):
-            top=j*ph
-            left=i*pw
-            ret[top:top+ph, left:left+pw] = output_data[j*n+i, 0, :, :]
-    return ret
-
-    #input_val = Variable(cuda.to_gpu(np.reshape(np.concatenate(imgs), (1,n_timeseries-1,h,w))))
-    #output_val = evol(input_val,test=True)
-    #return np.reshape(output_val.data.get(), (h,w))
+    input_val = Variable(cuda.to_gpu(np.reshape(np.concatenate(imgs), (1,n_timeseries-1,h,w))))
+    output_val = evol(input_val,test=False)
+    return np.reshape(output_val.data.get(), (h,w))
     
 
 def train_dcgan_labeled(evol, dis, epoch0=0):
