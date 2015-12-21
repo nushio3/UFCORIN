@@ -42,7 +42,10 @@ n_train=2000
 save_interval =20
 
 n_timeseries = 6
+
 n_movie=120
+hardmode_duration= 1
+
 
 out_image_dir = './out_images_%s'%(args.gpu)
 out_model_dir = './out_models_%s'%(args.gpu)
@@ -228,9 +231,10 @@ def load_movie():
     current_movie = n_movie*[None]
     for hr in range(n_movie/5):
         for step in range(5):
+            cnt=hr*5+step
             fn = 'aia193/%02d%02d.npz'%(hr,step*12)
             if os.path.exists(fn):
-                current_movie[hr*5+step] = dual_log(500,np.load(fn)['img'])
+                current_movie[cnt] = dual_log(500,np.load(fn)['img'])
     return current_movie
 
 def create_batch(current_movie, current_movie_out):
@@ -278,6 +282,8 @@ def train_dcgan_labeled(evol, dis, epoch0=0):
 
     o_evol.add_hook(chainer.optimizer.WeightDecay(0.00001))
     o_dis.add_hook(chainer.optimizer.WeightDecay(0.00001))
+
+    evol_score_running_average=0.1
 
     for epoch in xrange(epoch0,n_epoch):
         print "epoch:", epoch
@@ -327,6 +333,9 @@ def train_dcgan_labeled(evol, dis, epoch0=0):
     
                 L_evol = F.softmax_cross_entropy(yl, Variable(xp.zeros(batchsize, dtype=np.int32)))
                 L_dis  = F.softmax_cross_entropy(yl, Variable(xp.ones(batchsize, dtype=np.int32)))
+
+                evol_scores = np.average(F.softmax(yl).data.get()[:,0])
+                print evol_scores
     
                 # train discriminator
                 yl_train = dis(movie_in,movie_out)
@@ -390,7 +399,7 @@ def train_dcgan_labeled(evol, dis, epoch0=0):
                         plt.imshow(img_prediction,vmin=0,vmax=1.4)
                         plt.suptitle(imgfn)
                         plt.savefig(imgfn)
-                        subprocess.call("cp %s ~/public_html/"%(imgfn),shell=True)
+                        subprocess.call("cp %s ~/public_html/futuresun/"%(imgfn),shell=True)
 
                 # we don't have enough disk for history
                 history_dir = 'history/' #%d-%d'%(epoch,  train_ctr)
