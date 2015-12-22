@@ -331,59 +331,75 @@ def train_dcgan_labeled(evol, dis, epoch0=0):
             movie_in = None
             movie_out = None
             movie_out_predict=None
-            evol_scores = [1.0]
+            evol_scores = {}
+            matsuoka_shuzo = {}
+            difficulties = ['normal','hard']
+            for difficulty in difficulties:
+                evol_scores[difficulty] = [0.0]
+                matsuoka_shuzo[difficulty] = True
             for train_offset in range(0,n_movie-n_timeseries):
-              for mode in ['normal','hard']:
-                sys.stdout.write('%d %6s %f %f\r'%(train_offset,mode, evol_scores[-1], np.average(evol_scores)))
-                sys.stdout.flush()
+                for difficulty in difficulties:
+                    movie_clip = current_movie[train_offset:train_offset+n_timeseries]
+                    if not matsuoka_shuzo[difficulty]:
+                        # Doushitesokode yamerunda...
+                        continue
+                    else:
+                        # Akiramen'nayo!
+                        pass
 
-                movie_clip = current_movie[train_offset:train_offset+n_timeseries]
-                if mode == 'normal':
-                    movie_clip_out = movie_clip
-                else:
-                    movie_clip_out = prediction_movie[train_offset:train_offset+n_timeseries]
-                maybe_dat = create_batch(movie_clip, movie_clip_out)
-                if not maybe_dat : 
-                    print "Warning: skip offset", train_offset, "because of unavailable data."
-                    continue
-                data_in, data_out = maybe_dat
-                movie_in =  Variable(cuda.to_gpu(data_in))
-                movie_out = Variable(cuda.to_gpu(data_out))
-                
-                movie_out_predict = evol(movie_in)
-                # yl = dis(movie_in,movie_out_predict)
-                L2norm = (movie_out - movie_out_predict)**2
-                yl = F.sum(L2norm) / L2norm.data.size
-                L_evol = yl
+                    if difficulty == 'normal':
+                        movie_clip_out = movie_clip
+                    else:
+                        movie_clip_out = prediction_movie[train_offset:train_offset+n_timeseries]
+                    maybe_dat = create_batch(movie_clip, movie_clip_out)
+                    if not maybe_dat : 
+                        print "Warning: skip offset", train_offset, "because of unavailable data."
+                        continue
+                    data_in, data_out = maybe_dat
+                    movie_in =  Variable(cuda.to_gpu(data_in))
+                    movie_out = Variable(cuda.to_gpu(data_out))
+                    
+                    movie_out_predict = evol(movie_in)
+                    # yl = dis(movie_in,movie_out_predict)
+                    L2norm = (movie_out - movie_out_predict)**2
+                    yl = F.sum(L2norm) / L2norm.data.size
+                    L_evol = yl
+    
+                    # L_evol = F.softmax_cross_entropy(yl, Variable(xp.zeros(batchsize, dtype=np.int32)))
+                    # L_dis  = F.softmax_cross_entropy(yl, Variable(xp.ones(batchsize, dtype=np.int32)))
+    
+                    evol_scores[difficulty] += [yl.data.get()] # np.average(F.softmax(yl).data.get()[:,0])
+    
+                    # train discriminator
+                    # yl_train = dis(movie_in,movie_out)
+                    # L_dis += F.softmax_cross_entropy(yl_train, Variable(xp.zeros(batchsize, dtype=np.int32)))
+                    
+                    
+                    o_evol.zero_grads()
+                    L_evol.backward()
+                    o_evol.update()
+                    
+                    # o_dis.zero_grads()
+                    # L_dis.backward()
+                    # o_dis.update()
+                    
+                    movie_out_predict.unchain_backward()
+                    yl.unchain_backward()
+                    # yl_train.unchain_backward()
+                    L_evol.unchain_backward()
+                    # L_dis.unchain_backward()
+    
+                    sys.stdout.write('%d %6s %f %f\r'%(train_offset,difficulty, np.average(evol_scores['normal']), np.average(evol_scores['hard'])))
+                    sys.stdout.flush()
 
-                # L_evol = F.softmax_cross_entropy(yl, Variable(xp.zeros(batchsize, dtype=np.int32)))
-                # L_dis  = F.softmax_cross_entropy(yl, Variable(xp.ones(batchsize, dtype=np.int32)))
-
-                evol_scores += [yl.data.get()] # np.average(F.softmax(yl).data.get()[:,0])
-
-                # train discriminator
-                # yl_train = dis(movie_in,movie_out)
-                # L_dis += F.softmax_cross_entropy(yl_train, Variable(xp.zeros(batchsize, dtype=np.int32)))
-                
-                
-                o_evol.zero_grads()
-                L_evol.backward()
-                o_evol.update()
-                
-                # o_dis.zero_grads()
-                # L_dis.backward()
-                # o_dis.update()
-                
-                movie_out_predict.unchain_backward()
-                yl.unchain_backward()
-                # yl_train.unchain_backward()
-                L_evol.unchain_backward()
-                # L_dis.unchain_backward()
+                    # prevent too much learning from noisy prediction.
+                    if np.average(evol_scores['hard']) > 5 * np.average(evol_scores['normal']):
+                        matsuoka_shuzo['hard'] = False
 
 
             if train_ctr%save_interval==0:
                 if movie_in is not None:
-                    imgfn = '%s/vis_%d_%d.png'%(out_image_dir, epoch,train_ctr)
+                    imgfn = '%s/vis_%d_%04d.png'%(out_image_dir, epoch,train_ctr)
     
                     n_col=n_timeseries+2
                     plt.rcParams['figure.figsize'] = (1.0*n_col,1.0*batchsize)
