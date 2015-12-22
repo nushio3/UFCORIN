@@ -46,7 +46,6 @@ save_interval =200
 n_timeseries = 6
 
 n_movie=120
-hardmode_duration= 1
 
 
 out_image_dir = './out_images_%s'%(args.gpu)
@@ -330,9 +329,8 @@ def train_dcgan_labeled(evol, dis, epoch0=0):
             for train_offset in range(0,n_movie-n_timeseries):
                 for difficulty in difficulties:
                     if difficulty == 'normal':
-                        teaching_mode = 'L2'
+                        pass
                     else:
-                        teaching_mode = 'dcgan'
                         prediction_movie[train_offset + n_timeseries - 1] = evolve_image(evol,prediction_movie[train_offset: train_offset + n_timeseries - 1])
 
                     movie_clip = current_movie[train_offset:train_offset+n_timeseries]
@@ -405,8 +403,8 @@ def train_dcgan_labeled(evol, dis, epoch0=0):
                     sys.stdout.flush()
 
                     # prevent too much learning from noisy prediction.
-                    if len(pred_l2norm['hard'])>=5 and (np.average(pred_l2norm['hard']) > 5 * np.average(pred_l2norm['normal'])
-                                                        or np.average(pred_softmax) < 0.01):
+                    if len(pred_l2norm['hard'])>=5 and (# np.average(pred_l2norm['hard']) > 5 * np.average(pred_l2norm['normal']) or
+                            np.average(pred_softmax) < 0.01):
                         matsuoka_shuzo['hard'] = False
 
             print
