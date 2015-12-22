@@ -152,21 +152,21 @@ class Evolver(chainer.Chain):
             bn1h = L.BatchNormalization(128),
             bn2h = L.BatchNormalization(256)
         )
-        
+
     def __call__(self, x, test=False):
         h64 = elu(self.c0(x))     # no bn because images from generator will katayotteru?
         h32 = elu(self.bn1(self.c1(h64), test=test))
         h16 = elu(self.bn2(self.c2(h32), test=test))
         h8  = elu(self.bn3(self.c3(h16), test=test))
         h1  = elu(self.bn4(self.c4(h8), test=test))
-        
+
         # idea: not simple addition, but concatenation?
         h = F.relu(self.bn3d(self.dc4(h1), test=test))
         h = F.relu(self.bn2d(self.dc3(h), test=test)) + F.relu(self.bn2h(self.dc3h(h8), test=test))
         h = F.relu(self.bn1d(self.dc2(h), test=test)) + F.relu(self.bn1h(self.dc2h(h16), test=test))
         h = F.relu(self.bn0d(self.dc1(h), test=test)) + F.relu(self.bn0h(self.dc1h(h32), test=test))
-        ret=self.dc0(h) + self.dc0h(h64) 
-        
+        ret=self.dc0(h) + self.dc0h(h64)
+
         return ret
 
         #return F.split_axis(x,[1],1)[0]+ret
@@ -192,9 +192,9 @@ class Discriminator(chainer.Chain):
             bn2 = L.BatchNormalization(256),
             bn3 = L.BatchNormalization(512),
         )
-        
+
     def __call__(self, x1,x2, test=False):
-        
+
         x=self.c0i(x1)+self.c0o(x2)
         h = elu(x)     # no bn because images from generator will katayotteru?
         h = elu(self.bn1(self.c1(h), test=test))
@@ -252,7 +252,7 @@ def create_batch(current_movie_in, current_movie_out):
 
     ret_in  = np.zeros((batchsize, n_timeseries-1, ph, pw), dtype=np.float32)
     ret_out = np.zeros((batchsize, 1, ph, pw), dtype=np.float32)
-    
+
     for j in range(batchsize):
         oh, ow = current_movie_in[0].shape
         left  = np.random.randint(ow-pw)
@@ -278,10 +278,10 @@ def evolve_image(evol,imgs):
     #              top=j*ph
     #              left=i*pw
     #              batch_in[j*n+i, t, :, :] = imgs[t][top:top+ph, left:left+pw]
-    #  
+    #
     #  input_val=Variable(cuda.to_gpu(batch_in))
     #  output_data=evol(input_val).data.get()
-    #  
+    #
     #  ret = np.zeros((h,w), dtype=np.float32)
     #  for j in range(n):
     #      for i in range(n):
@@ -293,7 +293,7 @@ def evolve_image(evol,imgs):
     input_val = Variable(cuda.to_gpu(np.reshape(np.concatenate(imgs), (1,n_timeseries-1,h,w))))
     output_val = evol(input_val,test=True)
     return np.reshape(output_val.data.get(), (h,w))
-    
+
 
 def train_dcgan_labeled(evol, dis, epoch0=0):
     o_evol = optimizers.Adam(alpha=0.0002, beta1=0.5)
@@ -313,7 +313,7 @@ def train_dcgan_labeled(evol, dis, epoch0=0):
 
     for epoch in xrange(epoch0,n_epoch):
         print "epoch:", epoch
-        
+
         for train_ctr in xrange(0, n_train, batchsize):
             print "train:",train_ctr
             # discriminator
@@ -331,7 +331,7 @@ def train_dcgan_labeled(evol, dis, epoch0=0):
             if not good_movie: continue
             for i in range(n_timeseries-1,n_movie):
                 prediction_movie[i] = evolve_image(evol,prediction_movie[i-n_timeseries+1 : i])
-            
+
 
             movie_in = None
             movie_out = None
@@ -344,6 +344,11 @@ def train_dcgan_labeled(evol, dis, epoch0=0):
                 matsuoka_shuzo[difficulty] = True
             for train_offset in range(0,n_movie-n_timeseries):
                 for difficulty in difficulties:
+                    if difficulty == 'normal':
+                        teaching_mode = 'L2'
+                    else:
+                        teaching_mode = 'dcgan'
+
                     movie_clip = current_movie[train_offset:train_offset+n_timeseries]
                     if not matsuoka_shuzo[difficulty]:
                         # Doushitesokode yamerunda...
@@ -357,16 +362,18 @@ def train_dcgan_labeled(evol, dis, epoch0=0):
                     else:
                         movie_clip_in = prediction_movie[train_offset:train_offset+n_timeseries]
                     maybe_dat = create_batch(movie_clip_in, movie_clip)
-                    if not maybe_dat : 
+                    if not maybe_dat :
                         print "Warning: skip offset", train_offset, "because of unavailable data."
                         continue
                     data_in, data_out = maybe_dat
                     movie_in =  Variable(cuda.to_gpu(data_in))
                     movie_out = Variable(cuda.to_gpu(data_out))
-                    
-                    movie_out_predict = evol(movie_in)
 
-                    if 'dcgan_mode':
+                    movie_out_predict = evol(movie_in)
+                    sqsum = (movie_out - movie_out_predict)**2
+                    L2norm = F.sum(sqsum) / sqsum.data.size
+
+                    if teaching_mode == 'dcgan':
                         yl = dis(movie_in,movie_out_predict)
                         L_evol = F.softmax_cross_entropy(yl, Variable(xp.zeros(batchsize, dtype=np.int32)))
                         L_dis  = F.softmax_cross_entropy(yl, Variable(xp.ones(batchsize, dtype=np.int32)))
@@ -376,31 +383,27 @@ def train_dcgan_labeled(evol, dis, epoch0=0):
                         L_dis += F.softmax_cross_entropy(yl_train, Variable(xp.zeros(batchsize, dtype=np.int32)))
 
                     else:
-                        L2norm = (movie_out - movie_out_predict)**2
-                        yl = F.sum(L2norm) / L2norm.data.size
-                        L_evol = yl
-                    
-    
-                    evol_scores[difficulty] += [L_evol.data.get()] # np.average(F.softmax(yl).data.get()[:,0])
-    
-                    
-                    
+                        L_evol = L2norm
+
+
+                    evol_scores[difficulty] += [L2norm.data.get()] # np.average(F.softmax(yl).data.get()[:,0])
+
                     o_evol.zero_grads()
                     L_evol.backward()
                     o_evol.update()
-                    
-                    if 'dcgan_mode':
+
+                    if teaching_mode == 'dcgan':
                         o_dis.zero_grads()
                         L_dis.backward()
                         o_dis.update()
-                    
+
                     movie_out_predict.unchain_backward()
                     yl.unchain_backward()
                     L_evol.unchain_backward()
-                    if 'dcgan_mode':
+                    if teaching_mode == 'dcgan':
                         yl_train.unchain_backward()
                         L_dis.unchain_backward()
-    
+
                     sys.stdout.write('%d %6s %f %f\r'%(train_offset,difficulty, np.average(evol_scores['normal']), np.average(evol_scores['hard'])))
                     sys.stdout.flush()
 
@@ -412,11 +415,11 @@ def train_dcgan_labeled(evol, dis, epoch0=0):
             if True or train_ctr%save_interval==0:
                 if movie_in is not None:
                     imgfn = '%s/vis_%d_%04d.png'%(out_image_dir, epoch,train_ctr)
-    
+
                     n_col=n_timeseries+2
                     plt.rcParams['figure.figsize'] = (1.0*n_col,1.0*batchsize)
                     plt.close('all')
-    
+
                     movie_data=movie_in.data.get()
                     movie_out_data=movie_out.data.get()
                     movie_pred_data=movie_out_predict.data.get()
@@ -425,15 +428,15 @@ def train_dcgan_labeled(evol, dis, epoch0=0):
                             plt.subplot(batchsize,n_col,1 + ib*n_col + j)
                             plt.imshow(movie_data[ib,j,:,:],vmin=0,vmax=1.4)
                             plt.axis('off')
-    
+
                         plt.subplot(batchsize,n_col,1 + ib*n_col + n_timeseries-1)
                         plt.imshow(movie_pred_data[ib,0,:,:],vmin=0,vmax=1.4)
                         plt.axis('off')
-    
+
                         plt.subplot(batchsize,n_col,1 + ib*n_col + n_timeseries+1)
                         plt.imshow(movie_out_data[ib,0,:,:],vmin=0,vmax=1.4)
                         plt.axis('off')
-                    
+
                     plt.suptitle(imgfn)
                     plt.savefig(imgfn)
                     subprocess.call("cp %s ~/public_html/suntomorrow-batch-%d.png"%(imgfn,args.gpu),shell=True)
@@ -445,7 +448,7 @@ def train_dcgan_labeled(evol, dis, epoch0=0):
                         if offset >= n_movie: continue
                         img_prediction = prediction_movie[offset]
                         if answer_mode == 'observe':
-                            img_prediction = current_movie[offset]                            
+                            img_prediction = current_movie[offset]
                         if img_prediction is None: continue
                         imgfn = '%s/futuresun_%d_%04d_%s+%03d.png'%(out_image_dir, epoch,train_ctr,answer_mode,offset)
                         plt.rcParams['figure.figsize'] = (12.0, 12.0)
@@ -459,7 +462,7 @@ def train_dcgan_labeled(evol, dis, epoch0=0):
                 history_dir = 'history/' #%d-%d'%(epoch,  train_ctr)
                 subprocess.call("mkdir -p %s "%(history_dir),shell=True)
                 subprocess.call("cp %s/*.h5 %s "%(out_model_dir,history_dir),shell=True)
-                
+
                 if epoch==0 and train_ctr==0:
                     continue # no sense to save the initial state.
                 print 'saving model...'
