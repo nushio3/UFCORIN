@@ -29,6 +29,8 @@ import numpy
 parser = argparse.ArgumentParser()
 parser.add_argument('--gpu', '-g', default=0, type=int,
                     help='GPU ID')
+parser.add_argument('--norm', default='dcgan',type=str,
+                    help='Use dcgan/L2 norm.')
 parser.add_argument('--fresh-start', action='store_true',
                     help='Start simulation anew')
 args = parser.parse_args()
@@ -360,34 +362,41 @@ def train_dcgan_labeled(evol, dis, epoch0=0):
                     movie_out = Variable(cuda.to_gpu(data_out))
                     
                     movie_out_predict = evol(movie_in)
-                    # yl = dis(movie_in,movie_out_predict)
-                    L2norm = (movie_out - movie_out_predict)**2
-                    yl = F.sum(L2norm) / L2norm.data.size
-                    L_evol = yl
+
+                    if 'dcgan_mode':
+                        yl = dis(movie_in,movie_out_predict)
+                        L_evol = F.softmax_cross_entropy(yl, Variable(xp.zeros(batchsize, dtype=np.int32)))
+                        L_dis  = F.softmax_cross_entropy(yl, Variable(xp.ones(batchsize, dtype=np.int32)))
+
+                        # train discriminator
+                        yl_train = dis(movie_in,movie_out)
+                        L_dis += F.softmax_cross_entropy(yl_train, Variable(xp.zeros(batchsize, dtype=np.int32)))
+
+                    else:
+                        L2norm = (movie_out - movie_out_predict)**2
+                        yl = F.sum(L2norm) / L2norm.data.size
+                        L_evol = yl
+                    
     
-                    # L_evol = F.softmax_cross_entropy(yl, Variable(xp.zeros(batchsize, dtype=np.int32)))
-                    # L_dis  = F.softmax_cross_entropy(yl, Variable(xp.ones(batchsize, dtype=np.int32)))
+                    evol_scores[difficulty] += [L_evol.data.get()] # np.average(F.softmax(yl).data.get()[:,0])
     
-                    evol_scores[difficulty] += [yl.data.get()] # np.average(F.softmax(yl).data.get()[:,0])
-    
-                    # train discriminator
-                    # yl_train = dis(movie_in,movie_out)
-                    # L_dis += F.softmax_cross_entropy(yl_train, Variable(xp.zeros(batchsize, dtype=np.int32)))
                     
                     
                     o_evol.zero_grads()
                     L_evol.backward()
                     o_evol.update()
                     
-                    # o_dis.zero_grads()
-                    # L_dis.backward()
-                    # o_dis.update()
+                    if 'dcgan_mode':
+                        o_dis.zero_grads()
+                        L_dis.backward()
+                        o_dis.update()
                     
                     movie_out_predict.unchain_backward()
                     yl.unchain_backward()
-                    # yl_train.unchain_backward()
                     L_evol.unchain_backward()
-                    # L_dis.unchain_backward()
+                    if 'dcgan_mode':
+                        yl_train.unchain_backward()
+                        L_dis.unchain_backward()
     
                     sys.stdout.write('%d %6s %f %f\r'%(train_offset,difficulty, np.average(evol_scores['normal']), np.average(evol_scores['hard'])))
                     sys.stdout.flush()
