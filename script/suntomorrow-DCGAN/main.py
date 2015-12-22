@@ -140,25 +140,28 @@ class Evolver(chainer.Chain):
             dc2h = L.Deconvolution2D(256, 128, 4, stride=2, pad=1, wscale=0.02*math.sqrt(4*4*256)),
             dc1h = L.Deconvolution2D(128, 64, 4, stride=2, pad=1, wscale=0.02*math.sqrt(4*4*128)),
             dc0h = L.Deconvolution2D(64, 1, 4, stride=2, pad=1, wscale=0.02*math.sqrt(4*4*64)),
-            bn0 = L.BatchNormalization(64),
             bn1 = L.BatchNormalization(128),
             bn2 = L.BatchNormalization(256),
             bn3 = L.BatchNormalization(512),
-            bn4 = L.BatchNormalization(1024)
+            bn4 = L.BatchNormalization(1024),
+            bn0d = L.BatchNormalization(64),
+            bn1d = L.BatchNormalization(128),
+            bn2d = L.BatchNormalization(256),
+            bn3d = L.BatchNormalization(512)
         )
         
     def __call__(self, x, test=False):
         h64 = elu(self.c0(x))     # no bn because images from generator will katayotteru?
         h32 = elu(self.bn1(self.c1(h64), test=test))
         h16 = elu(self.bn2(self.c2(h32), test=test))
-        h8 = elu(self.bn3(self.c3(h16), test=test))
-        h1 = elu(self.bn4(self.c4(h8), test=test))
+        h8  = elu(self.bn3(self.c3(h16), test=test))
+        h1  = elu(self.bn4(self.c4(h8), test=test))
         
         # idea: not simple addition, but concatenation?
-        h = F.relu(self.bn3(self.dc4(h1), test=test))
-        h = F.relu(self.bn2(self.dc3(h), test=test)) + F.relu(self.bn2(self.dc3h(h8), test=test))
-        h = F.relu(self.bn1(self.dc2(h), test=test)) + F.relu(self.bn1(self.dc2h(h16), test=test))
-        h = F.relu(self.bn0(self.dc1(h), test=test)) + F.relu(self.bn0(self.dc1h(h32), test=test))
+        h = F.relu(self.bn3d(self.dc4(h1), test=test))
+        h = F.relu(self.bn2d(self.dc3(h), test=test)) + F.relu(self.bn2(self.dc3h(h8), test=test))
+        h = F.relu(self.bn1d(self.dc2(h), test=test)) + F.relu(self.bn1(self.dc2h(h16), test=test))
+        h = F.relu(self.bn0d(self.dc1(h), test=test)) + F.relu(self.bn0(self.dc1h(h32), test=test))
         ret=self.dc0(h) + self.dc0h(h64) 
         
         return ret
@@ -234,9 +237,9 @@ def load_movie():
                 current_movie[cnt] = dual_log(500,np.load(fn)['img'])
     return current_movie
 
-def create_batch(current_movie, current_movie_out):
+def create_batch(current_movie_in, current_movie_out):
     for t in range(n_timeseries):
-        if current_movie[t] is None:
+        if current_movie_in[t] is None:
             return None
 
     pw=patch_pixelsize
@@ -246,12 +249,12 @@ def create_batch(current_movie, current_movie_out):
     ret_out = np.zeros((batchsize, 1, ph, pw), dtype=np.float32)
     
     for j in range(batchsize):
-        oh, ow = current_movie[0].shape
+        oh, ow = current_movie_in[0].shape
         left  = np.random.randint(ow-pw)
         top   = np.random.randint(oh-ph)
         for t in range(n_timeseries):
             if t==n_timeseries -1:
-                ret_out[j,0,:,:]=current_movie[t][top:top+ph, left:left+pw]
+                ret_out[j,0,:,:]=current_movie_in[t][top:top+ph, left:left+pw]
             else:
                 ret_in[j,t,:,:]=current_movie_out[t][top:top+ph, left:left+pw]
     return (ret_in, ret_out)
@@ -283,7 +286,7 @@ def evolve_image(evol,imgs):
     #  return ret
 
     input_val = Variable(cuda.to_gpu(np.reshape(np.concatenate(imgs), (1,n_timeseries-1,h,w))))
-    output_val = evol(input_val,test=False)
+    output_val = evol(input_val,test=True)
     return np.reshape(output_val.data.get(), (h,w))
     
 
@@ -345,10 +348,10 @@ def train_dcgan_labeled(evol, dis, epoch0=0):
                         pass
 
                     if difficulty == 'normal':
-                        movie_clip_out = movie_clip
+                        movie_clip_in = movie_clip
                     else:
-                        movie_clip_out = prediction_movie[train_offset:train_offset+n_timeseries]
-                    maybe_dat = create_batch(movie_clip, movie_clip_out)
+                        movie_clip_in = prediction_movie[train_offset:train_offset+n_timeseries]
+                    maybe_dat = create_batch(movie_clip_in, movie_clip)
                     if not maybe_dat : 
                         print "Warning: skip offset", train_offset, "because of unavailable data."
                         continue
