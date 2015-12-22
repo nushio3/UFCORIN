@@ -29,8 +29,10 @@ import numpy
 parser = argparse.ArgumentParser()
 parser.add_argument('--gpu', '-g', default=0, type=int,
                     help='GPU ID')
-parser.add_argument('--norm', default='dcgan',type=str,
+parser.add_argument('--norm', default='dcgan',
                     help='Use dcgan/L2 norm.')
+parser.add_argument('--epoch0', default=0,type=int,
+                    help='set epoch counter')
 parser.add_argument('--fresh-start', action='store_true',
                     help='Start simulation anew')
 args = parser.parse_args()
@@ -203,13 +205,6 @@ class Discriminator(chainer.Chain):
 ## Main program
 ################################################################
 
-
-parser = argparse.ArgumentParser()
-parser.add_argument('--gpu', '-g', default=0, type=int,
-                    help='GPU ID')
-parser.add_argument('--fresh-start', '-f', action='store_true',
-                    help='Start simulation anew')
-args = parser.parse_args()
 
 global month,day
 month=1#np.random.randint(12)+1
@@ -402,7 +397,7 @@ def train_dcgan_labeled(evol, dis, epoch0=0):
                     sys.stdout.flush()
 
                     # prevent too much learning from noisy prediction.
-                    if np.average(evol_scores['hard']) > 5 * np.average(evol_scores['normal']):
+                    if len(evol_scores['hard'])>=5 and np.average(evol_scores['hard']) > 5 * np.average(evol_scores['normal']):
                         matsuoka_shuzo['hard'] = False
 
 
@@ -443,7 +438,7 @@ def train_dcgan_labeled(evol, dis, epoch0=0):
                         if answer_mode == 'observe':
                             img_prediction = current_movie[offset]                            
                         if img_prediction is None: continue
-                        imgfn = '%s/futuresun_%s+%03d_%d_%d.png'%(out_image_dir,answer_mode,offset, epoch,train_ctr)
+                        imgfn = '%s/futuresun_%d_%04d_%s+%03d.png'%(out_image_dir, epoch,train_ctr,answer_mode,offset)
                         plt.rcParams['figure.figsize'] = (12.0, 12.0)
                         plt.close('all')
                         plt.imshow(img_prediction,vmin=0,vmax=1.4)
@@ -475,4 +470,4 @@ dis = Discriminator()
 evol.to_gpu()
 dis.to_gpu()
 
-train_dcgan_labeled(evol,dis,epoch0=3)
+train_dcgan_labeled(evol,dis,epoch0=args.epoch0)
