@@ -318,7 +318,7 @@ def train_dcgan_labeled(evol, dis, epoch0=0):
             movie_in = None
             movie_out = None
             movie_out_pred=None
-            preD_softmax = [0.0]
+            pred_softmax = [0.0]
             pred_l2norm = {}
             vis_kit = {}
             matsuoka_shuzo = {}
@@ -376,7 +376,7 @@ def train_dcgan_labeled(evol, dis, epoch0=0):
                         L_evol = F.softmax_cross_entropy(yl, Variable(xp.zeros(batchsize, dtype=np.int32)))
                         L_dis  = F.softmax_cross_entropy(yl, Variable(xp.ones(batchsize, dtype=np.int32)))
                         # softmax=0: dis is strong, softmax=1: gen is strong
-                        pred_softmax += [F.softmax_cross_entropy(yl).data.get()[:,0]]
+                        pred_softmax += [np.average(F.softmax(yl).data.get()[:,0])]
 
                     pred_l2norm[difficulty] += [L2norm.data.get()] 
 
