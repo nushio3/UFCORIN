@@ -43,7 +43,7 @@ batchsize=25
 patch_pixelsize=128
 n_epoch=10000
 n_train=2000
-save_interval =500
+save_interval =200
 
 n_timeseries = 6
 
@@ -244,6 +244,8 @@ def create_batch(current_movie_in, current_movie_out):
     for t in range(n_timeseries):
         if current_movie_in[t] is None:
             return None
+        if current_movie_out[t] is None:
+            return None
 
     pw=patch_pixelsize
     ph=patch_pixelsize
@@ -407,7 +409,7 @@ def train_dcgan_labeled(evol, dis, epoch0=0):
                         matsuoka_shuzo['hard'] = False
 
 
-            if train_ctr%save_interval==0:
+            if True or train_ctr%save_interval==0:
                 if movie_in is not None:
                     imgfn = '%s/vis_%d_%04d.png'%(out_image_dir, epoch,train_ctr)
     
@@ -437,6 +439,7 @@ def train_dcgan_labeled(evol, dis, epoch0=0):
                     subprocess.call("cp %s ~/public_html/suntomorrow-batch-%d.png"%(imgfn,args.gpu),shell=True)
                     print imgfn
 
+            if train_ctr%save_interval==0:
                 for answer_mode in ['predict','observe']:
                     for offset in [6,16,32,64,119]:
                         if offset >= n_movie: continue
