@@ -147,7 +147,10 @@ class Evolver(chainer.Chain):
             bn0d = L.BatchNormalization(64),
             bn1d = L.BatchNormalization(128),
             bn2d = L.BatchNormalization(256),
-            bn3d = L.BatchNormalization(512)
+            bn3d = L.BatchNormalization(512),
+            bn0h = L.BatchNormalization(64),
+            bn1h = L.BatchNormalization(128),
+            bn2h = L.BatchNormalization(256)
         )
         
     def __call__(self, x, test=False):
@@ -159,9 +162,9 @@ class Evolver(chainer.Chain):
         
         # idea: not simple addition, but concatenation?
         h = F.relu(self.bn3d(self.dc4(h1), test=test))
-        h = F.relu(self.bn2d(self.dc3(h), test=test)) + F.relu(self.bn2(self.dc3h(h8), test=test))
-        h = F.relu(self.bn1d(self.dc2(h), test=test)) + F.relu(self.bn1(self.dc2h(h16), test=test))
-        h = F.relu(self.bn0d(self.dc1(h), test=test)) + F.relu(self.bn0(self.dc1h(h32), test=test))
+        h = F.relu(self.bn2d(self.dc3(h), test=test)) + F.relu(self.bn2h(self.dc3h(h8), test=test))
+        h = F.relu(self.bn1d(self.dc2(h), test=test)) + F.relu(self.bn1h(self.dc2h(h16), test=test))
+        h = F.relu(self.bn0d(self.dc1(h), test=test)) + F.relu(self.bn0h(self.dc1h(h32), test=test))
         ret=self.dc0(h) + self.dc0h(h64) 
         
         return ret
