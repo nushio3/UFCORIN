@@ -405,7 +405,8 @@ def train_dcgan_labeled(evol, dis, epoch0=0):
                     sys.stdout.flush()
 
                     # prevent too much learning from noisy prediction.
-                    if len(pred_l2norm['hard'])>=5 and np.average(pred_l2norm['hard']) > 5 * np.average(pred_l2norm['normal']):
+                    if len(pred_l2norm['hard'])>=5 and (np.average(pred_l2norm['hard']) > 5 * np.average(pred_l2norm['normal'])
+                                                        or np.average(pred_softmax) < 0.01):
                         matsuoka_shuzo['hard'] = False
 
             print
