@@ -259,9 +259,9 @@ def create_batch(current_movie_in, current_movie_out):
         top   = np.random.randint(oh-ph)
         for t in range(n_timeseries):
             if t==n_timeseries -1:
-                ret_out[j,0,:,:]=current_movie_in[t][top:top+ph, left:left+pw]
+                ret_out[j,0,:,:]=current_movie_out[t][top:top+ph, left:left+pw]
             else:
-                ret_in[j,t,:,:]=current_movie_out[t][top:top+ph, left:left+pw]
+                ret_in[j,t,:,:]=current_movie_in[t][top:top+ph, left:left+pw]
     return (ret_in, ret_out)
 
 
