@@ -271,27 +271,9 @@ def evolve_image(evol,imgs):
     n = w / patch_pixelsize
     pw=patch_pixelsize
     ph=patch_pixelsize
-    #  batch_in = np.zeros((n*n, n_timeseries-1, ph,pw ), dtype=np.float32)
-    #  for j in range(n):
-    #      for i in range(n):
-    #          for t in range(n_timeseries-1):
-    #              top=j*ph
-    #              left=i*pw
-    #              batch_in[j*n+i, t, :, :] = imgs[t][top:top+ph, left:left+pw]
-    #  
-    #  input_val=Variable(cuda.to_gpu(batch_in))
-    #  output_data=evol(input_val).data.get()
-    #  
-    #  ret = np.zeros((h,w), dtype=np.float32)
-    #  for j in range(n):
-    #      for i in range(n):
-    #          top=j*ph
-    #          left=i*pw
-    #          ret[top:top+ph, left:left+pw] = output_data[j*n+i, 0, :, :]
-    #  return ret
 
     input_val = Variable(cuda.to_gpu(np.reshape(np.concatenate(imgs), (1,n_timeseries-1,h,w))))
-    output_val = evol(input_val,test=True)
+    output_val = evol(input_val,test=False)
     return np.reshape(output_val.data.get(), (h,w))
     
 
@@ -337,14 +319,15 @@ def train_dcgan_labeled(evol, dis, epoch0=0):
             movie_out = None
             movie_out_predict=None
             evol_scores = {}
+            vis_kit = {}
             matsuoka_shuzo = {}
             difficulties = ['normal','hard']
             for difficulty in difficulties:
                 evol_scores[difficulty] = [0.0]
                 matsuoka_shuzo[difficulty] = True
+                vis_kit[difficulty] = None
             for train_offset in range(0,n_movie-n_timeseries):
                 for difficulty in difficulties:
-                    movie_clip = current_movie[train_offset:train_offset+n_timeseries]
                     if not matsuoka_shuzo[difficulty]:
                         # Doushitesokode yamerunda...
                         continue
@@ -352,6 +335,7 @@ def train_dcgan_labeled(evol, dis, epoch0=0):
                         # Akiramen'nayo!
                         pass
 
+                    movie_clip = current_movie[train_offset:train_offset+n_timeseries]
                     if difficulty == 'normal':
                         movie_clip_in = movie_clip
                     else:
@@ -365,6 +349,12 @@ def train_dcgan_labeled(evol, dis, epoch0=0):
                     movie_out = Variable(cuda.to_gpu(data_out))
                     
                     movie_out_predict = evol(movie_in)
+
+                    vis_kit[difficulty] = (movie_in.data.get(),
+                                           movie_out.data.get(),
+                                           movie_out_predict.data.get())
+
+                    
 
                     if 'dcgan_mode':
                         yl = dis(movie_in,movie_out_predict)
@@ -401,44 +391,41 @@ def train_dcgan_labeled(evol, dis, epoch0=0):
                         yl_train.unchain_backward()
                         L_dis.unchain_backward()
     
-                    sys.stdout.write('%d %6s %f %f\r'%(train_offset,difficulty, np.average(evol_scores['normal']), np.average(evol_scores['hard'])))
+                    sys.stdout.write('%d %-6s %f %f\r'%(train_offset,difficulty, np.average(evol_scores['normal']), np.average(evol_scores['hard'])))
                     sys.stdout.flush()
 
                     # prevent too much learning from noisy prediction.
                     if len(evol_scores['hard'])>=5 and np.average(evol_scores['hard']) > 5 * np.average(evol_scores['normal']):
                         matsuoka_shuzo['hard'] = False
-
-
-            if True or train_ctr%save_interval==0:
-                if movie_in is not None:
-                    imgfn = '%s/vis_%d_%04d.png'%(out_image_dir, epoch,train_ctr)
-    
-                    n_col=n_timeseries+2
-                    plt.rcParams['figure.figsize'] = (1.0*n_col,1.0*batchsize)
-                    plt.close('all')
-    
-                    movie_data=movie_in.data.get()
-                    movie_out_data=movie_out.data.get()
-                    movie_pred_data=movie_out_predict.data.get()
-                    for ib in range(batchsize):
-                        for j in range(n_timeseries-1):
-                            plt.subplot(batchsize,n_col,1 + ib*n_col + j)
-                            plt.imshow(movie_data[ib,j,:,:],vmin=0,vmax=1.4)
-                            plt.axis('off')
-    
-                        plt.subplot(batchsize,n_col,1 + ib*n_col + n_timeseries-1)
-                        plt.imshow(movie_pred_data[ib,0,:,:],vmin=0,vmax=1.4)
+            print
+            for difficulty in difficulties:
+                if vis_kit[difficulty] is None:
+                    continue
+                movie_data, movie_out_data, movie_pred_data = vis_kit[difficulty]
+                imgfn = '%s/batch-%s_%d_%04d.png'%(out_image_dir,difficulty, epoch,train_ctr)
+        
+                n_col=n_timeseries+2
+                plt.rcParams['figure.figsize'] = (1.0*n_col,1.0*batchsize)
+                plt.close('all')
+        
+                for ib in range(batchsize):
+                    for j in range(n_timeseries-1):
+                        plt.subplot(batchsize,n_col,1 + ib*n_col + j)
+                        plt.imshow(movie_data[ib,j,:,:],vmin=0,vmax=1.4)
                         plt.axis('off')
+        
+                    plt.subplot(batchsize,n_col,1 + ib*n_col + n_timeseries-1)
+                    plt.imshow(movie_pred_data[ib,0,:,:],vmin=0,vmax=1.4)
+                    plt.axis('off')
+        
+                    plt.subplot(batchsize,n_col,1 + ib*n_col + n_timeseries+1)
+                    plt.imshow(movie_out_data[ib,0,:,:],vmin=0,vmax=1.4)
+                    plt.axis('off')
+                
+                plt.suptitle(imgfn)
+                plt.savefig(imgfn)
+                subprocess.call("cp %s ~/public_html/suntomorrow-batch-%s-%s.png"%(imgfn,difficulty,args.gpu),shell=True)
     
-                        plt.subplot(batchsize,n_col,1 + ib*n_col + n_timeseries+1)
-                        plt.imshow(movie_out_data[ib,0,:,:],vmin=0,vmax=1.4)
-                        plt.axis('off')
-                    
-                    plt.suptitle(imgfn)
-                    plt.savefig(imgfn)
-                    subprocess.call("cp %s ~/public_html/suntomorrow-batch-%d.png"%(imgfn,args.gpu),shell=True)
-                    print imgfn
-
             if train_ctr%save_interval==0:
                 for answer_mode in ['predict','observe']:
                     for offset in [6,16,32,64,119]:
