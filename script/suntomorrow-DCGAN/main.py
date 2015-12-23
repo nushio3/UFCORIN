@@ -292,6 +292,12 @@ def train_dcgan_labeled(evol, dis, epoch0=0):
     o_evol.add_hook(chainer.optimizer.WeightDecay(0.00001))
     o_dis.add_hook(chainer.optimizer.WeightDecay(0.00001))
 
+    matsuoka_shuzo = {}
+    difficulties = ['normal','hard']
+    for difficulty in difficulties:
+        matsuoka_shuzo[difficulty] = True
+
+
 
     for epoch in xrange(epoch0,n_epoch):
         print "epoch:", epoch
@@ -320,11 +326,8 @@ def train_dcgan_labeled(evol, dis, epoch0=0):
             pred_softmax = [0.0]
             pred_l2norm = {}
             vis_kit = {}
-            matsuoka_shuzo = {}
-            difficulties = ['normal','hard']
             for difficulty in difficulties:
                 pred_l2norm[difficulty] = [0.0]
-                matsuoka_shuzo[difficulty] = True
                 vis_kit[difficulty] = None
             for train_offset in range(0,n_movie-n_timeseries):
                 for difficulty in difficulties:
@@ -335,12 +338,13 @@ def train_dcgan_labeled(evol, dis, epoch0=0):
 
                     movie_clip = current_movie[train_offset:train_offset+n_timeseries]
 
-                    if not matsuoka_shuzo[difficulty]:
-                        # Doushitesokode yamerunda...
-                        continue
-                    else:
-                        # Akiramen'nayo!
-                        pass
+                    # Shuzo "Zettai ni Akiramenn-nayo!!!!!!!!!!!!!!!!!!!!!!!!!!!!comment tabeleau!!!!!!!!"
+                    # if not matsuoka_shuzo[difficulty]:
+                    #     # Doushitesokode yamerunda...
+                    #     continue
+                    # else:
+                    #     # Akiramen'nayo!
+                    #     pass
 
                     maybe_dat = create_batch(current_movie[train_offset:train_offset+n_timeseries], 
                                              prediction_movie[train_offset:train_offset+n_timeseries])
@@ -382,9 +386,10 @@ def train_dcgan_labeled(evol, dis, epoch0=0):
                     L_evol.backward()
                     o_evol.update()
 
-                    o_dis.zero_grads()
-                    L_dis.backward()
-                    o_dis.update()
+                    if matsuoka_shuzo['hard']:
+                        o_dis.zero_grads()
+                        L_dis.backward()
+                        o_dis.update()
 
                     movie_out_pred.unchain_backward()
                     L_evol.unchain_backward()
@@ -406,6 +411,8 @@ def train_dcgan_labeled(evol, dis, epoch0=0):
                     if len(pred_l2norm['hard'])>=5 and (# np.average(pred_l2norm['hard']) > 5 * np.average(pred_l2norm['normal']) or
                             np.average(pred_softmax) < 0.01):
                         matsuoka_shuzo['hard'] = False
+                    if np.average(pred_softmax) > 0.1 and train_offset > n_movie/2:
+                        matsuoka_shuzo['hard'] = True                        
 
             print
             for difficulty in difficulties:
