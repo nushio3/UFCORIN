@@ -45,7 +45,7 @@ n_epoch=10000
 n_train=2000
 save_interval =200
 
-n_timeseries = 6
+n_timeseries = 8
 
 n_movie=120
 hardmode_duration= 1
@@ -240,12 +240,25 @@ def load_movie():
                 current_movie[cnt] = dual_log(500,np.load(fn)['img'])
     return current_movie
 
+
+
+coord_image=None
 def create_batch(current_movie_in, current_movie_out):
     for t in range(n_timeseries):
         if current_movie_in[t] is None:
             return None
         if current_movie_out[t] is None:
             return None
+
+    if coord_image is None:
+        coord_image = np.zeros((2,h, w), dtype=np.float32)
+
+        for y in range(h):
+            for x in range(w):
+                coord_image[0,y,x] = (float(x)-w/2)/w
+                coord_image[1,y,x] = (float(y)-h/2)/h
+    
+    h,w = current_movie_in[0].shape
 
     pw=patch_pixelsize
     ph=patch_pixelsize
@@ -262,6 +275,10 @@ def create_batch(current_movie_in, current_movie_out):
                 ret_out[j,0,:,:]=current_movie_out[t][top:top+ph, left:left+pw]
             else:
                 ret_in[j,t,:,:]=current_movie_in[t][top:top+ph, left:left+pw]
+            if t==0:
+                ret_in[j,t,:,:]=coord_image[0,top:top+ph, left:left+pw]
+            if t==1:
+                ret_in[j,t,:,:]=coord_image[1,top:top+ph, left:left+pw]
     return (ret_in, ret_out)
 
 
@@ -413,7 +430,7 @@ def train_dcgan_labeled(evol, dis, epoch0=0):
                     sys.stdout.flush()
 
                     # prevent too much learning from noisy prediction.
-                    if len(evol_scores['hard'])>=5 and np.average(evol_scores['hard'][-5:-1]) > 5 * np.average(evol_scores['normal']):
+                    if len(evol_scores['hard'])>=5 and np.average(evol_scores['hard'][-5:-1]) > 2 * np.average(evol_scores['normal']):
                         matsuoka_shuzo['hard'] = False
 
             print
@@ -430,7 +447,11 @@ def train_dcgan_labeled(evol, dis, epoch0=0):
                 for ib in range(batchsize):
                     for j in range(n_timeseries-1):
                         plt.subplot(batchsize,n_col,1 + ib*n_col + j)
-                        plt.imshow(movie_data[ib,j,:,:],vmin=0,vmax=1.4)
+                        if j < 2:
+                            vmin=-1; vmax=1
+                        else:
+                            vmin=0; vmax=1.4
+                        plt.imshow(movie_data[ib,j,:,:],vmin=vmin,vmax=vmax)
                         plt.axis('off')
         
                     plt.subplot(batchsize,n_col,1 + ib*n_col + n_timeseries-1)
