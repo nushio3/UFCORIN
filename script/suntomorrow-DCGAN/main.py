@@ -291,7 +291,7 @@ def evolve_image(evol,imgs):
     #  return ret
 
     input_val = Variable(cuda.to_gpu(np.reshape(np.concatenate(imgs), (1,n_timeseries-1,h,w))))
-    output_val = evol(input_val,test=True)
+    output_val = evol(input_val,test=False)
     return np.reshape(output_val.data.get(), (h,w))
     
 
@@ -413,7 +413,7 @@ def train_dcgan_labeled(evol, dis, epoch0=0):
                     sys.stdout.flush()
 
                     # prevent too much learning from noisy prediction.
-                    if len(evol_scores['hard'])>=5 and np.average(evol_scores['hard']) > 5 * np.average(evol_scores['normal']):
+                    if len(evol_scores['hard'])>=5 and np.average(evol_scores['hard'][-5:-1]) > 5 * np.average(evol_scores['normal']):
                         matsuoka_shuzo['hard'] = False
 
             print
