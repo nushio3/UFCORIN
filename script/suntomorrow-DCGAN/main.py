@@ -193,10 +193,10 @@ class Discriminator(chainer.Chain):
     def __call__(self, x1,x2, test=False):
 
         x=self.c0i(x1)+self.c0o(x2)
-        h = elu(x)     # no bn because images from generator will katayotteru?
-        h = elu(self.bn1(self.c1(h), test=test))
-        h = elu(self.bn2(self.c2(h), test=test))
-        h = elu(self.bn3(self.c3(h), test=test))
+        h = F.leaky_relu(x)     # no bn because images from generator will katayotteru?
+        h = F.leaky_relu(self.bn1(self.c1(h), test=test))
+        h = F.leaky_relu(self.bn2(self.c2(h), test=test))
+        h = F.leaky_relu(self.bn3(self.c3(h), test=test))
         l = self.l4l(h)
         return l
 
@@ -409,9 +409,9 @@ def train_dcgan_labeled(evol, dis, epoch0=0):
 
                     # prevent too much learning from noisy prediction.
                     if len(pred_l2norm['hard'])>=5 and (# np.average(pred_l2norm['hard']) > 5 * np.average(pred_l2norm['normal']) or
-                            np.average(pred_softmax) < 0.01):
+                            np.average(pred_softmax) < 0.1):
                         matsuoka_shuzo['hard'] = False
-                    if np.average(pred_softmax) > 0.1 and train_offset > n_movie/2:
+                    if np.average(pred_softmax) > 0.2 and train_offset > n_movie/2:
                         matsuoka_shuzo['hard'] = True                        
 
             print
