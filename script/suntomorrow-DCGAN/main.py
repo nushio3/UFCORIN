@@ -241,14 +241,16 @@ def load_movie():
     return current_movie
 
 
-
+global coord_image
 coord_image=None
 def create_batch(current_movie_in, current_movie_out):
+    global coord_image
     for t in range(n_timeseries):
         if current_movie_in[t] is None:
             return None
         if current_movie_out[t] is None:
             return None
+    h,w = current_movie_in[0].shape
 
     if coord_image is None:
         coord_image = np.zeros((2,h, w), dtype=np.float32)
@@ -258,7 +260,6 @@ def create_batch(current_movie_in, current_movie_out):
                 coord_image[0,y,x] = (float(x)-w/2)/w
                 coord_image[1,y,x] = (float(y)-h/2)/h
     
-    h,w = current_movie_in[0].shape
 
     pw=patch_pixelsize
     ph=patch_pixelsize
@@ -350,6 +351,36 @@ def train_dcgan_labeled(evol, dis, epoch0=0):
             if not good_movie: continue
             for i in range(n_timeseries-1,n_movie):
                 prediction_movie[i] = evolve_image(evol,prediction_movie[i-n_timeseries+1 : i])
+
+
+            if train_ctr%save_interval==0:
+                for answer_mode in ['predict','observe']:
+                    for offset in [6,16,32,64,119]:
+                        if offset >= n_movie: continue
+                        img_prediction = prediction_movie[offset]
+                        if answer_mode == 'observe':
+                            img_prediction = current_movie[offset]                            
+                        if img_prediction is None: continue
+                        imgfn = '%s/futuresun_%d_%04d_%s+%03d.png'%(out_image_dir, epoch,train_ctr,answer_mode,offset)
+                        plt.rcParams['figure.figsize'] = (12.0, 12.0)
+                        plt.close('all')
+                        plt.imshow(img_prediction,vmin=0,vmax=1.4)
+                        plt.suptitle(imgfn)
+                        plt.savefig(imgfn)
+                        subprocess.call("cp %s ~/public_html/futuresun/"%(imgfn),shell=True)
+
+                # we don't have enough disk for history
+                history_dir = 'history/' #%d-%d'%(epoch,  train_ctr)
+                subprocess.call("mkdir -p %s "%(history_dir),shell=True)
+                subprocess.call("cp %s/*.h5 %s "%(out_model_dir,history_dir),shell=True)
+                
+                if epoch>0 or train_ctr>0:
+                    print 'saving model...'
+                    serializers.save_hdf5("%s/dcgan_model_dis.h5"%(out_model_dir),dis)
+                    serializers.save_hdf5("%s/dcgan_model_evol.h5"%(out_model_dir),evol)
+                    serializers.save_hdf5("%s/dcgan_state_dis.h5"%(out_model_dir),o_dis)
+                    serializers.save_hdf5("%s/dcgan_state_evol.h5"%(out_model_dir),o_evol)
+                    print '...saved.'
             
 
             movie_in = None
@@ -357,7 +388,8 @@ def train_dcgan_labeled(evol, dis, epoch0=0):
             movie_out_predict=None
             evol_scores = {}
             matsuoka_shuzo = {}
-            difficulties = ['normal','hard']
+            shuzo_evoke_timestep = []
+            difficulties = ['normal','hard', 'hard']
             for difficulty in difficulties:
                 evol_scores[difficulty] = [0.0]
                 matsuoka_shuzo[difficulty] = True
@@ -425,13 +457,24 @@ def train_dcgan_labeled(evol, dis, epoch0=0):
                         yl_train.unchain_backward()
                         L_dis.unchain_backward()
     
-                    sys.stdout.write('%d %6s %s: %f %f\r'%(train_offset,difficulty, args.norm,
-                                                           np.average(evol_scores['normal']), np.average(evol_scores['hard'])))
+                    sys.stdout.write('%d %6s %s: %f %f shuzo:%s\r'%(train_offset,difficulty, args.norm,
+                                                                    np.average(evol_scores['normal']), np.average(evol_scores['hard']),
+                                                                    str(shuzo_evoke_timestep[-10:])))
                     sys.stdout.flush()
 
+                    # update the prediction as results of learning.
+                    prediction_movie[train_offset+n_timeseries-1] = evolve_image(evol,prediction_movie[train_offset: train_offset+n_timeseries-1])
+
                     # prevent too much learning from noisy prediction.
-                    if len(evol_scores['hard'])>=5 and np.average(evol_scores['hard'][-5:-1]) > 2 * np.average(evol_scores['normal']):
-                        matsuoka_shuzo['hard'] = False
+                    if len(evol_scores['hard'])>=5 and np.average(evol_scores['hard'][-5:-1]) > 5 * np.average(evol_scores['normal']):
+                        # Zettaini, akiramennna yo!
+                        # matsuoka_shuzo['hard'] = False
+                        shuzo_evoke_timestep += [train_offset]
+                        evol_scores['hard']=[0.0]
+                        for t in range(train_offset, train_offset+n_timeseries):
+                            if current_movie[t] is not None:
+                                prediction_movie[t]=current_movie[t]
+
 
             print
             for difficulty in difficulties:
@@ -466,35 +509,6 @@ def train_dcgan_labeled(evol, dis, epoch0=0):
                 plt.savefig(imgfn)
                 subprocess.call("cp %s ~/public_html/suntomorrow-batch-%s-%s.png"%(imgfn,difficulty,args.gpu),shell=True)
 
-            if train_ctr%save_interval==0:
-                for answer_mode in ['predict','observe']:
-                    for offset in [6,16,32,64,119]:
-                        if offset >= n_movie: continue
-                        img_prediction = prediction_movie[offset]
-                        if answer_mode == 'observe':
-                            img_prediction = current_movie[offset]                            
-                        if img_prediction is None: continue
-                        imgfn = '%s/futuresun_%d_%04d_%s+%03d.png'%(out_image_dir, epoch,train_ctr,answer_mode,offset)
-                        plt.rcParams['figure.figsize'] = (12.0, 12.0)
-                        plt.close('all')
-                        plt.imshow(img_prediction,vmin=0,vmax=1.4)
-                        plt.suptitle(imgfn)
-                        plt.savefig(imgfn)
-                        subprocess.call("cp %s ~/public_html/futuresun/"%(imgfn),shell=True)
-
-                # we don't have enough disk for history
-                history_dir = 'history/' #%d-%d'%(epoch,  train_ctr)
-                subprocess.call("mkdir -p %s "%(history_dir),shell=True)
-                subprocess.call("cp %s/*.h5 %s "%(out_model_dir,history_dir),shell=True)
-                
-                if epoch==0 and train_ctr==0:
-                    continue # no sense to save the initial state.
-                print 'saving model...'
-                serializers.save_hdf5("%s/dcgan_model_dis.h5"%(out_model_dir),dis)
-                serializers.save_hdf5("%s/dcgan_model_evol.h5"%(out_model_dir),evol)
-                serializers.save_hdf5("%s/dcgan_state_dis.h5"%(out_model_dir),o_dis)
-                serializers.save_hdf5("%s/dcgan_state_evol.h5"%(out_model_dir),o_evol)
-                print '...saved.'
 
 
 
