@@ -342,10 +342,8 @@ def train_dcgan_labeled(evol, dis, epoch0=0):
 
     vis_process = None
     for epoch in xrange(epoch0,n_epoch):
-        print "epoch:", epoch
-        
         for train_ctr in xrange(0, n_train, batchsize):
-            print "train:",train_ctr
+            print  "epoch:", epoch,"train:",train_ctr,
             # discriminator
             # 0: from dataset
             # 1: from noise
