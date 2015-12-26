@@ -176,8 +176,7 @@ class Evolver(chainer.Chain):
 class Discriminator(chainer.Chain):
     def __init__(self):
         super(Discriminator, self).__init__(
-            c0i = L.Convolution2D(n_timeseries-1, 64, 4, stride=2, pad=1, wscale=0.02*math.sqrt(4*4*3)),
-            c0o = L.Convolution2D(1, 64, 4, stride=2, pad=1, wscale=0.02*math.sqrt(4*4*3)),
+            c0 = L.Convolution2D(1, 64, 4, stride=2, pad=1, wscale=0.02*math.sqrt(4*4*3)),
             c1 = L.Convolution2D(64, 128, 4, stride=2, pad=1, wscale=0.02*math.sqrt(4*4*64)),
             c2 = L.Convolution2D(128, 256, 4, stride=2, pad=1, wscale=0.02*math.sqrt(4*4*128)),
             c3 = L.Convolution2D(256, 512, 4, stride=2, pad=1, wscale=0.02*math.sqrt(4*4*256)),
@@ -187,10 +186,10 @@ class Discriminator(chainer.Chain):
             bn3 = L.BatchNormalization(512),
         )
         
-    def __call__(self, x1,x2, test=False):
+    def __call__(self, x, test=False):
         
-        x=self.c0i(x1)+self.c0o(x2)
-        h = elu(x)     # no bn because images from generator will katayotteru?
+        h =self.c0(x)
+        h = elu(h)     # no bn because images from generator will katayotteru?
         h = elu(self.bn1(self.c1(h), test=test))
         h = elu(self.bn2(self.c2(h), test=test))
         h = self.bn3(self.c3(h), test=test)
@@ -359,7 +358,7 @@ def train_dcgan_labeled(evol, dis, epoch0=0):
 
             if train_ctr%save_interval==0:
                 for answer_mode in ['predict','observe']:
-                    for offset in [6,16,32,64,119]:
+                    for offset in [n_timeseries,16,32,64,119]:
                         if offset >= n_movie: continue
                         img_prediction = prediction_movie[offset]
                         if answer_mode == 'observe':
