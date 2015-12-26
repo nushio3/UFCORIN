@@ -4,6 +4,7 @@ import pickle,argparse,os,subprocess,sys
 import numpy as np
 from PIL import Image
 from StringIO import StringIO
+from multiprocessing import Process
 import math
 import matplotlib
 matplotlib.use('Agg')
@@ -161,10 +162,10 @@ class Evolver(chainer.Chain):
         h1  = elu(self.bn4(self.c4(h8), test=test))
         
         # idea: not simple addition, but concatenation?
-        h = F.relu(self.bn3d(self.dc4(h1), test=test))
-        h = F.relu(self.bn2d(self.dc3(h), test=test)) + F.relu(self.bn2h(self.dc3h(h8), test=test))
-        h = F.relu(self.bn1d(self.dc2(h), test=test)) + F.relu(self.bn1h(self.dc2h(h16), test=test))
-        h = F.relu(self.bn0d(self.dc1(h), test=test)) + F.relu(self.bn0h(self.dc1h(h32), test=test))
+        h = elu(self.bn3d(self.dc4(h1), test=test))
+        h = elu(self.bn2d(self.dc3(h), test=test)) + elu(self.bn2h(self.dc3h(h8), test=test))
+        h = elu(self.bn1d(self.dc2(h), test=test)) + elu(self.bn1h(self.dc2h(h16), test=test))
+        h = elu(self.bn0d(self.dc1(h), test=test)) + elu(self.bn0h(self.dc1h(h32), test=test))
         ret=self.dc0(h) + self.dc0h(h64) 
         
         return ret
@@ -316,6 +317,9 @@ def evolve_image(evol,imgs):
     return np.reshape(output_val.data.get(), (h,w))
     
 
+
+
+
 def train_dcgan_labeled(evol, dis, epoch0=0):
     o_evol = optimizers.Adam(alpha=0.0002, beta1=0.5)
     o_dis = optimizers.Adam(alpha=0.0002, beta1=0.5)
@@ -332,6 +336,7 @@ def train_dcgan_labeled(evol, dis, epoch0=0):
     o_dis.add_hook(chainer.optimizer.WeightDecay(0.00001))
 
 
+    vis_process = None
     for epoch in xrange(epoch0,n_epoch):
         print "epoch:", epoch
         
@@ -345,6 +350,10 @@ def train_dcgan_labeled(evol, dis, epoch0=0):
             prediction_movie=n_movie*[None]
             current_movie = load_movie()
 
+
+            if vis_process is not None:
+                vis_process.join()
+                vis_process = None
             vis_kit = {}
             for i in range(n_timeseries-1):
                 if current_movie[i] is None:
@@ -486,40 +495,40 @@ def train_dcgan_labeled(evol, dis, epoch0=0):
 
 
             print
-            for difficulty in difficulties:
-                if vis_kit[difficulty] is None:
-                    continue
-                movie_data, movie_out_data, movie_pred_data = vis_kit[difficulty]
-                imgfn = '%s/batch-%s_%d_%04d.png'%(out_image_dir,difficulty, epoch,train_ctr)
-        
-                n_col=n_timeseries+2
-                plt.rcParams['figure.figsize'] = (1.0*n_col,1.0*batchsize)
-                plt.close('all')
-        
-                for ib in range(batchsize):
-                    for j in range(n_timeseries-1):
-                        plt.subplot(batchsize,n_col,1 + ib*n_col + j)
-                        if j < 2:
-                            vmin=-1; vmax=1
-                        else:
-                            vmin=0; vmax=1.4
-                        plt.imshow(movie_data[ib,j,:,:],vmin=vmin,vmax=vmax)
-                        plt.axis('off')
-        
-                    plt.subplot(batchsize,n_col,1 + ib*n_col + n_timeseries-1)
-                    plt.imshow(movie_pred_data[ib,0,:,:],vmin=0,vmax=1.4)
-                    plt.axis('off')
-        
-                    plt.subplot(batchsize,n_col,1 + ib*n_col + n_timeseries+1)
-                    plt.imshow(movie_out_data[ib,0,:,:],vmin=0,vmax=1.4)
-                    plt.axis('off')
+            def visualize_vis_kit(vis_kit):
+                for difficulty in difficulties:
+                    if vis_kit[difficulty] is None:
+                        continue
+                    movie_data, movie_out_data, movie_pred_data = vis_kit[difficulty]
+                    imgfn = '%s/batch-%s_%d_%04d.png'%(out_image_dir,difficulty, epoch,train_ctr)
                 
-                plt.suptitle(imgfn)
-                plt.savefig(imgfn)
-                subprocess.call("cp %s ~/public_html/suntomorrow-batch-%s-%s.png"%(imgfn,difficulty,args.gpu),shell=True)
-
-
-
+                    n_col=n_timeseries+2
+                    plt.rcParams['figure.figsize'] = (1.0*n_col,1.0*batchsize)
+                    plt.close('all')
+                
+                    for ib in range(batchsize):
+                        for j in range(n_timeseries-1):
+                            plt.subplot(batchsize,n_col,1 + ib*n_col + j)
+                            if j < 2:
+                                vmin=-1; vmax=1
+                            else:
+                                vmin=0; vmax=1.4
+                            plt.imshow(movie_data[ib,j,:,:],vmin=vmin,vmax=vmax)
+                            plt.axis('off')
+                
+                        plt.subplot(batchsize,n_col,1 + ib*n_col + n_timeseries-1)
+                        plt.imshow(movie_pred_data[ib,0,:,:],vmin=0,vmax=1.4)
+                        plt.axis('off')
+                
+                        plt.subplot(batchsize,n_col,1 + ib*n_col + n_timeseries+1)
+                        plt.imshow(movie_out_data[ib,0,:,:],vmin=0,vmax=1.4)
+                        plt.axis('off')
+                    
+                    plt.suptitle(imgfn)
+                    plt.savefig(imgfn)
+                    subprocess.call("cp %s ~/public_html/suntomorrow-batch-%s-%s.png"%(imgfn,difficulty,args.gpu),shell=True)
+            vis_process = Process(target=visualize_vis_kit, args=(vis_kit,))
+            vis_process.start()
 
 xp = cuda.cupy
 cuda.get_device(int(args.gpu)).use()
