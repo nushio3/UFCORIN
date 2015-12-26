@@ -197,8 +197,8 @@ class Discriminator(chainer.Chain):
 
 def d_norm(dis, img1, img2):
     dx = dis(img1) - dis(img2)
-    return dx**2 / dx.size
-
+    return F.sum(dx**2) / float(dx.data.size)
+    
 
 
 ################################################################
@@ -247,7 +247,7 @@ def create_batch(train_offset,current_movie_in, current_movie_out):
     h,w = current_movie_in[train_offset].shape
 
     while True:
-        rnd_t = train_offset + n_timeseries-1 + int(round(np.random.normal(16.0)))
+        rnd_t = train_offset + n_timeseries-1 + int(round(np.random.normal(scale=16.0)))
         if rnd_t < 0 or rnd_t >= len(current_movie_out): continue
         if current_movie_out[rnd_t] is None: continue
         break
@@ -448,7 +448,7 @@ def train_dcgan_labeled(evol, dis, epoch0=0):
                     evol_scores[difficulty] += [L_evol.data.get()] # np.average(F.softmax(yl).data.get()[:,0])
     
                     
-                    # stop learning on normal mode.
+                    # you may stop learning on normal mode.
                     o_evol.zero_grads()
                     L_evol.backward()
                     o_evol.update()
@@ -464,7 +464,6 @@ def train_dcgan_labeled(evol, dis, epoch0=0):
                     yl.unchain_backward()
                     L_evol.unchain_backward()
                     if args.norm == 'dcgan' or args.norm == 'CA':
-                        yl_train.unchain_backward()
                         L_dis.unchain_backward()
     
                     sys.stdout.write('%d %6s %s: %f %f shuzo:%s\r'%(train_offset,difficulty, args.norm,
