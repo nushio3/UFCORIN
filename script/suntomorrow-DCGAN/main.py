@@ -239,10 +239,10 @@ global coord_image
 coord_image=None
 def create_batch(train_offset,current_movie_in, current_movie_out):
     global coord_image
-    for t in range(train_offset, n_timeseries):
-        if current_movie_in[t] is None:
+    for t in range(n_timeseries):
+        if current_movie_in[t+train_offset] is None:
             return None
-        if current_movie_out[t] is None:
+        if current_movie_out[t+train_offset] is None:
             return None
     h,w = current_movie_in[train_offset].shape
 
@@ -273,11 +273,11 @@ def create_batch(train_offset,current_movie_in, current_movie_out):
     for j in range(batchsize):
         left  = np.random.randint(w-pw)
         top   = np.random.randint(h-ph)
-        for t in range(train_offset, n_timeseries):
+        for t in range(n_timeseries):
             if t==n_timeseries -1:
-                ret_out[j,0,:,:]=current_movie_out[t][top:top+ph, left:left+pw]
+                ret_out[j,0,:,:]=current_movie_out[t+train_offset][top:top+ph, left:left+pw]
             else:
-                ret_in[j,t,:,:]=current_movie_in[t][top:top+ph, left:left+pw]
+                ret_in[j,t,:,:]=current_movie_in[t+train_offset][top:top+ph, left:left+pw]
             if t==0:
                 ret_in[j,t,:,:]=coord_image[0,top:top+ph, left:left+pw]
             if t==1:
