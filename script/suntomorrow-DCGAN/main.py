@@ -198,7 +198,7 @@ class Discriminator(chainer.Chain):
 
 def d_norm(dis, img1, img2):
     dx = dis(img1) - dis(img2)
-    return F.sum(dx**2) / float(dx.data.size)
+    return F.sum(F.leaky_relu(dx,slope=-1.0)) / float(dx.data.size)
     
 
 
