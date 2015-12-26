@@ -326,7 +326,7 @@ def evolve_image(evol,imgs):
 
 def train_dcgan_labeled(evol, dis, epoch0=0):
     o_evol = optimizers.Adam(alpha=0.0002, beta1=0.5)
-    o_dis = optimizers.Adam(alpha=0.0002, beta1=0.5)
+    o_dis = optimizers.Adam(alpha=0.00002, beta1=0.5)
     o_evol.setup(evol)
     o_dis.setup(dis)
     if not args.fresh_start:
