@@ -259,8 +259,8 @@ def create_batch(train_offset,current_movie_in, current_movie_out):
             for ix in range(w):
                 x = 2*float(ix - w/2)/w
                 y = 2*float(iy - h/2)/h
-                coord_image[0,y,x] = x**2 + y**2
-                coord_image[1,y,x] = x
+                coord_image[0,iy,ix] = x**2 + y**2
+                coord_image[1,iy,ix] = x
     
 
     pw=patch_pixelsize
