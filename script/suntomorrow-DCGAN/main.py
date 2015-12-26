@@ -355,10 +355,6 @@ def train_dcgan_labeled(evol, dis, epoch0=0):
             current_movie = load_movie()
 
 
-            if vis_process is not None:
-                vis_process.join()
-                vis_process = None
-            vis_kit = {}
             for i in range(n_timeseries-1):
                 if current_movie[i] is None:
                     good_movie=False
@@ -367,6 +363,7 @@ def train_dcgan_labeled(evol, dis, epoch0=0):
             if not good_movie: continue
             for i in range(n_timeseries-1,n_movie):
                 prediction_movie[i] = evolve_image(evol,prediction_movie[i-n_timeseries+1 : i])
+
 
 
             if train_ctr%save_interval==0:
@@ -409,6 +406,13 @@ def train_dcgan_labeled(evol, dis, epoch0=0):
             for difficulty in difficulties:
                 evol_scores[difficulty] = [0.0]
                 matsuoka_shuzo[difficulty] = True
+            if vis_process is not None:
+                vis_process.join()
+                vis_process = None
+            vis_kit = {}
+
+            # start main training routine.
+            print
             for train_offset in range(0,n_movie-n_timeseries):
                 for difficulty in difficulties:
                     movie_clip = current_movie
@@ -425,7 +429,7 @@ def train_dcgan_labeled(evol, dis, epoch0=0):
                         movie_clip_in = prediction_movie
                     maybe_dat = create_batch(train_offset,movie_clip_in, movie_clip)
                     if not maybe_dat : 
-                        print "Warning: skip offset", train_offset, "because of unavailable data."
+                        #print "Warning: skip offset", train_offset, "because of unavailable data."
                         continue
                     data_in, data_out, data_other = maybe_dat
                     movie_in =  Variable(cuda.to_gpu(data_in))
