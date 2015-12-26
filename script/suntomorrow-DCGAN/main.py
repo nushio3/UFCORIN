@@ -223,7 +223,9 @@ def load_movie():
     month=np.random.randint(12)+1
     day=np.random.randint(31)+1
 
-    print "now loading... %d/%d"%(month,day)
+    print "now loading... %d/%d"%(month,day),
+    sys.stdout.flush()
+
     subprocess.call('rm aia193/*', shell=True)
     subprocess.call('aws s3 sync "s3://sdo/aia193/720s-x1024/2011/%02d/%02d/" aia193 --region us-west-2 --quiet'%(month,day), shell=True)
     current_movie = n_movie*[None]
@@ -233,6 +235,8 @@ def load_movie():
             fn = 'aia193/%02d%02d.npz'%(hr,step*12)
             if os.path.exists(fn):
                 current_movie[cnt] = dual_log(500,np.load(fn)['img'])
+    print "loaded.",
+    sys.stdout.flush()
     return current_movie
 
 
@@ -496,6 +500,8 @@ def train_dcgan_labeled(evol, dis, epoch0=0):
 
             print
             def visualize_vis_kit(vis_kit):
+                print "visualizing...",
+                sys.stdout.flush()
                 for difficulty in difficulties:
                     if vis_kit[difficulty] is None:
                         continue
@@ -527,6 +533,10 @@ def train_dcgan_labeled(evol, dis, epoch0=0):
                     plt.suptitle(imgfn)
                     plt.savefig(imgfn)
                     subprocess.call("cp %s ~/public_html/suntomorrow-batch-%s-%s.png"%(imgfn,difficulty,args.gpu),shell=True)
+                print "visualized.",
+                sys.stdout.flush()
+
+
             vis_process = Process(target=visualize_vis_kit, args=(vis_kit,))
             vis_process.start()
 
