@@ -47,7 +47,7 @@ ax.set_title('GOES Forecast till {}(TAI)'.format(now.strftime('%Y-%m-%d %H:%M:%S
 ax.set_xlabel('International Atomic Time')
 ax.set_ylabel(u'GOES Long[1-8Å] Xray Flux')
 ax.set_xlim([now-datetime.timedelta(days=16), now+datetime.timedelta(days=1)])
-ax.set_ylim([1e-7, 1e-4])        
+ax.set_ylim([1e-7, 1e-3])        
 
 plt.savefig(filename, dpi=200)
 plt.close('all')
