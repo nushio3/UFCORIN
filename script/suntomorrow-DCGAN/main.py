@@ -173,6 +173,47 @@ class Evolver(chainer.Chain):
         #return F.split_axis(x,[1],1)[0]+ret
         #return Variable(xp.zeros((batchsize, 1, 128,128), dtype=np.float32))
 
+class Projecter(chainer.Chain):
+    def __init__(self):
+        super(Evolver, self).__init__(
+            c0 = L.Convolution2D(1, 64, 4, stride=2, pad=1, wscale=0.02*math.sqrt(4*4*3)),
+            c1 = L.Convolution2D(64, 128, 4, stride=2, pad=1, wscale=0.02*math.sqrt(4*4*64)),
+            c2 = L.Convolution2D(128, 256, 4, stride=2, pad=1, wscale=0.02*math.sqrt(4*4*128)),
+            c3 = L.Convolution2D(256, 512, 4, stride=2, pad=1, wscale=0.02*math.sqrt(4*4*256)),
+            c4 = L.Convolution2D(512, 1024, 4, stride=2, pad=1, wscale=0.02*math.sqrt(4*4*512)),
+            dc4 = L.Deconvolution2D(1024,512, 4, stride=2, pad=1, wscale=0.02*math.sqrt(4*4*1024)),
+            dc3 = L.Deconvolution2D(512, 256, 4, stride=2, pad=1, wscale=0.02*math.sqrt(4*4*512)),
+            dc2 = L.Deconvolution2D(256, 128, 4, stride=2, pad=1, wscale=0.02*math.sqrt(4*4*256)),
+            dc1 = L.Deconvolution2D(128, 64, 4, stride=2, pad=1, wscale=0.02*math.sqrt(4*4*128)),
+            dc0 = L.Deconvolution2D(64, 1, 4, stride=2, pad=1, wscale=0.02*math.sqrt(4*4*64)),
+            bn1 = L.BatchNormalization(128),
+            bn2 = L.BatchNormalization(256),
+            bn3 = L.BatchNormalization(512),
+            bn4 = L.BatchNormalization(1024),
+            bn0d = L.BatchNormalization(64),
+            bn1d = L.BatchNormalization(128),
+            bn2d = L.BatchNormalization(256),
+            bn3d = L.BatchNormalization(512),
+        )
+        
+    def __call__(self, x, test=False):
+        h64 = elu(self.c0(x))     # no bn because images from generator will katayotteru?
+        h32 = elu(self.bn1(self.c1(h64), test=test))
+        h16 = elu(self.bn2(self.c2(h32), test=test))
+        h8  = elu(self.bn3(self.c3(h16), test=test))
+        h1  = elu(self.bn4(self.c4(h8), test=test))
+        
+        # idea: not simple addition, but concatenation?
+        h = elu(self.bn3d(self.dc4(h1), test=test))
+        h = elu(self.bn2d(self.dc3(h), test=test)) , test=test))
+        h = elu(self.bn1d(self.dc2(h), test=test)) , test=test))
+        h = elu(self.bn0d(self.dc1(h), test=test)) , test=test))
+        ret=self.dc0(h) 
+        
+        return ret
+
+
+
 
 class Discriminator(chainer.Chain):
     def __init__(self):
@@ -190,15 +231,16 @@ class Discriminator(chainer.Chain):
     def __call__(self, x, test=False):
         
         h =self.c0(x)
-        h = elu(h)     # no bn because images from generator will katayotteru?
-        h = elu(self.bn1(self.c1(h), test=test))
-        h = elu(self.bn2(self.c2(h), test=test))
+        h = F.leaky_relu(h)     # no bn because images from generator will katayotteru?
+        h = F.leaky_relu(self.bn1(self.c1(h), test=test))
+        h = F.leaky_relu(self.bn2(self.c2(h), test=test))
         h = self.bn3(self.c3(h), test=test)
         return h
 
 def d_norm(dis, img1, img2):
     dx = dis(img1) - dis(img2)
-    return F.sum(F.leaky_relu(dx,slope=-1.0)) / float(dx.data.size)
+    #return F.sum(F.leaky_relu(dx,slope=-1.0)) / float(dx.data.size)
+    return F.sum(dx**2) / float(dx.data.size)
     
 
 
@@ -350,7 +392,10 @@ def train_dcgan_labeled(evol, dis, epoch0=0):
 
             good_movie=True
             prediction_movie=n_movie*[None]
-            current_movie = load_movie()
+            try:
+                current_movie = load_movie()
+            except:
+                continue
 
 
             for i in range(n_timeseries-1):
