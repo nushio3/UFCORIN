@@ -173,7 +173,7 @@ class Evolver(chainer.Chain):
         #return F.split_axis(x,[1],1)[0]+ret
         #return Variable(xp.zeros((batchsize, 1, 128,128), dtype=np.float32))
 
-class Projecter(chainer.Chain):
+class Projector(chainer.Chain):
     def __init__(self):
         super(Evolver, self).__init__(
             c0 = L.Convolution2D(1, 64, 4, stride=2, pad=1, wscale=0.02*math.sqrt(4*4*3)),
@@ -205,9 +205,9 @@ class Projecter(chainer.Chain):
         
         # idea: not simple addition, but concatenation?
         h = elu(self.bn3d(self.dc4(h1), test=test))
-        h = elu(self.bn2d(self.dc3(h), test=test)) , test=test))
-        h = elu(self.bn1d(self.dc2(h), test=test)) , test=test))
-        h = elu(self.bn0d(self.dc1(h), test=test)) , test=test))
+        h = elu(self.bn2d(self.dc3(h), test=test)) 
+        h = elu(self.bn1d(self.dc2(h), test=test)) 
+        h = elu(self.bn0d(self.dc1(h), test=test))
         ret=self.dc0(h) 
         
         return ret
@@ -334,7 +334,7 @@ def create_batch(train_offset,current_movie_in, current_movie_out):
 
 
 # map a seris of image to image at the next, using the chainer function evol
-def evolve_image(evol,imgs):
+def evolve_image(evol,proj,imgs):
     h,w=imgs[0].shape
     n = w / patch_pixelsize
     pw=patch_pixelsize
@@ -359,27 +359,32 @@ def evolve_image(evol,imgs):
     #  return ret
 
     input_val = Variable(cuda.to_gpu(np.reshape(np.concatenate(imgs), (1,n_timeseries-1,h,w))))
-    output_val = evol(input_val,test=False)
+    output_val = proj(evol(input_val,test=False),test=False)
     return np.reshape(output_val.data.get(), (h,w))
     
 
 
 
 
-def train_dcgan_labeled(evol, dis, epoch0=0):
+def train_dcgan_labeled(evol, dis, proj, epoch0=0):
     o_evol = optimizers.Adam(alpha=0.0002, beta1=0.5)
-    o_dis = optimizers.Adam(alpha=0.0002, beta1=0.5)
     o_evol.setup(evol)
+    o_dis = optimizers.Adam(alpha=0.0002, beta1=0.5)
     o_dis.setup(dis)
+    o_proj = optimizers.Adam(alpha=0.0002, beta1=0.5)
+    o_proj.setup(proj)
     if not args.fresh_start:
-        serializers.load_hdf5("%s/dcgan_model_dis.h5"%(out_model_dir),dis)
         serializers.load_hdf5("%s/dcgan_model_evol.h5"%(out_model_dir),evol)
-        serializers.load_hdf5("%s/dcgan_state_dis.h5"%(out_model_dir),o_dis)
         serializers.load_hdf5("%s/dcgan_state_evol.h5"%(out_model_dir),o_evol)
+        serializers.load_hdf5("%s/dcgan_model_dis.h5"%(out_model_dir),dis)
+        serializers.load_hdf5("%s/dcgan_state_dis.h5"%(out_model_dir),o_dis)
+        serializers.load_hdf5("%s/dcgan_model_proj.h5"%(out_model_dir),proj)
+        serializers.load_hdf5("%s/dcgan_state_proj.h5"%(out_model_dir),o_proj)
 
 
     o_evol.add_hook(chainer.optimizer.WeightDecay(0.00001))
     o_dis.add_hook(chainer.optimizer.WeightDecay(0.00001))
+    o_proj.add_hook(chainer.optimizer.WeightDecay(0.00001))
 
 
     vis_process = None
@@ -405,7 +410,7 @@ def train_dcgan_labeled(evol, dis, epoch0=0):
                     prediction_movie[i]=current_movie[i]
             if not good_movie: continue
             for i in range(n_timeseries-1,n_movie):
-                prediction_movie[i] = evolve_image(evol,prediction_movie[i-n_timeseries+1 : i])
+                prediction_movie[i] = evolve_image(evol,proj,prediction_movie[i-n_timeseries+1 : i])
 
 
 
@@ -432,10 +437,12 @@ def train_dcgan_labeled(evol, dis, epoch0=0):
                 
                 if epoch>0 or train_ctr>0:
                     print 'saving model...'
-                    serializers.save_hdf5("%s/dcgan_model_dis.h5"%(out_model_dir),dis)
                     serializers.save_hdf5("%s/dcgan_model_evol.h5"%(out_model_dir),evol)
-                    serializers.save_hdf5("%s/dcgan_state_dis.h5"%(out_model_dir),o_dis)
                     serializers.save_hdf5("%s/dcgan_state_evol.h5"%(out_model_dir),o_evol)
+                    serializers.save_hdf5("%s/dcgan_model_dis.h5"%(out_model_dir),dis)
+                    serializers.save_hdf5("%s/dcgan_state_dis.h5"%(out_model_dir),o_dis)
+                    serializers.save_hdf5("%s/dcgan_model_proj.h5"%(out_model_dir),proj)
+                    serializers.save_hdf5("%s/dcgan_state_proj.h5"%(out_model_dir),o_proj)
                     print '...saved.'
             
 
@@ -443,11 +450,13 @@ def train_dcgan_labeled(evol, dis, epoch0=0):
             movie_out = None
             movie_out_predict=None
             evol_scores = {}
+            proj_scores = {}
             matsuoka_shuzo = {}
             shuzo_evoke_timestep = []
             difficulties = ['normal','hard']
             for difficulty in difficulties:
                 evol_scores[difficulty] = [0.0]
+                proj_scores[difficulty] = [0.0]
                 matsuoka_shuzo[difficulty] = True
             if vis_process is not None:
                 vis_process.join()
@@ -479,7 +488,8 @@ def train_dcgan_labeled(evol, dis, epoch0=0):
                     movie_out = Variable(cuda.to_gpu(data_out))
                     movie_other = Variable(cuda.to_gpu(data_other))
 
-                    movie_out_predict = evol(movie_in)
+                    movie_out_predict_before = evol(movie_in)
+                    movie_out_predict = proj(movie_out)
 
                     vis_kit[difficulty] = (movie_in.data.get(),
                                           movie_out.data.get(),
@@ -495,8 +505,10 @@ def train_dcgan_labeled(evol, dis, epoch0=0):
                         yl_train = dis(movie_in,movie_out)
                         L_dis += F.softmax_cross_entropy(yl_train, Variable(xp.zeros(batchsize, dtype=np.int32)))
                     elif args.norm == 'CA':
-                        yl = d_norm(dis, movie_out, movie_out_predict)
+                        yl = d_norm(dis, movie_out, movie_out_predict_before)
+                        ylx = d_norm(dis, movie_out, movie_out_predict)
                         L_evol = yl
+                        L_proj = ylx
                         L_dis  = -yl
                         L_dis  += d_norm(dis, movie_out, movie_other)
                     else:
@@ -506,6 +518,7 @@ def train_dcgan_labeled(evol, dis, epoch0=0):
                     
     
                     evol_scores[difficulty] += [L_evol.data.get()] # np.average(F.softmax(yl).data.get()[:,0])
+                    proj_scores[difficulty] += [L_proj.data.get()] # np.average(F.softmax(yl).data.get()[:,0])
     
                     
                     # you may stop learning on normal mode.
@@ -517,22 +530,28 @@ def train_dcgan_labeled(evol, dis, epoch0=0):
                         o_dis.zero_grads()
                         L_dis.backward()
                         o_dis.update()
-                    
+                    if args.norm == 'CA':                    
+                        o_proj.zero_grads()
+                        L_proj.backward()
+                        o_proj.update()
+
                     movie_in.unchain_backward()
                     movie_out_predict.unchain_backward()
+                    movie_out_predict_before.unchain_backward()
                     movie_other.unchain_backward()
                     yl.unchain_backward()
                     L_evol.unchain_backward()
                     if args.norm == 'dcgan' or args.norm == 'CA':
                         L_dis.unchain_backward()
     
-                    sys.stdout.write('%d %6s %s: %f %f shuzo:%s\r'%(train_offset,difficulty, args.norm,
-                                                                    np.average(evol_scores['normal']), np.average(evol_scores['hard']),
+                    sys.stdout.write('%d %6s %s: %f -> %f, %f -> %f shuzo:%s\r'%(train_offset,difficulty, args.norm,
+                                                                    np.average(evol_scores['normal']), np.average(proj_scores['normal']), 
+                                                                    np.average(evol_scores['hard']),   np.average(proj_scores['hard']),
                                                                     str(shuzo_evoke_timestep[-10:])))
                     sys.stdout.flush()
 
                     # update the prediction as results of learning.
-                    prediction_movie[train_offset+n_timeseries-1] = evolve_image(evol,prediction_movie[train_offset: train_offset+n_timeseries-1])
+                    prediction_movie[train_offset+n_timeseries-1] = evolve_image(evol,proj,prediction_movie[train_offset: train_offset+n_timeseries-1])
 
                     # prevent too much learning from noisy prediction.
                     if len(evol_scores['hard'])>=3 and np.average(evol_scores['hard'][-5:-1]) > 5 * np.average(evol_scores['normal']):
@@ -540,6 +559,7 @@ def train_dcgan_labeled(evol, dis, epoch0=0):
                         # matsuoka_shuzo['hard'] = False
                         shuzo_evoke_timestep += [train_offset]
                         evol_scores['hard']=[0.0]
+                        proj_scores['hard']=[0.0]
                         for t in range(train_offset, train_offset+n_timeseries):
                             if current_movie[t] is not None:
                                 prediction_movie[t]=current_movie[t]
@@ -592,7 +612,9 @@ cuda.get_device(int(args.gpu)).use()
 
 evol = Evolver()
 dis = Discriminator()
+proj = Projector()
 evol.to_gpu()
 dis.to_gpu()
+proj.to_gpu()
 
-train_dcgan_labeled(evol,dis,epoch0=args.epoch0)
+train_dcgan_labeled(evol,dis,proj,epoch0=args.epoch0)
