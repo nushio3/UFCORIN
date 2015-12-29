@@ -218,30 +218,35 @@ class Projector(chainer.Chain):
 class Discriminator(chainer.Chain):
     def __init__(self):
         super(Discriminator, self).__init__(
-            c0 = L.Convolution2D(1, 64, 4, stride=2, pad=1, wscale=0.02*math.sqrt(4*4*3)),
+            c0a = L.Convolution2D(1, 64, 4, stride=2, pad=1, wscale=0.02*math.sqrt(4*4*3)),
+            c0b = L.Convolution2D(1, 64, 4, stride=2, pad=1, wscale=0.02*math.sqrt(4*4*3)),
             c1 = L.Convolution2D(64, 128, 4, stride=2, pad=1, wscale=0.02*math.sqrt(4*4*64)),
             c2 = L.Convolution2D(128, 256, 4, stride=2, pad=1, wscale=0.02*math.sqrt(4*4*128)),
             c3 = L.Convolution2D(256, 512, 4, stride=2, pad=1, wscale=0.02*math.sqrt(4*4*256)),
+            l4l = L.Linear(8*8*512, 2, wscale=0.02*math.sqrt(8*8*512)),
             bn0 = L.BatchNormalization(64),
             bn1 = L.BatchNormalization(128),
             bn2 = L.BatchNormalization(256),
             bn3 = L.BatchNormalization(512),
         )
         
-    def __call__(self, x, test=False):
+    def __call__(self, xa, xb, test=False):
         
-        h =self.c0(x)
-        h = F.leaky_relu(h)     # no bn because images from generator will katayotteru?
-        h = F.leaky_relu(self.bn1(self.c1(h), test=test))
-        h = F.leaky_relu(self.bn2(self.c2(h), test=test))
-        h = self.bn3(self.c3(h), test=test)
-        return h
+        h =self.c0a(xa) + self.c0b(xb)
+        h = elu(h)     # no bn because images from generator has its own scales.
+        h = elu(self.bn1(self.c1(h), test=test))
+        h = elu(self.bn2(self.c2(h), test=test))
+        h = elu(self.bn3(self.c3(h), test=test))
+        return self.l4l(h)
 
-def d_norm(dis, img1, img2):
-    dx = dis(img1) - dis(img2)
-    #return F.sum(F.leaky_relu(dx,slope=-1.0)) / float(dx.data.size)
-    return F.sum(dx**2) / float(dx.data.size)
-    
+def d_norm(flag, dis, img1, img2):
+    dx = dis(img1, img2)
+    if flag == 0:
+        return F.softmax_cross_entropy(yl, Variable(xp.zeros(batchsize, dtype=np.int32)))
+    elif flag == 1:
+        return F.softmax_cross_entropy(yl, Variable(xp.ones(batchsize, dtype=np.int32)))
+    else:
+        raise "norm flag should be either 0 / 1"
 
 
 ################################################################
@@ -505,12 +510,10 @@ def train_dcgan_labeled(evol, dis, proj, epoch0=0):
                         yl_train = dis(movie_in,movie_out)
                         L_dis += F.softmax_cross_entropy(yl_train, Variable(xp.zeros(batchsize, dtype=np.int32)))
                     elif args.norm == 'CA':
-                        yl = d_norm(dis, movie_out, movie_out_predict_before)
-                        ylx = d_norm(dis, movie_out, movie_out_predict)
-                        L_evol = yl
-                        L_proj = ylx
-                        L_dis  = -yl
-                        L_dis  += d_norm(dis, movie_out, movie_other)
+                        L_evol = d_norm(0, dis, movie_out, movie_out_predict_before)
+                        L_proj = d_norm(0, dis, movie_out, movie_out_predict)
+                        L_dis  = d_norm(1, dis, movie_out, movie_out_predict_before)
+                        L_dis  += d_norm(0, dis, movie_out, movie_other)
                     else:
                         L2norm = (movie_out - movie_out_predict)**2
                         yl = F.sum(L2norm) / L2norm.data.size
