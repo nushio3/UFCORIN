@@ -218,16 +218,14 @@ class Projector(chainer.Chain):
 class Discriminator(chainer.Chain):
     def __init__(self):
         super(Discriminator, self).__init__(
-            c0a = L.Convolution2D(1, 64, 4, stride=2, pad=1, wscale=0.02*math.sqrt(4*4*3)),
-            c0b = L.Convolution2D(1, 64, 4, stride=2, pad=1, wscale=0.02*math.sqrt(4*4*3)),
-            c1 = L.Convolution2D(64, 128, 4, stride=2, pad=1, wscale=0.02*math.sqrt(4*4*64)),
-            c2 = L.Convolution2D(128, 256, 4, stride=2, pad=1, wscale=0.02*math.sqrt(4*4*128)),
-            c3 = L.Convolution2D(256, 512, 4, stride=2, pad=1, wscale=0.02*math.sqrt(4*4*256)),
-            l4l = L.Linear(8*8*512, 2, wscale=0.02*math.sqrt(8*8*512)),
+            c0a = L.Convolution2D(1, 64, 5, stride=3, pad=0, wscale=0.02*math.sqrt(5*5*3)),
+            c0b = L.Convolution2D(1, 64, 5, stride=3, pad=0, wscale=0.02*math.sqrt(5*5*3)),
+            c1 = L.Convolution2D(64, 128, 6, stride=3, pad=0, wscale=0.02*math.sqrt(6*6*64)),
+            c2 = L.Convolution2D(128, 256, 7, stride=3, pad=0, wscale=0.02*math.sqrt(7*7*128)),
+            l4l = L.Linear(3*3*256, 2, wscale=0.02*math.sqrt(3*3*256)),
             bn0 = L.BatchNormalization(64),
             bn1 = L.BatchNormalization(128),
             bn2 = L.BatchNormalization(256),
-            bn3 = L.BatchNormalization(512),
         )
         
     def __call__(self, xa, xb, test=False):
@@ -236,7 +234,6 @@ class Discriminator(chainer.Chain):
         h = elu(h)     # no bn because images from generator has its own scales.
         h = elu(self.bn1(self.c1(h), test=test))
         h = elu(self.bn2(self.c2(h), test=test))
-        h = elu(self.bn3(self.c3(h), test=test))
         return self.l4l(h)
 
 def d_norm(flag, dis, img1, img2):
