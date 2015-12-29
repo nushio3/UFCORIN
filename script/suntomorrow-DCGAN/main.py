@@ -223,7 +223,7 @@ class Discriminator(chainer.Chain):
             c0a = L.Convolution2D(1, 100, 5, stride=3, pad=0, wscale=0.02*math.sqrt(5*5*3)),
             c0b = L.Convolution2D(1, 100, 5, stride=3, pad=0, wscale=0.02*math.sqrt(5*5*3)),
             c1 = L.Convolution2D(100, 300, 6, stride=3, pad=0, wscale=0.02*math.sqrt(6*6*100)),
-            c2 = L.Convolution2D(100, 1000, 7, stride=3, pad=0, wscale=0.02*math.sqrt(7*7*300)),
+            c2 = L.Convolution2D(300, 1000, 7, stride=3, pad=0, wscale=0.02*math.sqrt(7*7*300)),
             l4l = L.Linear(3*3*1000, 2, wscale=0.02*math.sqrt(3*3*1000)),
             bn0 = L.BatchNormalization(100),
             bn1 = L.BatchNormalization(300),
