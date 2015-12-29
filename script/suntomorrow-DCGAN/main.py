@@ -240,7 +240,7 @@ class Discriminator(chainer.Chain):
         return self.l4l(h)
 
 def d_norm(flag, dis, img1, img2):
-    dx = dis(img1, img2)
+    yl = dis(img1, img2)
     if flag == 0:
         return F.softmax_cross_entropy(yl, Variable(xp.zeros(batchsize, dtype=np.int32)))
     elif flag == 1:
@@ -299,7 +299,7 @@ def create_batch(train_offset,current_movie_in, current_movie_out):
     h,w = current_movie_in[train_offset].shape
 
     while True:
-        rnd_t = train_offset + n_timeseries-1 + int(round(np.random.normal(scale=16.0)))
+        rnd_t = train_offset + n_timeseries-1 + int(round(np.random.normal(scale=2.0)))
         if rnd_t < 0 or rnd_t >= len(current_movie_out): continue
         if current_movie_out[rnd_t] is None: continue
         break
@@ -542,7 +542,6 @@ def train_dcgan_labeled(evol, dis, proj, epoch0=0):
                     movie_out_predict.unchain_backward()
                     movie_out_predict_before.unchain_backward()
                     movie_other.unchain_backward()
-                    yl.unchain_backward()
                     L_evol.unchain_backward()
                     if args.norm == 'dcgan' or args.norm == 'CA':
                         L_dis.unchain_backward()
@@ -557,7 +556,7 @@ def train_dcgan_labeled(evol, dis, proj, epoch0=0):
                     prediction_movie[train_offset+n_timeseries-1] = evolve_image(evol,proj,prediction_movie[train_offset: train_offset+n_timeseries-1])
 
                     # prevent too much learning from noisy prediction.
-                    if len(evol_scores['hard'])>=3 and np.average(evol_scores['hard'][-5:-1]) > 5 * np.average(evol_scores['normal']):
+                    if len(evol_scores['hard'])>=10 and np.average(evol_scores['hard'][-5:-1]) > 5 * np.average(evol_scores['normal']):
                         # Zettaini, akiramennna yo!
                         # matsuoka_shuzo['hard'] = False
                         shuzo_evoke_timestep += [train_offset]
