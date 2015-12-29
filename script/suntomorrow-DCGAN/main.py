@@ -49,6 +49,8 @@ save_interval =200
 n_timeseries = 8
 
 n_movie=120
+
+
 hardmode_duration= 1
 
 
