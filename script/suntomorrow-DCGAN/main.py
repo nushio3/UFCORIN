@@ -175,7 +175,7 @@ class Evolver(chainer.Chain):
 
 class Projector(chainer.Chain):
     def __init__(self):
-        super(Evolver, self).__init__(
+        super(Projector, self).__init__(
             c0 = L.Convolution2D(1, 64, 4, stride=2, pad=1, wscale=0.02*math.sqrt(4*4*3)),
             c1 = L.Convolution2D(64, 128, 4, stride=2, pad=1, wscale=0.02*math.sqrt(4*4*64)),
             c2 = L.Convolution2D(128, 256, 4, stride=2, pad=1, wscale=0.02*math.sqrt(4*4*128)),
