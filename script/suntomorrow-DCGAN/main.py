@@ -126,7 +126,7 @@ def elu(x, alpha=1.0):
 ## Neural Networks
 ################################################################
 
-WSCALE=0.002 # 0.02
+WSCALE=0.02
 
 class Evolver(chainer.Chain):
     def __init__(self):
