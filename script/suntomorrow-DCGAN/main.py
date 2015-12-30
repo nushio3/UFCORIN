@@ -215,6 +215,7 @@ class Projector(chainer.Chain):
         h1  = elu(self.bn4(self.c4(h8), test=test))
         
         # idea: not simple addition, but concatenation?
+        h = elu(self.bn3d(self.dc4(h1), test=test))
         h = elu(self.bn2d(self.dc3(h), test=test)) + elu(self.bn2h(self.dc3h(h8), test=test))
         h = elu(self.bn1d(self.dc2(h), test=test)) + elu(self.bn1h(self.dc2h(h16), test=test))
         h = elu(self.bn0d(self.dc1(h), test=test)) + elu(self.bn0h(self.dc1h(h32), test=test))
@@ -504,6 +505,7 @@ def train_dcgan_labeled(evol, dis, proj, epoch0=0):
 
                     vis_kit[difficulty] = (movie_in.data.get(),
                                           movie_out.data.get(),
+                                          movie_out_predict_before.data.get(),
                                           movie_out_predict.data.get())
 
 
@@ -582,10 +584,10 @@ def train_dcgan_labeled(evol, dis, proj, epoch0=0):
                 for difficulty in difficulties:
                     if vis_kit[difficulty] is None:
                         continue
-                    movie_data, movie_out_data, movie_pred_data = vis_kit[difficulty]
+                    movie_data, movie_out_data, movie_pred_data, movie_proj_data = vis_kit[difficulty]
                     imgfn = '%s/batch-%s_%d_%04d.png'%(out_image_dir,difficulty, epoch,train_ctr)
                 
-                    n_col=n_timeseries+2
+                    n_col=n_timeseries+3
                     plt.rcParams['figure.figsize'] = (1.0*n_col,1.0*batchsize)
                     plt.close('all')
                 
@@ -602,8 +604,12 @@ def train_dcgan_labeled(evol, dis, proj, epoch0=0):
                         plt.subplot(batchsize,n_col,1 + ib*n_col + n_timeseries-1)
                         plt.imshow(movie_pred_data[ib,0,:,:],vmin=0,vmax=1.4)
                         plt.axis('off')
+
+                        plt.subplot(batchsize,n_col,1 + ib*n_col + n_timeseries)
+                        plt.imshow(movie_proj_data[ib,0,:,:],vmin=0,vmax=1.4)
+                        plt.axis('off')
                 
-                        plt.subplot(batchsize,n_col,1 + ib*n_col + n_timeseries+1)
+                        plt.subplot(batchsize,n_col,1 + ib*n_col + n_timeseries+2)
                         plt.imshow(movie_out_data[ib,0,:,:],vmin=0,vmax=1.4)
                         plt.axis('off')
                     
