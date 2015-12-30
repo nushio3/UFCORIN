@@ -126,23 +126,25 @@ def elu(x, alpha=1.0):
 ## Neural Networks
 ################################################################
 
+WSCALE=0.002
+
 class Evolver(chainer.Chain):
     def __init__(self):
         super(Evolver, self).__init__(
-            c0 = L.Convolution2D(n_timeseries-1, 64, 4, stride=2, pad=1, wscale=0.02*math.sqrt(4*4*3)),
-            c1 = L.Convolution2D(64, 128, 4, stride=2, pad=1, wscale=0.02*math.sqrt(4*4*64)),
-            c2 = L.Convolution2D(128, 256, 4, stride=2, pad=1, wscale=0.02*math.sqrt(4*4*128)),
-            c3 = L.Convolution2D(256, 512, 4, stride=2, pad=1, wscale=0.02*math.sqrt(4*4*256)),
-            c4 = L.Convolution2D(512, 1024, 4, stride=2, pad=1, wscale=0.02*math.sqrt(4*4*512)),
-            dc4 = L.Deconvolution2D(1024,512, 4, stride=2, pad=1, wscale=0.02*math.sqrt(4*4*1024)),
-            dc3 = L.Deconvolution2D(512, 256, 4, stride=2, pad=1, wscale=0.02*math.sqrt(4*4*512)),
-            dc2 = L.Deconvolution2D(256, 128, 4, stride=2, pad=1, wscale=0.02*math.sqrt(4*4*256)),
-            dc1 = L.Deconvolution2D(128, 64, 4, stride=2, pad=1, wscale=0.02*math.sqrt(4*4*128)),
-            dc0 = L.Deconvolution2D(64, 1, 4, stride=2, pad=1, wscale=0.02*math.sqrt(4*4*64)),
-            dc3h = L.Deconvolution2D(512, 256, 4, stride=2, pad=1, wscale=0.02*math.sqrt(4*4*512)),
-            dc2h = L.Deconvolution2D(256, 128, 4, stride=2, pad=1, wscale=0.02*math.sqrt(4*4*256)),
-            dc1h = L.Deconvolution2D(128, 64, 4, stride=2, pad=1, wscale=0.02*math.sqrt(4*4*128)),
-            dc0h = L.Deconvolution2D(64, 1, 4, stride=2, pad=1, wscale=0.02*math.sqrt(4*4*64)),
+            c0 = L.Convolution2D(n_timeseries-1, 64, 4, stride=2, pad=1, wscale=WSCALE*math.sqrt(4*4*3)),
+            c1 = L.Convolution2D(64, 128, 4, stride=2, pad=1, wscale=WSCALE*math.sqrt(4*4*64)),
+            c2 = L.Convolution2D(128, 256, 4, stride=2, pad=1, wscale=WSCALE*math.sqrt(4*4*128)),
+            c3 = L.Convolution2D(256, 512, 4, stride=2, pad=1, wscale=WSCALE*math.sqrt(4*4*256)),
+            c4 = L.Convolution2D(512, 1024, 4, stride=2, pad=1, wscale=WSCALE*math.sqrt(4*4*512)),
+            dc4 = L.Deconvolution2D(1024,512, 4, stride=2, pad=1, wscale=WSCALE*math.sqrt(4*4*1024)),
+            dc3 = L.Deconvolution2D(512, 256, 4, stride=2, pad=1, wscale=WSCALE*math.sqrt(4*4*512)),
+            dc2 = L.Deconvolution2D(256, 128, 4, stride=2, pad=1, wscale=WSCALE*math.sqrt(4*4*256)),
+            dc1 = L.Deconvolution2D(128, 64, 4, stride=2, pad=1, wscale=WSCALE*math.sqrt(4*4*128)),
+            dc0 = L.Deconvolution2D(64, 1, 4, stride=2, pad=1, wscale=WSCALE*math.sqrt(4*4*64)),
+            dc3h = L.Deconvolution2D(512, 256, 4, stride=2, pad=1, wscale=WSCALE*math.sqrt(4*4*512)),
+            dc2h = L.Deconvolution2D(256, 128, 4, stride=2, pad=1, wscale=WSCALE*math.sqrt(4*4*256)),
+            dc1h = L.Deconvolution2D(128, 64, 4, stride=2, pad=1, wscale=WSCALE*math.sqrt(4*4*128)),
+            dc0h = L.Deconvolution2D(64, 1, 4, stride=2, pad=1, wscale=WSCALE*math.sqrt(4*4*64)),
             bn1 = L.BatchNormalization(128),
             bn2 = L.BatchNormalization(256),
             bn3 = L.BatchNormalization(512),
@@ -178,16 +180,16 @@ class Evolver(chainer.Chain):
 class Projector(chainer.Chain):
     def __init__(self):
         super(Projector, self).__init__(
-            c0 = L.Convolution2D(1, 64, 4, stride=2, pad=1, wscale=0.02*math.sqrt(4*4*3)),
-            c1 = L.Convolution2D(64, 128, 4, stride=2, pad=1, wscale=0.02*math.sqrt(4*4*64)),
-            c2 = L.Convolution2D(128, 256, 4, stride=2, pad=1, wscale=0.02*math.sqrt(4*4*128)),
-            c3 = L.Convolution2D(256, 512, 4, stride=2, pad=1, wscale=0.02*math.sqrt(4*4*256)),
-            c4 = L.Convolution2D(512, 1024, 4, stride=2, pad=1, wscale=0.02*math.sqrt(4*4*512)),
-            dc4 = L.Deconvolution2D(1024,512, 4, stride=2, pad=1, wscale=0.02*math.sqrt(4*4*1024)),
-            dc3 = L.Deconvolution2D(512, 256, 4, stride=2, pad=1, wscale=0.02*math.sqrt(4*4*512)),
-            dc2 = L.Deconvolution2D(256, 128, 4, stride=2, pad=1, wscale=0.02*math.sqrt(4*4*256)),
-            dc1 = L.Deconvolution2D(128, 64, 4, stride=2, pad=1, wscale=0.02*math.sqrt(4*4*128)),
-            dc0 = L.Deconvolution2D(64, 1, 4, stride=2, pad=1, wscale=0.02*math.sqrt(4*4*64)),
+            c0 = L.Convolution2D(1, 64, 4, stride=2, pad=1, wscale=WSCALE*math.sqrt(4*4*3)),
+            c1 = L.Convolution2D(64, 128, 4, stride=2, pad=1, wscale=WSCALE*math.sqrt(4*4*64)),
+            c2 = L.Convolution2D(128, 256, 4, stride=2, pad=1, wscale=WSCALE*math.sqrt(4*4*128)),
+            c3 = L.Convolution2D(256, 512, 4, stride=2, pad=1, wscale=WSCALE*math.sqrt(4*4*256)),
+            c4 = L.Convolution2D(512, 1024, 4, stride=2, pad=1, wscale=WSCALE*math.sqrt(4*4*512)),
+            dc4 = L.Deconvolution2D(1024,512, 4, stride=2, pad=1, wscale=WSCALE*math.sqrt(4*4*1024)),
+            dc3 = L.Deconvolution2D(512, 256, 4, stride=2, pad=1, wscale=WSCALE*math.sqrt(4*4*512)),
+            dc2 = L.Deconvolution2D(256, 128, 4, stride=2, pad=1, wscale=WSCALE*math.sqrt(4*4*256)),
+            dc1 = L.Deconvolution2D(128, 64, 4, stride=2, pad=1, wscale=WSCALE*math.sqrt(4*4*128)),
+            dc0 = L.Deconvolution2D(64, 1, 4, stride=2, pad=1, wscale=WSCALE*math.sqrt(4*4*64)),
             bn1 = L.BatchNormalization(128),
             bn2 = L.BatchNormalization(256),
             bn3 = L.BatchNormalization(512),
@@ -220,11 +222,11 @@ class Projector(chainer.Chain):
 class Discriminator(chainer.Chain):
     def __init__(self):
         super(Discriminator, self).__init__(
-            c0a = L.Convolution2D(1, 100, 5, stride=3, pad=0, wscale=0.02*math.sqrt(5*5*3)),
-            c0b = L.Convolution2D(1, 100, 5, stride=3, pad=0, wscale=0.02*math.sqrt(5*5*3)),
-            c1 = L.Convolution2D(100, 300, 6, stride=3, pad=0, wscale=0.02*math.sqrt(6*6*100)),
-            c2 = L.Convolution2D(300, 1000, 7, stride=3, pad=0, wscale=0.02*math.sqrt(7*7*300)),
-            l4l = L.Linear(3*3*1000, 2, wscale=0.02*math.sqrt(3*3*1000)),
+            c0a = L.Convolution2D(1, 100, 5, stride=3, pad=0, wscale=WSCALE*math.sqrt(5*5*3)),
+            c0b = L.Convolution2D(1, 100, 5, stride=3, pad=0, wscale=WSCALE*math.sqrt(5*5*3)),
+            c1 = L.Convolution2D(100, 300, 6, stride=3, pad=0, wscale=WSCALE*math.sqrt(6*6*100)),
+            c2 = L.Convolution2D(300, 1000, 7, stride=3, pad=0, wscale=WSCALE*math.sqrt(7*7*300)),
+            l4l = L.Linear(3*3*1000, 2, wscale=WSCALE*math.sqrt(3*3*1000)),
             bn0 = L.BatchNormalization(100),
             bn1 = L.BatchNormalization(300),
             bn2 = L.BatchNormalization(1000),
