@@ -126,7 +126,7 @@ def elu(x, alpha=1.0):
 ## Neural Networks
 ################################################################
 
-WSCALE=0.002
+WSCALE=0.002 # 0.02
 
 class Evolver(chainer.Chain):
     def __init__(self):
@@ -190,6 +190,10 @@ class Projector(chainer.Chain):
             dc2 = L.Deconvolution2D(256, 128, 4, stride=2, pad=1, wscale=WSCALE*math.sqrt(4*4*256)),
             dc1 = L.Deconvolution2D(128, 64, 4, stride=2, pad=1, wscale=WSCALE*math.sqrt(4*4*128)),
             dc0 = L.Deconvolution2D(64, 1, 4, stride=2, pad=1, wscale=WSCALE*math.sqrt(4*4*64)),
+            dc3h = L.Deconvolution2D(512, 256, 4, stride=2, pad=1, wscale=WSCALE*math.sqrt(4*4*512)),
+            dc2h = L.Deconvolution2D(256, 128, 4, stride=2, pad=1, wscale=WSCALE*math.sqrt(4*4*256)),
+            dc1h = L.Deconvolution2D(128, 64, 4, stride=2, pad=1, wscale=WSCALE*math.sqrt(4*4*128)),
+            dc0h = L.Deconvolution2D(64, 1, 4, stride=2, pad=1, wscale=WSCALE*math.sqrt(4*4*64)),
             bn1 = L.BatchNormalization(128),
             bn2 = L.BatchNormalization(256),
             bn3 = L.BatchNormalization(512),
@@ -198,6 +202,9 @@ class Projector(chainer.Chain):
             bn1d = L.BatchNormalization(128),
             bn2d = L.BatchNormalization(256),
             bn3d = L.BatchNormalization(512),
+            bn0h = L.BatchNormalization(64),
+            bn1h = L.BatchNormalization(128),
+            bn2h = L.BatchNormalization(256)
         )
         
     def __call__(self, x, test=False):
@@ -208,12 +215,10 @@ class Projector(chainer.Chain):
         h1  = elu(self.bn4(self.c4(h8), test=test))
         
         # idea: not simple addition, but concatenation?
-        h = elu(self.bn3d(self.dc4(h1), test=test))
-        h = elu(self.bn2d(self.dc3(h), test=test)) 
-        h = elu(self.bn1d(self.dc2(h), test=test)) 
-        h = elu(self.bn0d(self.dc1(h), test=test))
-        ret=self.dc0(h) 
-        
+        h = elu(self.bn2d(self.dc3(h), test=test)) + elu(self.bn2h(self.dc3h(h8), test=test))
+        h = elu(self.bn1d(self.dc2(h), test=test)) + elu(self.bn1h(self.dc2h(h16), test=test))
+        h = elu(self.bn0d(self.dc1(h), test=test)) + elu(self.bn0h(self.dc1h(h32), test=test))
+        ret=self.dc0(h) + self.dc0h(h64) 
         return ret
 
 
