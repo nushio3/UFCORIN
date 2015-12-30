@@ -131,7 +131,7 @@ WSCALE=0.002
 class Evolver(chainer.Chain):
     def __init__(self):
         super(Evolver, self).__init__(
-            c0 = L.Convolution2D(n_timeseries-1, 64, 4, stride=2, pad=1, wscale=WSCALE*math.sqrt(4*4*3)),
+            c0 = L.Convolution2D(n_timeseries-1, 64, 4, stride=2, pad=1, wscale=WSCALE*math.sqrt(4*4*8)),
             c1 = L.Convolution2D(64, 128, 4, stride=2, pad=1, wscale=WSCALE*math.sqrt(4*4*64)),
             c2 = L.Convolution2D(128, 256, 4, stride=2, pad=1, wscale=WSCALE*math.sqrt(4*4*128)),
             c3 = L.Convolution2D(256, 512, 4, stride=2, pad=1, wscale=WSCALE*math.sqrt(4*4*256)),
