@@ -493,7 +493,7 @@ def train_dcgan_labeled(evol, dis, proj, epoch0=0):
                     movie_other = Variable(cuda.to_gpu(data_other))
 
                     movie_out_predict_before = evol(movie_in)
-                    movie_out_predict = proj(movie_out)
+                    movie_out_predict = proj(movie_out_predict_before)
 
                     vis_kit[difficulty] = (movie_in.data.get(),
                                           movie_out.data.get(),
@@ -512,9 +512,9 @@ def train_dcgan_labeled(evol, dis, proj, epoch0=0):
                         L_evol = d_norm(0, dis, movie_out, movie_out_predict_before)
                         L_proj = d_norm(0, dis, movie_out, movie_out_predict)
                         L_dis  = d_norm(1, dis, movie_out, movie_out_predict_before)
-                        L_dis  += d_norm(1, dis, movie_out, movie_out_predict)
+                        # L_dis  += d_norm(1, dis, movie_out, movie_out_predict)
                         L_dis  += d_norm(0, dis, movie_out, movie_other)
-                        L_dis  += d_norm(0, dis, movie_other, movie_out)
+                        # L_dis  += d_norm(0, dis, movie_other, movie_out)
                     else:
                         L2norm = (movie_out - movie_out_predict)**2
                         yl = F.sum(L2norm) / L2norm.data.size
