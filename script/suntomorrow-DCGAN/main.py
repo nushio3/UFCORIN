@@ -135,8 +135,8 @@ class Evolver(chainer.Chain):
             c1 = L.Convolution2D(64, 128, 4, stride=2, pad=1, wscale=WSCALE*math.sqrt(4*4*64)),
             c2 = L.Convolution2D(128, 256, 4, stride=2, pad=1, wscale=WSCALE*math.sqrt(4*4*128)),
             c3 = L.Convolution2D(256, 512, 4, stride=2, pad=1, wscale=WSCALE*math.sqrt(4*4*256)),
-            c4 = L.Convolution2D(512, 1024, 4, stride=2, pad=1, wscale=WSCALE*math.sqrt(4*4*512)),
-            dc4 = L.Deconvolution2D(1024,512, 4, stride=2, pad=1, wscale=WSCALE*math.sqrt(4*4*1024)),
+            c4 = L.Convolution2D(512, 1024, 8, stride=2, pad=2, wscale=WSCALE*math.sqrt(8*8*512)),
+            dc4 = L.Deconvolution2D(1024,512, 8, stride=2, pad=2, wscale=WSCALE*math.sqrt(8*8*1024)),
             dc3 = L.Deconvolution2D(512, 256, 4, stride=2, pad=1, wscale=WSCALE*math.sqrt(4*4*512)),
             dc2 = L.Deconvolution2D(256, 128, 4, stride=2, pad=1, wscale=WSCALE*math.sqrt(4*4*256)),
             dc1 = L.Deconvolution2D(128, 64, 4, stride=2, pad=1, wscale=WSCALE*math.sqrt(4*4*128)),
@@ -371,7 +371,8 @@ def evolve_image(evol,proj,imgs):
     #  return ret
 
     input_val = Variable(cuda.to_gpu(np.reshape(np.concatenate(imgs), (1,n_timeseries-1,h,w))))
-    output_val = proj(evol(input_val,test=False),test=False)
+    #output_val = proj(evol(input_val,test=False),test=False)
+    output_val = evol(input_val,test=False) # no proj
     return np.reshape(output_val.data.get(), (h,w))
     
 
@@ -477,6 +478,8 @@ def train_dcgan_labeled(evol, dis, proj, epoch0=0):
 
             # start main training routine.
             print
+            next_shuzo_scale=10.0 * (1+epoch)
+            next_shuzo_offset = 1 + abs(int(round(np.random.normal(scale=next_shuzo_scale))))
             for train_offset in range(0,n_movie-n_timeseries):
                 for difficulty in difficulties:
                     movie_clip = current_movie
@@ -501,7 +504,7 @@ def train_dcgan_labeled(evol, dis, proj, epoch0=0):
                     movie_other = Variable(cuda.to_gpu(data_other))
 
                     movie_out_predict_before = evol(movie_in)
-                    movie_out_predict = proj(movie_out_predict_before)
+                    movie_out_predict = proj(movie_out_predict_before) # no proj
 
                     vis_kit[difficulty] = (movie_in.data.get(),
                                           movie_out.data.get(),
@@ -521,9 +524,9 @@ def train_dcgan_labeled(evol, dis, proj, epoch0=0):
                         L_evol = d_norm(0, dis, movie_out, movie_out_predict_before)
                         L_proj = d_norm(0, dis, movie_out, movie_out_predict)
                         L_dis  = d_norm(1, dis, movie_out, movie_out_predict_before)
-                        L_dis  += d_norm(1, dis, movie_out, movie_out_predict)
+                        # L_dis  += d_norm(1, dis, movie_out, movie_out_predict)
                         L_dis  += d_norm(0, dis, movie_out, movie_other)
-                        L_dis  += d_norm(0, dis, movie_other, movie_out)
+                        # L_dis  += d_norm(0, dis, movie_other, movie_out)
                     else:
                         L2norm = (movie_out - movie_out_predict)**2
                         yl = F.sum(L2norm) / L2norm.data.size
@@ -534,16 +537,16 @@ def train_dcgan_labeled(evol, dis, proj, epoch0=0):
                     proj_scores[difficulty] += [L_proj.data.get()] # np.average(F.softmax(yl).data.get()[:,0])
     
                     
-                    # you may stop learning on normal mode.
-                    o_evol.zero_grads()
-                    L_evol.backward()
-                    o_evol.update()
+                    # stop learning on normal mode.
+                    if difficulty == 'hard':
+                        o_evol.zero_grads()
+                        L_evol.backward()
+                        o_evol.update()
                     
-                    if args.norm == 'dcgan' or args.norm == 'CA':
                         o_dis.zero_grads()
                         L_dis.backward()
                         o_dis.update()
-                    if args.norm == 'CA':                    
+
                         o_proj.zero_grads()
                         L_proj.backward()
                         o_proj.update()
@@ -566,7 +569,9 @@ def train_dcgan_labeled(evol, dis, proj, epoch0=0):
                     prediction_movie[train_offset+n_timeseries-1] = evolve_image(evol,proj,prediction_movie[train_offset: train_offset+n_timeseries-1])
 
                     # prevent too much learning from noisy prediction.
-                    if len(evol_scores['hard'])>=10 and np.average(evol_scores['hard'][-5:-1]) > 5 * np.average(evol_scores['normal']):
+                    # if len(evol_scores['hard'])>=10 and np.average(evol_scores['hard'][-5:-1]) > 5 * np.average(evol_scores['normal']):
+                    if train_offset == next_shuzo_offset:
+                        next_shuzo_offset = train_offset + 1 + abs(int(round(np.random.normal(scale=next_shuzo_scale))))
                         # Zettaini, akiramennna yo!
                         # matsuoka_shuzo['hard'] = False
                         shuzo_evoke_timestep += [train_offset]
