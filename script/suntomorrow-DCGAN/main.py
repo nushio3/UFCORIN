@@ -1,11 +1,10 @@
 #!/usr/bin/env python
 
-import pickle,argparse,os,subprocess,sys
+import pickle,argparse,os,subprocess,sys,math
 import numpy as np
 from PIL import Image
 from StringIO import StringIO
 from multiprocessing import Process
-import math
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
@@ -38,7 +37,7 @@ parser.add_argument('--fresh-start', action='store_true',
                     help='Start simulation anew')
 args = parser.parse_args()
 
-
+global epoch
 nz = 100          # # of dim for final layer
 batchsize=25
 patch_pixelsize=128
@@ -236,15 +235,36 @@ class Discriminator(chainer.Chain):
             bn0 = L.BatchNormalization(100),
             bn1 = L.BatchNormalization(300),
             bn2 = L.BatchNormalization(1000),
+
+
+
+            c0a_2 = L.Convolution2D(3, 64, 4, stride=2, pad=1, wscale=0.02*math.sqrt(4*4*3)),
+            c0b_2 = L.Convolution2D(3, 64, 4, stride=2, pad=1, wscale=0.02*math.sqrt(4*4*3)),
+            c1_2 = L.Convolution2D(64, 128, 4, stride=2, pad=1, wscale=0.02*math.sqrt(4*4*64)),
+            c2_2 = L.Convolution2D(128, 256, 4, stride=2, pad=1, wscale=0.02*math.sqrt(4*4*128)),
+            c3_2 = L.Convolution2D(256, 512, 4, stride=2, pad=1, wscale=0.02*math.sqrt(4*4*256)),
+            l4l_2 = L.Linear(6*6*512, 2, wscale=0.02*math.sqrt(6*6*512)),
+            bn0_2 = L.BatchNormalization(64),
+            bn1_2 = L.BatchNormalization(128),
+            bn2_2 = L.BatchNormalization(256),
+            bn3_2 = L.BatchNormalization(512),
         )
         
     def __call__(self, xa, xb, test=False):
         
-        h =self.c0a(xa) + self.c0b(xb)
+        h =self.c0a(F.dropout(xa)) + self.c0b(F.dropout(xb))
         h = elu(h)     # no bn because images from generator has its own scales.
-        h = elu(self.bn1(self.c1(h), test=test))
-        h = elu(self.bn2(self.c2(h), test=test))
-        return self.l4l(h)
+        h = elu(self.bn1(self.c1(F.dropout(h)), test=test))
+        h_3 = elu(self.bn2(self.c2(F.dropout(h)), test=test))
+
+        h = self.c0a_2(F.dropout(xa)) + self.c0b_2(F.dropout(xb)) 
+        h = elu(h)  
+        h = elu(self.bn1_2(self.c1_2(F.dropout(h)), test=test))
+        h = elu(self.bn2_2(self.c2_2(F.dropout(h)), test=test))
+        h_2 = elu(self.bn3_2(self.c3_2(F.dropout(h)), test=test))
+        l = self.l4l(F.dropout(h_3)) + self.l4l_2(F.dropout(h_2))
+        return l
+
 
 def d_norm(flag, dis, img1, img2):
     yl = dis(img1, img2)
@@ -297,7 +317,7 @@ def load_movie():
 global coord_image
 coord_image=None
 def create_batch(train_offset,current_movie_in, current_movie_out):
-    global coord_image
+    global coord_image, epoch
     for t in range(n_timeseries):
         if current_movie_in[t+train_offset] is None:
             return None
@@ -306,7 +326,7 @@ def create_batch(train_offset,current_movie_in, current_movie_out):
     h,w = current_movie_in[train_offset].shape
 
     while True:
-        rnd_t = train_offset + n_timeseries-1 + int(round(np.random.normal(scale=2.0)))
+        rnd_t = train_offset + n_timeseries-1 + int(round(np.random.normal(scale=2.0 + 20.0 * math.atan(0.1*epoch))))
         if rnd_t < 0 or rnd_t >= len(current_movie_out): continue
         if current_movie_out[rnd_t] is None: continue
         break
@@ -380,6 +400,7 @@ def evolve_image(evol,proj,imgs):
 
 
 def train_dcgan_labeled(evol, dis, proj, epoch0=0):
+    global epoch
     o_evol = optimizers.Adam(alpha=0.0002, beta1=0.5)
     o_evol.setup(evol)
     o_dis = optimizers.Adam(alpha=0.0002, beta1=0.5)
@@ -467,14 +488,16 @@ def train_dcgan_labeled(evol, dis, proj, epoch0=0):
             matsuoka_shuzo = {}
             shuzo_evoke_timestep = []
             difficulties = ['normal','hard']
+            vis_kit = {}
             for difficulty in difficulties:
                 evol_scores[difficulty] = [0.0]
                 proj_scores[difficulty] = [0.0]
                 matsuoka_shuzo[difficulty] = True
+                vis_kit[difficulty] = None
+            matsuoka_shuzo['normal'] = False # dameda, dameda.... Akirameyou....
             if vis_process is not None:
                 vis_process.join()
                 vis_process = None
-            vis_kit = {}
 
             # start main training routine.
             print
