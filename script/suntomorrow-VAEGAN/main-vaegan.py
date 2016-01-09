@@ -38,11 +38,18 @@ zh=15
 batchsize=1
 n_epoch=10000
 n_train=200000
-image_save_interval = 1
+image_save_interval = 200
 
 
 def average(x):
     return F.sum(x/x.data.size)
+
+def dual_log(scale, x):
+    x2 = x/scale
+    #not implemented error!
+    #return F.where(x>0,F.log(x2+1),-F.log(1-x2))
+    return np.log(1+np.maximum(0,x2))-np.log(1+np.maximum(0,-x2))
+
 
 class ELU(function.Function):
 
@@ -187,7 +194,8 @@ def load_image():
             cmd = 'aws s3 cp "s3://sdo/aia193/720s-x1024/{:04}/{:02}/{:02}/{:02}{:02}.npz" work/img.npz --region us-west-2 --quiet'.format(year,month,day,hour,minu)
             print(cmd)
             subprocess.call(cmd, shell=True)
-            return np.reshape(np.load('work/img.npz')['img'], (1,1,1024,1024))
+            ret = dual_log(500, np.load('work/img.npz')['img'])
+            return np.reshape(ret, (1,1,1024,1024))
         except:
             continue
 
@@ -250,7 +258,7 @@ def train_vaegan_labeled(gen, enc, dis, epoch0=0):
             yl_prior  = dis(x_prior)
             yl_dislike = dis(x_vae, compare=x_train)
 
-            l_prior = F.sum(F.sum(z_enc**2,axis=1) - nz)**2
+            l_prior = average(F.sum(z_enc**2,axis=1) - nz)**2
 
             L_gen  = F.softmax_cross_entropy(yl_vae, Variable(xp.zeros(batchsize, dtype=np.int32)))
             L_gen += F.softmax_cross_entropy(yl_prior, Variable(xp.zeros(batchsize, dtype=np.int32)))
@@ -264,7 +272,9 @@ def train_vaegan_labeled(gen, enc, dis, epoch0=0):
             L_dis +=   F.softmax_cross_entropy(yl_vae, Variable(xp.ones(batchsize , dtype=np.int32)))           
             L_dis +=   F.softmax_cross_entropy(yl_prior, Variable(xp.ones(batchsize , dtype=np.int32)))           
             
-            #print "forward done"
+            for x in [yl_train, yl_vae, yl_prior]:
+                print x.data.get()
+            print [x.data.get() for x in [L_gen, L_enc, L_dis, yl_dislike, l_prior]]
 
             o_gen.zero_grads()
             L_gen.backward()
@@ -283,20 +293,20 @@ def train_vaegan_labeled(gen, enc, dis, epoch0=0):
             L_dis.unchain_backward()
             
             #print "backward done"
-
-            if i%image_save_interval==0:
-                plt.rcParams['figure.figsize'] = (48.0,16.0)
+            if True:
+                plt.rcParams['figure.figsize'] = (36.0,12.0)
                 plt.clf()
-                plt.subplot(3,1,1)
-                plt.imshow(x_train.data.get()[0,0])
-                plt.axis('off')
-                plt.subplot(3,1,2)
-                plt.imshow(x_vae.data.get()[0,0])
-                plt.axis('off')
-                plt.subplot(3,1,3)
-                plt.imshow(x_prior.data.get()[0,0])
-                plt.axis('off')
-                plt.savefig('%s/vis_%d_%d.png'%(out_image_dir, epoch,i))
+                plt.subplot(1,3,1)
+                plt.imshow(x_train.data.get()[0,0], vmin=0.0, vmax=2.0)
+                plt.subplot(1,3,2)
+                plt.imshow(x_vae.data.get()[0,0],vmin=0.0,  vmax=2.0)
+                plt.subplot(1,3,3)
+                plt.imshow(x_prior.data.get()[0,0], vmin=0.0, vmax=2.0)
+                fn0 = '%s/latest.png'%(out_image_dir)
+                fn1 = '%s/vis_%02d_%06d.png'%(out_image_dir, epoch,i)
+                plt.savefig(fn0)
+                if i%image_save_interval==0:
+                    subprocess.call("cp {} {}".format(fn0,fn1), shell=True)
                 
         serializers.save_hdf5("%s/vaegan_model_dis_%d.h5"%(out_model_dir, epoch),dis)
         serializers.save_hdf5("%s/vaegan_state_dis_%d.h5"%(out_model_dir, epoch),o_dis)
