@@ -1,11 +1,12 @@
-#!/usr/bin/env python3
-import pickle
+#!/usr/bin/env python
+import pickle,subprocess
 import numpy as np
-from PIL import Image
 import os
-from StringIO import StringIO
 import math
-import pylab
+import matplotlib
+matplotlib.use('Agg')
+import matplotlib.pyplot as plt
+
 
 
 import chainer
@@ -37,7 +38,7 @@ zh=15
 batchsize=1
 n_epoch=10000
 n_train=200000
-image_save_interval = 50000
+image_save_interval = 1
 
 
 def average(x):
@@ -119,7 +120,7 @@ class Generator(chainer.Chain):
 
 class Encoder(chainer.Chain):
     def __init__(self):
-        super(Discriminator, self).__init__(
+        super(Encoder, self).__init__(
             c0 = L.Convolution2D(1, 64, 4, stride=2, pad=1, wscale=0.02*math.sqrt(4*4*3)),
             c1 = L.Convolution2D(64, 128, 4, stride=2, pad=1, wscale=0.02*math.sqrt(4*4*64)),
             c2 = L.Convolution2D(128, 256, 4, stride=2, pad=1, wscale=0.02*math.sqrt(4*4*128)),
@@ -133,6 +134,7 @@ class Encoder(chainer.Chain):
         )
         
     def __call__(self, x, test=False):
+        print x.data.shape
         h = elu(self.c0(x))     # no bn because images from generator will katayotteru?
         h = elu(self.bn1(self.c1(h), test=test))
         h = elu(self.bn2(self.c2(h), test=test))
@@ -143,7 +145,7 @@ class Encoder(chainer.Chain):
 class Discriminator(chainer.Chain):
     def __init__(self):
         super(Discriminator, self).__init__(
-            c0 = L.Convolution2D(3, 64, 4, stride=2, pad=1, wscale=0.02*math.sqrt(4*4*3)),
+            c0 = L.Convolution2D(1, 64, 4, stride=2, pad=1, wscale=0.02*math.sqrt(4*4*3)),
             c1 = L.Convolution2D(64, 128, 4, stride=2, pad=1, wscale=0.02*math.sqrt(4*4*64)),
             c2 = L.Convolution2D(128, 256, 4, stride=2, pad=1, wscale=0.02*math.sqrt(4*4*128)),
             c3 = L.Convolution2D(256, 512, 4, stride=2, pad=1, wscale=0.02*math.sqrt(4*4*256)),
@@ -159,7 +161,7 @@ class Discriminator(chainer.Chain):
         h = elu(self.bn1(self.c1(h), test=test))
         h = elu(self.bn2(self.c2(h), test=test))
         h = elu(self.bn3(self.c3(h), test=test))
-        if compare:
+        if compare is not None:
             h2 = elu(self.c0(compare))            
             h2 = elu(self.bn1(self.c1(h2), test=test))
             h2 = elu(self.bn2(self.c2(h2), test=test))
@@ -174,15 +176,20 @@ class Discriminator(chainer.Chain):
 
 def load_image():
     while True:
-        year  = 2011 + np.random.randint(4)
-        month = 1 + np.random.randint(12)
-        day   = 1 + np.random.randint(32)
-        hour  = np.random.randint(24)
-        minu  = np.random.randint(5)*12
+        try:
+            year  = 2011 + np.random.randint(4)
+            month = 1 + np.random.randint(12)
+            day   = 1 + np.random.randint(32)
+            hour  = np.random.randint(24)
+            minu  = np.random.randint(5)*12
     
-        subprocess.call('rm work/*',shell=True)
-        subprocess.call('aws s3 cp "s3://sdo/aia193/720s-x1024/{:04}/{:02}/{:02}/{:02}{:02}.npz" work/img.npz --region us-west-2 --quiet'.format(year,month,day,hour,minu), shell=True)
-        return np.load('img.npz')['img']
+            subprocess.call('rm work/*',shell=True)
+            cmd = 'aws s3 cp "s3://sdo/aia193/720s-x1024/{:04}/{:02}/{:02}/{:02}{:02}.npz" work/img.npz --region us-west-2 --quiet'.format(year,month,day,hour,minu)
+            print(cmd)
+            subprocess.call(cmd, shell=True)
+            return np.reshape(np.load('work/img.npz')['img'], (1,1,1024,1024))
+        except:
+            continue
 
 def position_signal(i,w):
     ww = w/2
@@ -225,7 +232,7 @@ def train_vaegan_labeled(gen, enc, dis, epoch0=0):
                 for x in range (zw):
                     z_stripe = z_prior[:,:,y,x]
                     z_norm = np.sum(z_stripe**2)
-                    z_stripe *= np.sqrt(zn / z_norm)
+                    z_stripe *= np.sqrt(nz / z_norm)
                     z_prior[:,:,y,x] = z_stripe
                     z_signal[:,0,y,x] = position_signal(x, zw)
                     z_signal[:,1,y,x] = position_signal(y, zh)
@@ -243,7 +250,7 @@ def train_vaegan_labeled(gen, enc, dis, epoch0=0):
             yl_prior  = dis(x_prior)
             yl_dislike = dis(x_vae, compare=x_train)
 
-            l_prior = F.sum(F.sum(z_enc**2,axis=1) - nz)**2)
+            l_prior = F.sum(F.sum(z_enc**2,axis=1) - nz)**2
 
             L_gen  = F.softmax_cross_entropy(yl_vae, Variable(xp.zeros(batchsize, dtype=np.int32)))
             L_gen += F.softmax_cross_entropy(yl_prior, Variable(xp.zeros(batchsize, dtype=np.int32)))
@@ -271,32 +278,33 @@ def train_vaegan_labeled(gen, enc, dis, epoch0=0):
             L_dis.backward()
             o_dis.update()
             
-            sum_l_gen += L_gen.data.get()
-            sum_l_dis += L_dis.data.get()
+            L_gen.unchain_backward()
+            L_enc.unchain_backward()
+            L_dis.unchain_backward()
             
             #print "backward done"
 
             if i%image_save_interval==0:
-                pylab.rcParams['figure.figsize'] = (16.0,16.0)
-                pylab.clf()
-                vissize = 100
-                z = zvis
-                z[50:,:] = (xp.random.uniform(-1, 1, (50, nz), dtype=np.float32))
-                z = Variable(z)
-                x = gen(z, test=True)
-                x = x.data.get()
-                for i_ in range(100):
-                    tmp = ((np.vectorize(clip_img)(x[i_,:,:,:])+1)/2).transpose(1,2,0)
-                    pylab.subplot(10,10,i_+1)
-                    pylab.imshow(tmp)
-                    pylab.axis('off')
-                pylab.savefig('%s/vis_%d_%d.png'%(out_image_dir, epoch,i))
+                plt.rcParams['figure.figsize'] = (48.0,16.0)
+                plt.clf()
+                plt.subplot(3,1,1)
+                plt.imshow(x_train.data.get()[0,0])
+                plt.axis('off')
+                plt.subplot(3,1,2)
+                plt.imshow(x_vae.data.get()[0,0])
+                plt.axis('off')
+                plt.subplot(3,1,3)
+                plt.imshow(x_prior.data.get()[0,0])
+                plt.axis('off')
+                plt.savefig('%s/vis_%d_%d.png'%(out_image_dir, epoch,i))
                 
         serializers.save_hdf5("%s/vaegan_model_dis_%d.h5"%(out_model_dir, epoch),dis)
-        serializers.save_hdf5("%s/vaegan_model_gen_%d.h5"%(out_model_dir, epoch),gen)
         serializers.save_hdf5("%s/vaegan_state_dis_%d.h5"%(out_model_dir, epoch),o_dis)
+        serializers.save_hdf5("%s/vaegan_model_gen_%d.h5"%(out_model_dir, epoch),gen)
         serializers.save_hdf5("%s/vaegan_state_gen_%d.h5"%(out_model_dir, epoch),o_gen)
-        print 'epoch end', epoch, sum_l_gen/n_train, sum_l_dis/n_train
+        serializers.save_hdf5("%s/vaegan_model_enc_%d.h5"%(out_model_dir, epoch),enc)
+        serializers.save_hdf5("%s/vaegan_state_enc_%d.h5"%(out_model_dir, epoch),o_enc)
+        print('epoch end', epoch)
 
 
 
