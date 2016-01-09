@@ -132,7 +132,7 @@ class Encoder(chainer.Chain):
             c1 = L.Convolution2D(64, 128, 4, stride=2, pad=1, wscale=0.02*math.sqrt(4*4*64)),
             c2 = L.Convolution2D(128, 256, 4, stride=2, pad=1, wscale=0.02*math.sqrt(4*4*128)),
             c3 = L.Convolution2D(256, 512, 4, stride=2, pad=1, wscale=0.02*math.sqrt(4*4*256)),
-            cz = L.Convolution2D(512, nz , 8, stride=4, wscale=1.0*math.sqrt(8*8*512)),
+            cz = L.Convolution2D(512, nz , 8, stride=4, wscale=0.02*math.sqrt(8*8*512)),
 
             bn0 = L.BatchNormalization(64),
             bn1 = L.BatchNormalization(128),
@@ -260,21 +260,34 @@ def train_vaegan_labeled(gen, enc, dis, epoch0=0):
 
             l_prior = average(F.sum(z_enc**2,axis=1) - nz)**2
 
-            L_gen  = F.softmax_cross_entropy(yl_vae, Variable(xp.zeros(batchsize, dtype=np.int32)))
-            L_gen += F.softmax_cross_entropy(yl_prior, Variable(xp.zeros(batchsize, dtype=np.int32)))
-            L_gen += yl_dislike
+            print average(F.sum(z_prior**2,axis=1) - nz).data.get()
+            print average(F.sum(z_enc**2,axis=1) - nz).data.get()
 
-            L_enc  = F.softmax_cross_entropy(yl_vae, Variable(xp.zeros(batchsize, dtype=np.int32)))
-            L_enc += l_prior
-            L_enc += yl_dislike
+            train_is_genuine = F.softmax_cross_entropy(yl_train, Variable(xp.zeros(batchsize, dtype=np.int32)))
+            vae_is_genuine   = F.softmax_cross_entropy(yl_vae, Variable(xp.zeros(batchsize, dtype=np.int32)))
+            prior_is_genuine= F.softmax_cross_entropy(yl_prior, Variable(xp.zeros(batchsize, dtype=np.int32)))
 
-            L_dis  = 2*F.softmax_cross_entropy(yl_train, Variable(xp.zeros(batchsize, dtype=np.int32)))
-            L_dis +=   F.softmax_cross_entropy(yl_vae, Variable(xp.ones(batchsize , dtype=np.int32)))           
-            L_dis +=   F.softmax_cross_entropy(yl_prior, Variable(xp.ones(batchsize , dtype=np.int32)))           
+            train_is_fake = F.softmax_cross_entropy(yl_train, Variable(xp.ones(batchsize, dtype=np.int32)))
+            vae_is_fake   = F.softmax_cross_entropy(yl_vae, Variable(xp.ones(batchsize, dtype=np.int32)))
+            prior_is_fake = F.softmax_cross_entropy(yl_prior, Variable(xp.ones(batchsize, dtype=np.int32)))
             
-            for x in [yl_train, yl_vae, yl_prior]:
-                print x.data.get()
-            print [x.data.get() for x in [L_gen, L_enc, L_dis, yl_dislike, l_prior]]
+            
+
+            L_gen  = prior_is_genuine + vae_is_genuine + yl_dislike
+
+            L_enc  = vae_is_genuine + l_prior + yl_dislike
+
+            L_dis  = 2*train_is_genuine + vae_is_fake + prior_is_fake
+            
+            for x in ['yl_train', 'yl_vae', 'yl_prior', 'yl_dislike', 'train_is_genuine', 'train_is_fake', 'vae_is_genuine', 'vae_is_fake', 'prior_is_genuine', 'prior_is_fake', 'L_gen', 'L_enc', 'L_dis']:
+                print x+":",
+                vx = eval(x.data.get())
+                if vx.size==1:
+                    print float(vx),
+                else:
+                    print vx,
+                
+            print
 
             o_gen.zero_grads()
             L_gen.backward()
@@ -302,9 +315,11 @@ def train_vaegan_labeled(gen, enc, dis, epoch0=0):
                 plt.imshow(x_vae.data.get()[0,0],vmin=0.0,  vmax=2.0)
                 plt.subplot(1,3,3)
                 plt.imshow(x_prior.data.get()[0,0], vmin=0.0, vmax=2.0)
-                fn0 = '%s/latest.png'%(out_image_dir)
+                fn0 = '%s/tmp.png'%(out_image_dir)
+                fn2 = '%s/latest.png'%(out_image_dir)
                 fn1 = '%s/vis_%02d_%06d.png'%(out_image_dir, epoch,i)
                 plt.savefig(fn0)
+                subprocess.call("cp {} {}".format(fn0,fn2), shell=True)
                 if i%image_save_interval==0:
                     subprocess.call("cp {} {}".format(fn0,fn1), shell=True)
                 
