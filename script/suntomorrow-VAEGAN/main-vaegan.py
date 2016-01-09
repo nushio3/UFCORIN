@@ -33,8 +33,8 @@ out_model_dir = './out_models'
 
 nz = 100          # # of dim for Z
 n_signal = 2 # # of signal
-zw=15 # size of in-vivo z patch
-zh=15
+zw=29 # size of in-vivo z patch
+zh=29
 img_w=1024 # size of the image
 img_h=1024
 
@@ -108,8 +108,8 @@ def elu(x, alpha=1.0):
 class Generator(chainer.Chain):
     def __init__(self):
         super(Generator, self).__init__(
-            dc0z = L.Deconvolution2D(nz, 512, 8, stride=4, wscale=0.02*math.sqrt(nz)),
-            dc0s = L.Deconvolution2D(n_signal, 512, 8, stride=4, wscale=0.02*math.sqrt(n_signal)),
+            dc0z = L.Deconvolution2D(nz, 512, 8, stride=2, wscale=0.02*math.sqrt(nz)),
+            dc0s = L.Deconvolution2D(n_signal, 512, 8, stride=2, wscale=0.02*math.sqrt(n_signal)),
             dc1 = L.Deconvolution2D(512, 256, 4, stride=2, pad=1, wscale=0.02*math.sqrt(4*4*512)),
             dc2 = L.Deconvolution2D(256, 128, 4, stride=2, pad=1, wscale=0.02*math.sqrt(4*4*256)),
             dc3 = L.Deconvolution2D(128, 64, 4, stride=2, pad=1, wscale=0.02*math.sqrt(4*4*128)),
@@ -135,7 +135,7 @@ class Encoder(chainer.Chain):
             c1 = L.Convolution2D(64, 128, 4, stride=2, pad=1, wscale=0.02*math.sqrt(4*4*64)),
             c2 = L.Convolution2D(128, 256, 4, stride=2, pad=1, wscale=0.02*math.sqrt(4*4*128)),
             c3 = L.Convolution2D(256, 512, 4, stride=2, pad=1, wscale=0.02*math.sqrt(4*4*256)),
-            cz = L.Convolution2D(512, nz , 8, stride=4, wscale=0.02*math.sqrt(8*8*512)),
+            cz = L.Convolution2D(512, nz , 8, stride=2, wscale=0.02*math.sqrt(8*8*512)),
 
             bn0 = L.BatchNormalization(64),
             bn1 = L.BatchNormalization(128),
@@ -169,7 +169,7 @@ class Discriminator(chainer.Chain):
             c1 = L.Convolution2D(32, 128, 4, stride=2, pad=1, wscale=0.02*math.sqrt(4*4*32)),
             c2 = L.Convolution2D(128, 256, 4, stride=2, pad=1, wscale=0.02*math.sqrt(4*4*128)),
             c3 = L.Convolution2D(256, 512, 4, stride=2, pad=1, wscale=0.02*math.sqrt(4*4*256)),
-            cz = L.Convolution2D(512, 2, 8, stride=4,wscale=0.02*math.sqrt(8*8*512)),
+            cz = L.Convolution2D(512, 2, 8, stride=2,wscale=0.02*math.sqrt(8*8*512)),
 
             bn0 = L.BatchNormalization(32),
             bn1 = L.BatchNormalization(128),
