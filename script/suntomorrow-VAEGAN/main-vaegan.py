@@ -132,7 +132,7 @@ class Encoder(chainer.Chain):
             c1 = L.Convolution2D(64, 128, 4, stride=2, pad=1, wscale=0.02*math.sqrt(4*4*64)),
             c2 = L.Convolution2D(128, 256, 4, stride=2, pad=1, wscale=0.02*math.sqrt(4*4*128)),
             c3 = L.Convolution2D(256, 512, 4, stride=2, pad=1, wscale=0.02*math.sqrt(4*4*256)),
-            cz = L.Convolution2D(512, nz , 8, stride=4, wscale=0.02*math.sqrt(8*8*512)),
+            cz = L.Convolution2D(512, nz , 8, stride=4, wscale=0.002*math.sqrt(8*8*512)),
 
             bn0 = L.BatchNormalization(64),
             bn1 = L.BatchNormalization(128),
@@ -156,7 +156,7 @@ class Discriminator(chainer.Chain):
             c1 = L.Convolution2D(64, 128, 4, stride=2, pad=1, wscale=0.02*math.sqrt(4*4*64)),
             c2 = L.Convolution2D(128, 256, 4, stride=2, pad=1, wscale=0.02*math.sqrt(4*4*128)),
             c3 = L.Convolution2D(256, 512, 4, stride=2, pad=1, wscale=0.02*math.sqrt(4*4*256)),
-            cz = L.Convolution2D(512, 2, 8, stride=4,wscale=0.02*math.sqrt(6*6*512)),
+            cz = L.Convolution2D(512, 2, 8, stride=4,wscale=0.02*math.sqrt(8*8*512)),
             bn0 = L.BatchNormalization(64),
             bn1 = L.BatchNormalization(128),
             bn2 = L.BatchNormalization(256),
@@ -176,7 +176,8 @@ class Discriminator(chainer.Chain):
             
             return average((h-h2)**2)
 
-        l = F.sum(self.cz(h),axis=(2,3))
+        h=self.cz(h)
+        l = F.sum(h,axis=(2,3))/(h.data.size / 2)
         return l
 
 
@@ -260,8 +261,6 @@ def train_vaegan_labeled(gen, enc, dis, epoch0=0):
 
             l_prior = average(F.sum(z_enc**2,axis=1) - nz)**2
 
-            print average(F.sum(z_prior**2,axis=1) - nz).data.get()
-            print average(F.sum(z_enc**2,axis=1) - nz).data.get()
 
             train_is_genuine = F.softmax_cross_entropy(yl_train, Variable(xp.zeros(batchsize, dtype=np.int32)))
             vae_is_genuine   = F.softmax_cross_entropy(yl_vae, Variable(xp.zeros(batchsize, dtype=np.int32)))
@@ -281,11 +280,11 @@ def train_vaegan_labeled(gen, enc, dis, epoch0=0):
             
             for x in ['yl_train', 'yl_vae', 'yl_prior', 'yl_dislike', 'train_is_genuine', 'train_is_fake', 'vae_is_genuine', 'vae_is_fake', 'prior_is_genuine', 'prior_is_fake', 'L_gen', 'L_enc', 'L_dis']:
                 print x+":",
-                vx = eval(x.data.get())
+                vx = eval(x).data.get()
                 if vx.size==1:
                     print float(vx),
                 else:
-                    print vx,
+                    print vx,' ',
                 
             print
 
