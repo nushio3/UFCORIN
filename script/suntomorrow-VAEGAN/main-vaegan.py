@@ -35,6 +35,9 @@ nz = 100          # # of dim for Z
 n_signal = 2 # # of signal
 zw=15 # size of in-vivo z patch
 zh=15
+img_w=1024 # size of the image
+img_h=1024
+
 batchsize=1
 n_epoch=10000
 n_train=1000
@@ -141,35 +144,47 @@ class Encoder(chainer.Chain):
         )
         
     def __call__(self, x, test=False):
-        print x.data.shape
         h = elu(self.c0(x))     # no bn because images from generator will katayotteru?
         h = elu(self.bn1(self.c1(h), test=test))
         h = elu(self.bn2(self.c2(h), test=test))
         h = elu(self.bn3(self.c3(h), test=test))
         return self.cz(h)
 
+global coord_image
+coord_image = np.zeros((1,1,img_h, img_w), dtype=np.float32)
+
+for iy in range(img_h):
+    for ix in range(img_w):
+        x = 2*float(ix - img_w/2)/img_w
+        y = 2*float(iy - img_h/2)/img_h
+        coord_image[0,0,iy,ix] = x**2 + y**2
+x_signal=Variable(cuda.to_gpu(coord_image))
+
 
 class Discriminator(chainer.Chain):
     def __init__(self):
         super(Discriminator, self).__init__(
-            c0 = L.Convolution2D(1, 64, 4, stride=2, pad=1, wscale=0.02*math.sqrt(4*4*3)),
-            c1 = L.Convolution2D(64, 128, 4, stride=2, pad=1, wscale=0.02*math.sqrt(4*4*64)),
+            c0 = L.Convolution2D(1, 32, 4, stride=2, pad=1, wscale=0.02*math.sqrt(4*4*1)),
+            c0s= L.Convolution2D(1, 32, 4, stride=2, pad=1, wscale=0.02*math.sqrt(4*4*1)),
+            c1 = L.Convolution2D(32, 128, 4, stride=2, pad=1, wscale=0.02*math.sqrt(4*4*32)),
             c2 = L.Convolution2D(128, 256, 4, stride=2, pad=1, wscale=0.02*math.sqrt(4*4*128)),
             c3 = L.Convolution2D(256, 512, 4, stride=2, pad=1, wscale=0.02*math.sqrt(4*4*256)),
             cz = L.Convolution2D(512, 2, 8, stride=4,wscale=0.02*math.sqrt(8*8*512)),
-            bn0 = L.BatchNormalization(64),
+
+            bn0 = L.BatchNormalization(32),
             bn1 = L.BatchNormalization(128),
             bn2 = L.BatchNormalization(256),
             bn3 = L.BatchNormalization(512),
         )
         
     def __call__(self, x, test=False, compare=None):
-        h = elu(self.c0(x))     # no bn because images from generator will katayotteru?
+
+        h = elu(self.c0(x) + self.c0s(x_signal))     # no bn because images from generator will katayotteru?
         h = elu(self.bn1(self.c1(h), test=test))
         h = elu(self.bn2(self.c2(h), test=test))
         h = elu(self.bn3(self.c3(h), test=test))
         if compare is not None:
-            h2 = elu(self.c0(compare))            
+            h2 = elu(self.c0(compare) + self.c0s(x_signal))            
             h2 = elu(self.bn1(self.c1(h2), test=test))
             h2 = elu(self.bn2(self.c2(h2), test=test))
             h2 = elu(self.bn3(self.c3(h2), test=test))
@@ -193,10 +208,9 @@ def load_image():
     
             subprocess.call('rm work/*',shell=True)
             cmd = 'aws s3 cp "s3://sdo/aia193/720s-x1024/{:04}/{:02}/{:02}/{:02}{:02}.npz" work/img.npz --region us-west-2 --quiet'.format(year,month,day,hour,minu)
-            print(cmd)
             subprocess.call(cmd, shell=True)
             ret = dual_log(500, np.load('work/img.npz')['img'])
-            return np.reshape(ret, (1,1,1024,1024))
+            return np.reshape(ret, (1,1,img_h,img_w))
         except:
             continue
 
@@ -206,6 +220,7 @@ def position_signal(i,w):
 
 
 def train_vaegan_labeled(gen, enc, dis, epoch0=0):
+
     o_gen = optimizers.Adam(alpha=0.0002, beta1=0.5)
     o_enc = optimizers.Adam(alpha=0.0002, beta1=0.5)
     o_dis = optimizers.Adam(alpha=0.0002, beta1=0.5)
@@ -224,6 +239,7 @@ def train_vaegan_labeled(gen, enc, dis, epoch0=0):
         sum_l_gen = np.float32(0)
         
         for i in xrange(0, n_train, batchsize):
+            print (epoch,i),
             # discriminator
             # 0: from dataset
             # 1: from noise
