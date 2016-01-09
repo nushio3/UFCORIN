@@ -37,7 +37,7 @@ zw=15 # size of in-vivo z patch
 zh=15
 batchsize=1
 n_epoch=10000
-n_train=200000
+n_train=1000
 image_save_interval = 200
 
 
@@ -132,7 +132,7 @@ class Encoder(chainer.Chain):
             c1 = L.Convolution2D(64, 128, 4, stride=2, pad=1, wscale=0.02*math.sqrt(4*4*64)),
             c2 = L.Convolution2D(128, 256, 4, stride=2, pad=1, wscale=0.02*math.sqrt(4*4*128)),
             c3 = L.Convolution2D(256, 512, 4, stride=2, pad=1, wscale=0.02*math.sqrt(4*4*256)),
-            cz = L.Convolution2D(512, nz , 8, stride=4, wscale=0.002*math.sqrt(8*8*512)),
+            cz = L.Convolution2D(512, nz , 8, stride=4, wscale=0.02*math.sqrt(8*8*512)),
 
             bn0 = L.BatchNormalization(64),
             bn1 = L.BatchNormalization(128),
@@ -259,7 +259,7 @@ def train_vaegan_labeled(gen, enc, dis, epoch0=0):
             yl_prior  = dis(x_prior)
             yl_dislike = dis(x_vae, compare=x_train)
 
-            l_prior = average(F.sum(z_enc**2,axis=1) - nz)**2
+            l_prior = 1e-4 * average(F.sum(z_enc**2,axis=1) - nz)**2
 
 
             train_is_genuine = F.softmax_cross_entropy(yl_train, Variable(xp.zeros(batchsize, dtype=np.int32)))
@@ -278,7 +278,7 @@ def train_vaegan_labeled(gen, enc, dis, epoch0=0):
 
             L_dis  = 2*train_is_genuine + vae_is_fake + prior_is_fake
             
-            for x in ['yl_train', 'yl_vae', 'yl_prior', 'yl_dislike', 'train_is_genuine', 'train_is_fake', 'vae_is_genuine', 'vae_is_fake', 'prior_is_genuine', 'prior_is_fake', 'L_gen', 'L_enc', 'L_dis']:
+            for x in ['yl_train', 'yl_vae', 'yl_prior', 'yl_dislike', 'l_prior','train_is_genuine', 'train_is_fake', 'vae_is_genuine', 'vae_is_fake', 'prior_is_genuine', 'prior_is_fake', 'L_gen', 'L_enc', 'L_dis']:
                 print x+":",
                 vx = eval(x).data.get()
                 if vx.size==1:
@@ -305,7 +305,7 @@ def train_vaegan_labeled(gen, enc, dis, epoch0=0):
             L_dis.unchain_backward()
             
             #print "backward done"
-            if True:
+            if i%image_save_interval==0:
                 plt.rcParams['figure.figsize'] = (36.0,12.0)
                 plt.clf()
                 plt.subplot(1,3,1)
@@ -319,8 +319,7 @@ def train_vaegan_labeled(gen, enc, dis, epoch0=0):
                 fn1 = '%s/vis_%02d_%06d.png'%(out_image_dir, epoch,i)
                 plt.savefig(fn0)
                 subprocess.call("cp {} {}".format(fn0,fn2), shell=True)
-                if i%image_save_interval==0:
-                    subprocess.call("cp {} {}".format(fn0,fn1), shell=True)
+                subprocess.call("cp {} {}".format(fn0,fn1), shell=True)
                 
         serializers.save_hdf5("%s/vaegan_model_dis_%d.h5"%(out_model_dir, epoch),dis)
         serializers.save_hdf5("%s/vaegan_state_dis_%d.h5"%(out_model_dir, epoch),o_dis)
