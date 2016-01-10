@@ -338,6 +338,10 @@ def train_vaegan_labeled(gen, enc, dis, epoch0=0):
             
             #print "backward done"
             if i%image_save_interval==0:
+                fn0 = '%s/tmp.png'%(out_image_dir)
+                fn2 = '%s/latest.png'%(out_image_dir)
+                fn1 = '%s/vis_%02d_%06d.png'%(out_image_dir, epoch,i)
+
                 plt.rcParams['figure.figsize'] = (36.0,12.0)
                 plt.clf()
                 plt.subplot(1,3,1)
@@ -346,9 +350,8 @@ def train_vaegan_labeled(gen, enc, dis, epoch0=0):
                 plt.imshow(x_vae.data.get()[0,0],vmin=0.0,  vmax=2.0)
                 plt.subplot(1,3,3)
                 plt.imshow(x_prior.data.get()[0,0], vmin=0.0, vmax=2.0)
-                fn0 = '%s/tmp.png'%(out_image_dir)
-                fn2 = '%s/latest.png'%(out_image_dir)
-                fn1 = '%s/vis_%02d_%06d.png'%(out_image_dir, epoch,i)
+                plt.suptitle(str(args)+fn1)
+
                 plt.savefig(fn0)
                 subprocess.call("cp {} {}".format(fn0,fn2), shell=True)
                 subprocess.call("cp {} {}".format(fn0,fn1), shell=True)
