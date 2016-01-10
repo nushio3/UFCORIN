@@ -1,5 +1,7 @@
 #!/usr/bin/env python
-import pickle,subprocess
+# http://arxiv.org/pdf/1512.09300.pdf
+
+import pickle,subprocess, argparse
 import numpy as np
 import os
 import math
@@ -25,16 +27,28 @@ import chainer.links as L
 import numpy
 
 
+parser = argparse.ArgumentParser()
+parser.add_argument('--gpu', '-g', default=0, type=int,
+                    help='GPU ID')
+parser.add_argument('--gamma', default=1.0,type=float,
+                    help='vaegan gamma parameter')
+parser.add_argument('--stride','-s', default=4,type=int,
+                    help='stride size of the final layer')
+args = parser.parse_args()
 
-image_dir = './images'
-out_image_dir = './out_images'
-out_model_dir = './out_models'
+xp = cuda.cupy
+cuda.get_device(args.gpu).use()
+
+
+work_image_dir = '/mnt/work-{}'.format(args.gpu)
+out_image_dir = '/mnt/public_html/out-images-{}'.format(args.gpu)
+out_model_dir = './out-models-{}'.format(args.gpu)
 
 
 nz = 100          # # of dim for Z
 n_signal = 2 # # of signal
-zw=29 # size of in-vivo z patch
-zh=29
+zw = 56 / args.stride +1 # size of in-vivo z patch
+zh = zw
 img_w=1024 # size of the image
 img_h=1024
 
@@ -108,8 +122,8 @@ def elu(x, alpha=1.0):
 class Generator(chainer.Chain):
     def __init__(self):
         super(Generator, self).__init__(
-            dc0z = L.Deconvolution2D(nz, 512, 8, stride=2, wscale=0.02*math.sqrt(nz)),
-            dc0s = L.Deconvolution2D(n_signal, 512, 8, stride=2, wscale=0.02*math.sqrt(n_signal)),
+            dc0z = L.Deconvolution2D(nz, 512, 8, stride=args.stride, wscale=0.02*math.sqrt(nz)),
+            dc0s = L.Deconvolution2D(n_signal, 512, 8, stride=args.stride, wscale=0.02*math.sqrt(n_signal)),
             dc1 = L.Deconvolution2D(512, 256, 4, stride=2, pad=1, wscale=0.02*math.sqrt(4*4*512)),
             dc2 = L.Deconvolution2D(256, 128, 4, stride=2, pad=1, wscale=0.02*math.sqrt(4*4*256)),
             dc3 = L.Deconvolution2D(128, 64, 4, stride=2, pad=1, wscale=0.02*math.sqrt(4*4*128)),
@@ -135,7 +149,7 @@ class Encoder(chainer.Chain):
             c1 = L.Convolution2D(64, 128, 4, stride=2, pad=1, wscale=0.02*math.sqrt(4*4*64)),
             c2 = L.Convolution2D(128, 256, 4, stride=2, pad=1, wscale=0.02*math.sqrt(4*4*128)),
             c3 = L.Convolution2D(256, 512, 4, stride=2, pad=1, wscale=0.02*math.sqrt(4*4*256)),
-            cz = L.Convolution2D(512, nz , 8, stride=2, wscale=0.02*math.sqrt(8*8*512)),
+            cz = L.Convolution2D(512, nz , 8, stride=args.stride, wscale=0.02*math.sqrt(8*8*512)),
 
             bn0 = L.BatchNormalization(64),
             bn1 = L.BatchNormalization(128),
@@ -169,7 +183,7 @@ class Discriminator(chainer.Chain):
             c1 = L.Convolution2D(32, 128, 4, stride=2, pad=1, wscale=0.02*math.sqrt(4*4*32)),
             c2 = L.Convolution2D(128, 256, 4, stride=2, pad=1, wscale=0.02*math.sqrt(4*4*128)),
             c3 = L.Convolution2D(256, 512, 4, stride=2, pad=1, wscale=0.02*math.sqrt(4*4*256)),
-            cz = L.Convolution2D(512, 2, 8, stride=2,wscale=0.02*math.sqrt(8*8*512)),
+            cz = L.Convolution2D(512, 2, 8, stride=args.stride,wscale=0.02*math.sqrt(8*8*512)),
 
             bn0 = L.BatchNormalization(32),
             bn1 = L.BatchNormalization(128),
@@ -206,10 +220,10 @@ def load_image():
             hour  = np.random.randint(24)
             minu  = np.random.randint(5)*12
     
-            subprocess.call('rm work/*',shell=True)
-            cmd = 'aws s3 cp "s3://sdo/aia193/720s-x1024/{:04}/{:02}/{:02}/{:02}{:02}.npz" work/img.npz --region us-west-2 --quiet'.format(year,month,day,hour,minu)
+            subprocess.call('rm {}/*'.format(work_image_dir),shell=True)
+            cmd = 'aws s3 cp "s3://sdo/aia193/720s-x1024/{:04}/{:02}/{:02}/{:02}{:02}.npz" {}/img.npz --region us-west-2 --quiet'.format(year,month,day,hour,minu, work_image_dir)
             subprocess.call(cmd, shell=True)
-            ret = dual_log(500, np.load('work/img.npz')['img'])
+            ret = dual_log(500, np.load('{}/img.npz'.format(work_image_dir))['img'])
             return np.reshape(ret, (1,1,img_h,img_w))
         except:
             continue
@@ -288,7 +302,7 @@ def train_vaegan_labeled(gen, enc, dis, epoch0=0):
             
             
 
-            L_gen  = prior_is_genuine + vae_is_genuine + yl_dislike
+            L_gen  = prior_is_genuine + vae_is_genuine + args.gamma * yl_dislike
 
             L_enc  = vae_is_genuine + l_prior + yl_dislike
 
@@ -347,8 +361,6 @@ def train_vaegan_labeled(gen, enc, dis, epoch0=0):
 
 
 
-xp = cuda.cupy
-cuda.get_device(0).use()
 
 gen = Generator()
 enc = Encoder()
@@ -359,8 +371,9 @@ dis.to_gpu()
 
 
 try:
-    os.mkdir(out_image_dir)
-    os.mkdir(out_model_dir)
+    subprocess.call('mkdir -p ' + work_image_dir, shell=True)
+    subprocess.call('mkdir -p ' + out_image_dir, shell=True)
+    subprocess.call('mkdir -p ' + out_model_dir, shell=True)
 except:
     pass
 
