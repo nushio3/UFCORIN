@@ -192,20 +192,22 @@ class Discriminator(chainer.Chain):
         )
         
     def __call__(self, x, test=False, compare=None):
-
-        h = elu(self.c0(x) + self.c0s(x_signal))     # no bn because images from generator will katayotteru?
-        h = elu(self.bn1(self.c1(h), test=test))
-        h = elu(self.bn2(self.c2(h), test=test))
-        h = elu(self.bn3(self.c3(h), test=test))
         if compare is not None:
+            h = elu(self.c0(x) + self.c0s(x_signal))  
+            h = elu(self.bn1(self.c1(h), test=test))
+            h = elu(self.bn2(self.c2(h), test=test))
             h2 = elu(self.c0(compare) + self.c0s(x_signal))            
             h2 = elu(self.bn1(self.c1(h2), test=test))
             h2 = elu(self.bn2(self.c2(h2), test=test))
-            h2 = elu(self.bn3(self.c3(h2), test=test))
             
             return average((h-h2)**2)
 
-        h=self.cz(h)
+        h = elu(self.c0(x) + self.c0s(x_signal))     # no bn because images from generator will katayotteru?
+        h = elu(self.bn1(self.c1(h), test=test))
+        h = elu(self.bn2(self.c2(F.dropout(h)), test=test))
+        h = elu(self.bn3(self.c3(F.dropout(h)), test=test))
+
+        h=self.cz(F.dropout(h))
         l = F.sum(h,axis=(2,3))/(h.data.size / 2)
         return l
 
