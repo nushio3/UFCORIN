@@ -2,6 +2,9 @@
 # http://arxiv.org/pdf/1512.09300.pdf
 
 import pickle,subprocess, argparse
+from astropy.io import fits
+import scipy.ndimage.interpolation as intp
+
 import numpy as np
 import os
 import math
@@ -34,6 +37,8 @@ parser.add_argument('--gamma', default=1.0,type=float,
                     help='vaegan gamma parameter')
 parser.add_argument('--stride','-s', default=4,type=int,
                     help='stride size of the final layer')
+parser.add_argument('--nz', default=100,type=int,
+                    help='the size of encoding space')
 args = parser.parse_args()
 
 xp = cuda.cupy
@@ -45,7 +50,7 @@ out_image_dir = '/mnt/public_html/out-images-{}'.format(args.gpu)
 out_model_dir = './out-models-{}'.format(args.gpu)
 
 
-nz = 100          # # of dim for Z
+nz = args.nz          # # of dim for Z
 n_signal = 2 # # of signal
 zw = 56 / args.stride +1 # size of in-vivo z patch
 zh = zw
@@ -223,10 +228,17 @@ def load_image():
             minu  = np.random.randint(5)*12
     
             subprocess.call('rm {}/*'.format(work_image_dir),shell=True)
-            cmd = 'aws s3 cp "s3://sdo/aia193/720s-x1024/{:04}/{:02}/{:02}/{:02}{:02}.npz" {}/img.npz --region us-west-2 --quiet'.format(year,month,day,hour,minu, work_image_dir)
+            local_fn =  work_image_dir + '/image.fits'
+            cmd = 'aws s3 cp "s3://sdo/aia193/720s/{:04}/{:02}/{:02}/{:02}{:02}.fits" {} --region us-west-2 --quiet'.format(year,month,day,hour,minu, local_fn)
             subprocess.call(cmd, shell=True)
-            ret = dual_log(500, np.load('{}/img.npz'.format(work_image_dir))['img'])
-            return np.reshape(ret, (1,1,img_h,img_w))
+            h = fits.open(local_fn); h[1].verify('fix')
+            exptime = h[1].header['EXPTIME']
+            if exptime <=0:
+                print "EXPTIME <=0"
+                continue
+            img = intp.zoom(h[1].data.astype(np.float32),zoom=0.25,order=0)
+            img = dual_log(1000, img  / exptime)
+            return np.reshape(img, (1,1,img_h,img_w))
         except:
             continue
 
@@ -268,13 +280,9 @@ def train_vaegan_labeled(gen, enc, dis, epoch0=0):
             # generate prior and signal
             z_prior = np.random.standard_normal((batchsize, nz, zh, zw)).astype(np.float32)
             z_signal =np.zeros((batchsize, 2, zh, zw)).astype(np.float32)
-            # normalize the prior, and embed the position signal in z vector
+            # embed the position signal in z vector
             for y in range (zh):
                 for x in range (zw):
-                    z_stripe = z_prior[:,:,y,x]
-                    z_norm = np.sum(z_stripe**2)
-                    z_stripe *= np.sqrt(nz / z_norm)
-                    z_prior[:,:,y,x] = z_stripe
                     z_signal[:,0,y,x] = position_signal(x, zw)
                     z_signal[:,1,y,x] = position_signal(y, zh)
             z_prior = Variable(cuda.to_gpu(z_prior))
@@ -291,7 +299,8 @@ def train_vaegan_labeled(gen, enc, dis, epoch0=0):
             yl_prior  = dis(x_prior)
             yl_dislike = dis(x_vae, compare=x_train)
 
-            l_prior = 1e-4 * average(F.sum(z_enc**2,axis=1) - nz)**2
+            l_prior0 = average(z_prior**2)
+            l_prior  = average(z_enc**2)
 
 
             train_is_genuine = F.softmax_cross_entropy(yl_train, Variable(xp.zeros(batchsize, dtype=np.int32)))
@@ -310,7 +319,7 @@ def train_vaegan_labeled(gen, enc, dis, epoch0=0):
 
             L_dis  = 2*train_is_genuine + vae_is_fake + prior_is_fake
             
-            for x in ['yl_train', 'yl_vae', 'yl_prior', 'yl_dislike', 'l_prior','train_is_genuine', 'train_is_fake', 'vae_is_genuine', 'vae_is_fake', 'prior_is_genuine', 'prior_is_fake', 'L_gen', 'L_enc', 'L_dis']:
+            for x in ['yl_train', 'yl_vae', 'yl_prior', 'yl_dislike', 'l_prior','l_prior0','train_is_genuine', 'train_is_fake', 'vae_is_genuine', 'vae_is_fake', 'prior_is_genuine', 'prior_is_fake', 'L_gen', 'L_enc', 'L_dis']:
                 print x+":",
                 vx = eval(x).data.get()
                 if vx.size==1:
