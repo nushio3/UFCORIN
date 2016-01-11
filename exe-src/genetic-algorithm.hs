@@ -29,6 +29,9 @@ import qualified GoodSeed
 stubMode :: Bool
 stubMode = False
 
+genLimit :: Int
+genLimit = 20
+
 mutationRateDefault :: Double
 mutationRateDefault = 0.01
 
@@ -36,7 +39,7 @@ mutationRateThreshold :: Double
 mutationRateThreshold = 0.001
 
 mutationRateOfChange :: Double
-mutationRateOfChange = 1.0
+mutationRateOfChange = 2.0
 
 goodSeeds :: Int -> IO [Int]
 goodSeeds n
@@ -47,7 +50,7 @@ statisticSize :: Int
 statisticSize = 1
 
 populationSize :: Int
-populationSize = 5
+populationSize = 2
 
 infix 6 :±
 data Statistics = Double :± Double deriving (Eq, Show, Ord)
@@ -85,7 +88,7 @@ mutate (genCt, bfValueGap) g = traverse flipper g
       r <- randomRIO (0,1 :: Double)
       return $ if r < mutateProb then (not x) else x
     mutateProb :: Double
-    mutateProb = min 0.5 (mRate * (1 + fromIntegral genCt) / 2)
+    mutateProb = min 0.5 (mRate * (1 + fromIntegral genCt) / 4)
     mRate :: Double
     mRate
       | bfValueGap >= mutationRateThreshold     = mutationRateDefault
@@ -223,4 +226,4 @@ main = do
 loop :: (Int, (Double, Double)) -> [Genome] -> Population -> IO ()
 loop (genCt, (bfValue, newBfValue)) tabooList gs = do
   (next, newTabooList, (bfValue, newBfValue)) <- proceed (genCt, (bfValue, newBfValue)) tabooList  gs
-  when (genCt <10) $ loop (genCt +1, (bfValue, newBfValue)) newTabooList next
+  when (genCt < genLimit) $ loop (genCt +1, (bfValue, newBfValue)) newTabooList next
