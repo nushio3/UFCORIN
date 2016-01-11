@@ -66,11 +66,29 @@ image_save_interval = 200
 def average(x):
     return F.sum(x/x.data.size)
 
-def dual_log(scale, x):
-    x2 = x/scale
-    #not implemented error!
-    #return F.where(x>0,F.log(x2+1),-F.log(1-x2))
-    return np.log(1+np.maximum(0,x2))-np.log(1+np.maximum(0,-x2))
+# A scaling for human perception of SDO-AIA 193 image.
+# c.f. page 11 of
+# http://helio.cfa.harvard.edu/trace/SSXG/ynsu/Ji/sdo_primer_V1.1.pdf
+#
+# AIA orthodox color table found at
+# https://darts.jaxa.jp/pub/ssw/sdo/aia/idl/pubrel/aia_lct.pro
+
+def scale_brightness(x):
+    lo = 50.0
+    hi = 1250.0
+    x2 = np.maximum(lo,x)
+    x3 = (np.log(x2)-np.log(lo)) / (np.log(hi) - np.log(lo))
+    return x3
+
+def variable_to_image(var):
+    img = var.data.get()[0,0]
+    img = np.maximum(0.0, np.minimum(1.0, img))
+    rgb = np.zeros((img_h, img_w, 3), dtype=np.float32)
+    rgb[:, :, 0] = np.sqrt(img)
+    rgb[:, :, 1] = img
+    rgb[:, :, 2] = img ** 2
+    return rgb
+
 
 
 class ELU(function.Function):
@@ -237,7 +255,7 @@ def load_image():
                 print "EXPTIME <=0"
                 continue
             img = intp.zoom(h[1].data.astype(np.float32),zoom=0.25,order=0)
-            img = dual_log(1000, img  / exptime)
+            img = scale_brightness(img  / exptime)
             return np.reshape(img, (1,1,img_h,img_w))
         except:
             continue
@@ -259,7 +277,7 @@ def train_vaegan_labeled(gen, enc, dis, epoch0=0):
     o_enc.add_hook(chainer.optimizer.WeightDecay(0.00001))
     o_dis.add_hook(chainer.optimizer.WeightDecay(0.00001))
 
-
+    gamma_p = 1.0
     
     for epoch in xrange(epoch0,n_epoch):
         perm = np.random.permutation(n_train)
@@ -302,6 +320,8 @@ def train_vaegan_labeled(gen, enc, dis, epoch0=0):
             l_prior0 = average(z_prior**2)
             l_prior  = average(z_enc**2)
 
+            if float(l_prior.data.get()) < float(l_prior0.data.get()): gamma_p = 0.0
+            if float(l_prior.data.get()) > float(l_prior0.data.get()): gamma_p = 1.0
 
             train_is_genuine = F.softmax_cross_entropy(yl_train, Variable(xp.zeros(batchsize, dtype=np.int32)))
             vae_is_genuine   = F.softmax_cross_entropy(yl_vae, Variable(xp.zeros(batchsize, dtype=np.int32)))
@@ -315,18 +335,22 @@ def train_vaegan_labeled(gen, enc, dis, epoch0=0):
 
             L_gen  = prior_is_genuine + vae_is_genuine + args.gamma * yl_dislike
 
-            L_enc  = vae_is_genuine + l_prior + yl_dislike
+            L_enc  = vae_is_genuine + gamma_p * l_prior + yl_dislike
 
             L_dis  = 2*train_is_genuine + vae_is_fake + prior_is_fake
             
-            for x in ['yl_train', 'yl_vae', 'yl_prior', 'yl_dislike', 'l_prior','l_prior0','train_is_genuine', 'train_is_fake', 'vae_is_genuine', 'vae_is_fake', 'prior_is_genuine', 'prior_is_fake', 'L_gen', 'L_enc', 'L_dis']:
+            for x in ['yl_train', 'yl_vae', 'yl_prior', 'yl_dislike', 'l_prior','l_prior0','gamma_p','train_is_genuine', 'train_is_fake', 'vae_is_genuine', 'vae_is_fake', 'prior_is_genuine', 'prior_is_fake', 'L_gen', 'L_enc', 'L_dis']:
                 print x+":",
-                vx = eval(x).data.get()
-                if vx.size==1:
-                    print float(vx),
-                else:
-                    print vx,' ',
-                
+                try:
+                    vx = eval(x).data.get()
+                    if vx.size==1:
+                        print float(vx),
+                    else:
+                        print vx,' ',
+                except AttributeError:
+                    print eval(x),
+
+
             print
 
             o_gen.zero_grads()
@@ -346,6 +370,9 @@ def train_vaegan_labeled(gen, enc, dis, epoch0=0):
             L_dis.unchain_backward()
             
             #print "backward done"
+
+                
+
             if i%image_save_interval==0:
                 fn0 = '%s/tmp.png'%(out_image_dir)
                 fn2 = '%s/latest.png'%(out_image_dir)
@@ -354,11 +381,11 @@ def train_vaegan_labeled(gen, enc, dis, epoch0=0):
                 plt.rcParams['figure.figsize'] = (36.0,12.0)
                 plt.clf()
                 plt.subplot(1,3,1)
-                plt.imshow(x_train.data.get()[0,0], vmin=0.0, vmax=2.0)
+                plt.imshow(variable_to_image(x_train))
                 plt.subplot(1,3,2)
-                plt.imshow(x_vae.data.get()[0,0],vmin=0.0,  vmax=2.0)
+                plt.imshow(variable_to_image(x_vae))
                 plt.subplot(1,3,3)
-                plt.imshow(x_prior.data.get()[0,0], vmin=0.0, vmax=2.0)
+                plt.imshow(variable_to_image(x_prior))
                 plt.suptitle(str(args)+fn1)
 
                 plt.savefig(fn0)
