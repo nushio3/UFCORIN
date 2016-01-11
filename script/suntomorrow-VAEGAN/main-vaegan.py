@@ -39,6 +39,9 @@ parser.add_argument('--stride','-s', default=4,type=int,
                     help='stride size of the final layer')
 parser.add_argument('--nz', default=100,type=int,
                     help='the size of encoding space')
+parser.add_argument('--dropout', action='store_true',
+                    help='use dropout when training dis.')
+
 args = parser.parse_args()
 
 xp = cuda.cupy
@@ -227,10 +230,10 @@ class Discriminator(chainer.Chain):
 
         h = elu(self.c0(x) + self.c0s(x_signal))     # no bn because images from generator will katayotteru?
         h = elu(self.bn1(self.c1(h), test=test))
-        h = elu(self.bn2(self.c2(F.dropout(h)), test=test))
-        h = elu(self.bn3(self.c3(F.dropout(h)), test=test))
+        h = elu(self.bn2(self.c2(F.dropout(h,train = args.dropout)), test=test))
+        h = elu(self.bn3(self.c3(F.dropout(h,train = args.dropout)), test=test))
 
-        h=self.cz(F.dropout(h))
+        h=self.cz(F.dropout(h,train = args.dropout))
         l = F.sum(h,axis=(2,3))/(h.data.size / 2)
         return l
 
