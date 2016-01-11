@@ -41,6 +41,12 @@ mutationRateThreshold = 0.001
 mutationRateOfChange :: Double
 mutationRateOfChange = 2.0
 
+crossoverPopsThreshold :: Double
+crossoverPopsThreshold = 0.001
+
+crossoverPopsMag :: Int
+crossoverPopsMag = 2
+
 goodSeeds :: Int -> IO [Int]
 goodSeeds n
   | stubMode  = return $ replicate n 0
@@ -188,8 +194,12 @@ proceed (genCt, (p2BfValue, p1BfValue)) tabooList pop = do
       gs = map individualGenome pop
       bfValueGap :: Double
       bfValueGap = p1BfValue - p2BfValue
+      crossoverSize :: Int
+      crossoverSize
+        | bfValueGap <= crossoverPopsThreshold = populationSize * crossoverPopsMag
+        | otherwise                            = populationSize
   mutatedGs   <- mapM (mutate (genCt, bfValueGap)) gs
-  crossoverGs <- replicateM populationSize $ do
+  crossoverGs <- replicateM crossoverSize $ do
     [g1,g2] <- chooseN 2 gs
     crossover g1 g2
   let newGenomes = filter (not. isTaboo) $ nub $ mutatedGs ++ crossoverGs  --nub:delete same genomes
