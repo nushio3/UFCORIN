@@ -50,12 +50,13 @@ out_image_dir = '/mnt/public_html/out-images-{}'.format(args.gpu)
 out_model_dir = './out-models-{}'.format(args.gpu)
 
 
+img_w=512 # size of the image
+img_h=512
 nz = args.nz          # # of dim for Z
 n_signal = 2 # # of signal
-zw = 56 / args.stride +1 # size of in-vivo z patch
+zw = (img_w/16-8) / args.stride +1 # size of in-vivo z patch
 zh = zw
-img_w=1024 # size of the image
-img_h=1024
+
 
 batchsize=1
 n_epoch=10000
@@ -140,6 +141,13 @@ def elu(x, alpha=1.0):
     return ELU(alpha=alpha)(x)
 
 
+def channel_normalize(x, test=False):
+    s0,s1,s2,s3 = x.data.shape
+    cavg = F.reshape(F.sum(x, axis=1) / s1, (s0,1,s2,s3))
+    xavg = F.concat(s1 * [cavg])
+    cvar = F.reshape(F.sum((x - xavg)**2, axis=1) / s1, (s0,1,s2,s3))
+    xvar = F.concat(s1 * [cvar])    
+    return (x - xavg) / (xvar + 1e-5)**0.5
 
 
 class Generator(chainer.Chain):
@@ -151,19 +159,25 @@ class Generator(chainer.Chain):
             dc2 = L.Deconvolution2D(256, 128, 4, stride=2, pad=1, wscale=0.02*math.sqrt(4*4*256)),
             dc3 = L.Deconvolution2D(128, 64, 4, stride=2, pad=1, wscale=0.02*math.sqrt(4*4*128)),
             dc4 = L.Deconvolution2D(64, 1, 4, stride=2, pad=1, wscale=0.02*math.sqrt(4*4*64)),
-            bn0 = L.BatchNormalization(512),
-            bn1 = L.BatchNormalization(256),
-            bn2 = L.BatchNormalization(128),
-            bn3 = L.BatchNormalization(64),
+            #bn0 = L.BatchNormalization(512),
+            #bn1 = L.BatchNormalization(256),
+            #bn2 = L.BatchNormalization(128),
+            #bn3 = L.BatchNormalization(64),
         )
         
     def __call__(self, z, z_signal, test=False):
-        h  = F.relu(self.bn0(self.dc0z(z) + self.dc0s(z_signal), test=test))
-        h = F.relu(self.bn1(self.dc1(h), test=test))
-        h = F.relu(self.bn2(self.dc2(h), test=test))
-        h = F.relu(self.bn3(self.dc3(h), test=test))
+        h  = F.relu(channel_normalize(self.dc0z(z) + self.dc0s(z_signal), test=test))
+        h = F.relu(channel_normalize(self.dc1(h), test=test))
+        h = F.relu(channel_normalize(self.dc2(h), test=test))
+        h = F.relu(channel_normalize(self.dc3(h), test=test))
         x = (self.dc4(h))
         return x
+        # h  = F.relu(self.bn0(self.dc0z(z) + self.dc0s(z_signal), test=test))
+        # h = F.relu(self.bn1(self.dc1(h), test=test))
+        # h = F.relu(self.bn2(self.dc2(h), test=test))
+        # h = F.relu(self.bn3(self.dc3(h), test=test))
+        # x = (self.dc4(h))
+        # return x
 
 class Encoder(chainer.Chain):
     def __init__(self):
@@ -174,17 +188,17 @@ class Encoder(chainer.Chain):
             c3 = L.Convolution2D(256, 512, 4, stride=2, pad=1, wscale=0.02*math.sqrt(4*4*256)),
             cz = L.Convolution2D(512, nz , 8, stride=args.stride, wscale=0.02*math.sqrt(8*8*512)),
 
-            bn0 = L.BatchNormalization(64),
-            bn1 = L.BatchNormalization(128),
-            bn2 = L.BatchNormalization(256),
-            bn3 = L.BatchNormalization(512),
+            #bn0 = L.BatchNormalization(64),
+            #bn1 = L.BatchNormalization(128),
+            #bn2 = L.BatchNormalization(256),
+            #bn3 = L.BatchNormalization(512),
         )
         
     def __call__(self, x, test=False):
-        h = elu(self.c0(x))     # no bn because images from generator will katayotteru?
-        h = elu(self.bn1(self.c1(h), test=test))
-        h = elu(self.bn2(self.c2(h), test=test))
-        h = elu(self.bn3(self.c3(h), test=test))
+        h = F.relu(self.c0(x))     # no bn because images from generator will katayotteru?
+        h = F.relu(channel_normalize(self.c1(h), test=test))
+        h = F.relu(channel_normalize(self.c2(h), test=test))
+        h = F.relu(channel_normalize(self.c3(h), test=test))
         return self.cz(h)
 
 global coord_image
@@ -208,27 +222,27 @@ class Discriminator(chainer.Chain):
             c3 = L.Convolution2D(256, 512, 4, stride=2, pad=1, wscale=0.02*math.sqrt(4*4*256)),
             cz = L.Convolution2D(512, 2, 8, stride=args.stride,wscale=0.02*math.sqrt(8*8*512)),
 
-            bn0 = L.BatchNormalization(32),
-            bn1 = L.BatchNormalization(128),
-            bn2 = L.BatchNormalization(256),
-            bn3 = L.BatchNormalization(512),
+            #bn0 = L.BatchNormalization(32),
+            #bn1 = L.BatchNormalization(128),
+            #bn2 = L.BatchNormalization(256),
+            #bn3 = L.BatchNormalization(512),
         )
         
     def __call__(self, x, test=False, compare=None):
         if compare is not None:
-            h = elu(self.c0(x) + self.c0s(x_signal))  
-            h = elu(self.bn1(self.c1(h), test=test))
-            h = elu(self.bn2(self.c2(h), test=test))
+            h =  elu(self.c0(x) + self.c0s(x_signal))  
+            h =  elu(channel_normalize(self.c1(h), test=test))
+            h =  elu(channel_normalize(self.c2(h), test=test))
             h2 = elu(self.c0(compare) + self.c0s(x_signal))            
-            h2 = elu(self.bn1(self.c1(h2), test=test))
-            h2 = elu(self.bn2(self.c2(h2), test=test))
+            h2 = elu(channel_normalize(self.c1(h2), test=test))
+            h2 = elu(channel_normalize(self.c2(h2), test=test))
             
             return average((h-h2)**2)
 
         h = elu(self.c0(x) + self.c0s(x_signal))     # no bn because images from generator will katayotteru?
-        h = elu(self.bn1(self.c1(h), test=test))
-        h = elu(self.bn2(self.c2(F.dropout(h)), test=test))
-        h = elu(self.bn3(self.c3(F.dropout(h)), test=test))
+        h = elu(channel_normalize(self.c1(h), test=test))
+        h = elu(channel_normalize(self.c2(F.dropout(h)), test=test))
+        h = elu(channel_normalize(self.c3(F.dropout(h)), test=test))
 
         h=self.cz(F.dropout(h))
         l = F.sum(h,axis=(2,3))/(h.data.size / 2)
@@ -254,7 +268,7 @@ def load_image():
             if exptime <=0:
                 print "EXPTIME <=0"
                 continue
-            img = intp.zoom(h[1].data.astype(np.float32),zoom=0.25,order=0)
+            img = intp.zoom(h[1].data.astype(np.float32),zoom=img_w/4096.0,order=0)
             img = scale_brightness(img  / exptime)
             return np.reshape(img, (1,1,img_h,img_w))
         except:
