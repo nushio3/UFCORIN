@@ -1,12 +1,12 @@
 #!/usr/bin/env python
 # http://arxiv.org/pdf/1512.09300.pdf
 
-import pickle,subprocess, argparse
+import pickle,subprocess, argparse, urllib
 from astropy.io import fits
 import scipy.ndimage.interpolation as intp
 
 import numpy as np
-import os
+import os,re
 import math
 import matplotlib
 matplotlib.use('Agg')
@@ -27,26 +27,39 @@ import chainer.functions as F
 import chainer.links as L
 
 
-import numpy
+
 
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--gpu', '-g', default=0, type=int,
                     help='GPU ID')
 parser.add_argument('--gamma', default=1.0,type=float,
-                    help='vaegan gamma parameter')
+                    help='weight of content similarity over style similarity')
+parser.add_argument('--creativity-weight', default=1.0,type=float,
+                    help='weight of creativity over emulation')
 parser.add_argument('--stride','-s', default=4,type=int,
                     help='stride size of the final layer')
 parser.add_argument('--nz', default=100,type=int,
                     help='the size of encoding space')
+parser.add_argument('--dropout', action='store_true',
+                    help='use dropout when training dis.')
+parser.add_argument('--enc-norm', default = 'dis',
+                    help='use (dis/L2) norm to train encoder.')
+
 args = parser.parse_args()
 
 xp = cuda.cupy
 cuda.get_device(args.gpu).use()
 
+def foldername(args):
+    x = urllib.quote(str(args))
+    x = re.sub('%..','_',x)
+    x = re.sub('Namespace_','',x)
+    return x
 
 work_image_dir = '/mnt/work-{}'.format(args.gpu)
-out_image_dir = '/mnt/public_html/out-images-{}'.format(args.gpu)
+out_image_dir = '/mnt/public_html/out-images-{}'.format(foldername(args))
+out_image_show_dir = '/mnt/public_html/out-images-{}'.format(args.gpu)
 out_model_dir = './out-models-{}'.format(args.gpu)
 
 
@@ -98,20 +111,20 @@ class ELU(function.Function):
     # https://github.com/muupan/chainer-elu
 
     def __init__(self, alpha=1.0):
-        self.alpha = numpy.float32(alpha)
+        self.alpha = np.float32(alpha)
 
     def check_type_forward(self, in_types):
         type_check.expect(in_types.size() == 1)
         x_type, = in_types
 
         type_check.expect(
-            x_type.dtype == numpy.float32,
+            x_type.dtype == np.float32,
         )
 
     def forward_cpu(self, x):
         y = x[0].copy()
         neg_indices = x[0] < 0
-        y[neg_indices] = self.alpha * (numpy.exp(y[neg_indices]) - 1)
+        y[neg_indices] = self.alpha * (np.exp(y[neg_indices]) - 1)
         return y,
 
     def forward_gpu(self, x):
@@ -124,7 +137,7 @@ class ELU(function.Function):
     def backward_cpu(self, x, gy):
         gx = gy[0].copy()
         neg_indices = x[0] < 0
-        gx[neg_indices] *= self.alpha * numpy.exp(x[0][neg_indices])
+        gx[neg_indices] *= self.alpha * np.exp(x[0][neg_indices])
         return gx,
 
     def backward_gpu(self, x, gy):
@@ -243,8 +256,10 @@ class Discriminator(chainer.Chain):
         h = elu(channel_normalize(self.c1(h), test=test))
         h = elu(channel_normalize(self.c2(F.dropout(h)), test=test))
         h = elu(channel_normalize(self.c3(F.dropout(h)), test=test))
-
-        h=self.cz(F.dropout(h))
+        #h = elu(self.bn1(self.c1(h), test=test))
+        #h = elu(self.bn2(self.c2(F.dropout(h,train = args.dropout)), test=test))
+        #h = elu(self.bn3(self.c3(F.dropout(h,train = args.dropout)), test=test))
+        h=self.cz(F.dropout(h,train = args.dropout))
         l = F.sum(h,axis=(2,3))/(h.data.size / 2)
         return l
 
@@ -324,12 +339,14 @@ def train_vaegan_labeled(gen, enc, dis, epoch0=0):
             # use encoder
             z_enc = enc(x_train)
             x_vae = gen(z_enc,z_signal)
-            x_prior = gen(z_prior,z_signal)
+            x_creative = gen(z_prior,z_signal)
 
             yl_train  = dis(x_train)
             yl_vae    = dis(x_vae)
-            yl_prior  = dis(x_prior)
+            yl_prior  = dis(x_creative)
             yl_dislike = dis(x_vae, compare=x_train)
+            
+            yl_L2like = average((x_vae - x_train)**2)
 
             l_prior0 = average(z_prior**2)
             l_prior  = average(z_enc**2)
@@ -347,13 +364,13 @@ def train_vaegan_labeled(gen, enc, dis, epoch0=0):
             
             
 
-            L_gen  = prior_is_genuine + vae_is_genuine + args.gamma * yl_dislike
+            L_gen  = args.creativity_weight * prior_is_genuine + vae_is_genuine + args.gamma * yl_dislike
 
-            L_enc  = vae_is_genuine + gamma_p * l_prior + yl_dislike
+            L_enc  = vae_is_genuine + gamma_p * l_prior + (yl_L2like if args.enc_norm == 'L2' else yl_dislike)
 
             L_dis  = 2*train_is_genuine + vae_is_fake + prior_is_fake
             
-            for x in ['yl_train', 'yl_vae', 'yl_prior', 'yl_dislike', 'l_prior','l_prior0','gamma_p','train_is_genuine', 'train_is_fake', 'vae_is_genuine', 'vae_is_fake', 'prior_is_genuine', 'prior_is_fake', 'L_gen', 'L_enc', 'L_dis']:
+            for x in ['yl_train', 'yl_vae', 'yl_prior', 'yl_dislike', 'yl_L2like','l_prior','l_prior0','gamma_p','train_is_genuine', 'train_is_fake', 'vae_is_genuine', 'vae_is_fake', 'prior_is_genuine', 'prior_is_fake', 'L_gen', 'L_enc', 'L_dis']:
                 print x+":",
                 try:
                     vx = eval(x).data.get()
@@ -388,8 +405,8 @@ def train_vaegan_labeled(gen, enc, dis, epoch0=0):
                 
 
             if i%image_save_interval==0:
-                fn0 = '%s/tmp.png'%(out_image_dir)
-                fn2 = '%s/latest.png'%(out_image_dir)
+                fn0 = '%s/tmp.png'%(out_image_show_dir)
+                fn2 = '%s/latest.png'%(out_image_show_dir)
                 fn1 = '%s/vis_%02d_%06d.png'%(out_image_dir, epoch,i)
 
                 plt.rcParams['figure.figsize'] = (36.0,12.0)
@@ -399,8 +416,8 @@ def train_vaegan_labeled(gen, enc, dis, epoch0=0):
                 plt.subplot(1,3,2)
                 plt.imshow(variable_to_image(x_vae))
                 plt.subplot(1,3,3)
-                plt.imshow(variable_to_image(x_prior))
-                plt.suptitle(str(args)+fn1)
+                plt.imshow(variable_to_image(x_creative))
+                plt.suptitle(str(args)+' epoch{}-{}'.format(epoch,i))
 
                 plt.savefig(fn0)
                 subprocess.call("cp {} {}".format(fn0,fn2), shell=True)
@@ -428,6 +445,7 @@ dis.to_gpu()
 try:
     subprocess.call('mkdir -p ' + work_image_dir, shell=True)
     subprocess.call('mkdir -p ' + out_image_dir, shell=True)
+    subprocess.call('mkdir -p ' + out_image_show_dir, shell=True)
     subprocess.call('mkdir -p ' + out_model_dir, shell=True)
 except:
     pass
