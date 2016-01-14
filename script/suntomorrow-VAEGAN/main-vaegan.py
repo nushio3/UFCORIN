@@ -245,10 +245,10 @@ class Discriminator(chainer.Chain):
         if compare is not None:
             h =  elu(self.c0(x) + self.c0s(x_signal))  
             h =  elu(channel_normalize(self.c1(h), test=test))
-            h =  elu(channel_normalize(self.c2(h), test=test))
+            h =  channel_normalize(self.c2(h), test=test)
             h2 = elu(self.c0(compare) + self.c0s(x_signal))            
             h2 = elu(channel_normalize(self.c1(h2), test=test))
-            h2 = elu(channel_normalize(self.c2(h2), test=test))
+            h2 = channel_normalize(self.c2(h2), test=test)
             
             return average((h-h2)**2)
 
@@ -409,7 +409,7 @@ def train_vaegan_labeled(gen, enc, dis, epoch0=0):
                 fn2 = '%s/latest.png'%(out_image_show_dir)
                 fn1 = '%s/vis_%02d_%06d.png'%(out_image_dir, epoch,i)
 
-                plt.rcParams['figure.figsize'] = (36.0,12.0)
+                plt.rcParams['figure.figsize'] = (18.0,6.0)
                 plt.clf()
                 plt.subplot(1,3,1)
                 plt.imshow(variable_to_image(x_train))
