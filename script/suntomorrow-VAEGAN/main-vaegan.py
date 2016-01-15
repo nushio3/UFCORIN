@@ -162,6 +162,20 @@ def channel_normalize(x, test=False):
     xvar = F.concat(s1 * [cvar])    
     return (x - xavg) / (xvar + 1e-5)**0.5
 
+def shake_camera(img):
+    s0,s1,s2,s3 = img.data.shape
+    zerobar = Variable(xp.zeros((s0,s1,4,s3),dtype=np.float32))
+    img2 = F.concat([zerobar, img, zerobar],axis=2)
+    randshift=np.random.randint(1,8)
+    img3 = F.split_axis(img2, [randshift,randshift+img_w],axis=2)[1]
+
+    zerobar = Variable(xp.zeros((s0,s1,s2,4),dtype=np.float32))
+    img4 = F.concat([zerobar, img3, zerobar],axis=3)
+    randshift=np.random.randint(1,8)
+    img5 = F.split_axis(img4, [randshift,randshift+img_w],axis=3)[1]
+    return img5
+
+
 
 class Generator(chainer.Chain):
     def __init__(self):
@@ -338,8 +352,9 @@ def train_vaegan_labeled(gen, enc, dis, epoch0=0):
             
             # use encoder
             z_enc = enc(x_train)
-            x_vae = gen(z_enc,z_signal)
-            x_creative = gen(z_prior,z_signal)
+            x_vae = shake_camera(gen(z_enc,z_signal))
+            x_creative = shake_camera(gen(z_prior,z_signal))
+            x_train = shake_camera(x_train)
 
             yl_train  = dis(x_train)
             yl_vae    = dis(x_vae)
