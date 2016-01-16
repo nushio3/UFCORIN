@@ -64,6 +64,7 @@ cuda.get_device(args.gpu).use()
 def foldername(args):
     x = urllib.quote(str(args))
     x = re.sub('%..','_',x)
+    x = re.sub('___','-',x)
     x = re.sub('Namespace_','',x)
     return x
 
