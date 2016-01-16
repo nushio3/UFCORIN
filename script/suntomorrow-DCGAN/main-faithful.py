@@ -80,6 +80,8 @@ def scale_brightness(x):
     x3 = (np.log(x2)-np.log(lo)) / (np.log(hi) - np.log(lo))
     return x3
 
+# c.f. SDO/AIA official pallette https://darts.jaxa.jp/pub/ssw/sdo/aia/idl/pubrel/aia_lct.pro
+
 def data_to_image(i,var):
     img = var[i,0]
     img = np.maximum(0.0, np.minimum(1.0, img))
