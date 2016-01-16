@@ -524,7 +524,7 @@ def learn_predict_from_time(timedelta_hours):
 
 if args.learn_interval == 'random':
     while True:
-        learn_predict_from_time(5*365*24 * random.random())
+        learn_predict_from_time(6*365*24 * random.random())
         sys.stdout.flush()
 else:
     delta_hour = 24*30

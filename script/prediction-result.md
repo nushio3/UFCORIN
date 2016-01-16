@@ -10,6 +10,10 @@
 Realtime Solar X-ray Flux Forecast using Deep Learning
 =====
 
+<DIV align="center" style="font-size:200%;">
+<img src='https://cloud.githubusercontent.com/assets/512367/7226747/632f7350-e786-11e4-85e7-9cd7c2423b3a.png' width='25%'>
+</DIV>
+
 We present the 24-hour forecast of GOES X-ray flux,
 based on realtime GOES data and HMI-720s Near-Real-Time data.
 

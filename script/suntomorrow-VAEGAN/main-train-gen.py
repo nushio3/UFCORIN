@@ -43,8 +43,14 @@ parser.add_argument('--nz', default=100,type=int,
                     help='the size of encoding space')
 parser.add_argument('--dropout', action='store_true',
                     help='use dropout when training dis.')
+parser.add_argument('--shake-camera', action='store_true',
+                    help='shake camera to prevent overlearning.')
 parser.add_argument('--enc-norm', default = 'dis',
                     help='use (dis/L2) norm to train encoder.')
+parser.add_argument('--normalization', default = 'batch',
+                    help='use (batch/channel) normalization.')
+parser.add_argument('--Phase', default = 'gen',
+                    help='train (gen/enc/evol).')
 
 args = parser.parse_args()
 
@@ -73,8 +79,8 @@ zh = zw
 
 batchsize=1
 n_epoch=10000
-n_train=1000
-image_save_interval = 200
+n_train=10000
+image_save_interval = 100
 
 
 def average(x):
@@ -90,7 +96,7 @@ def average(x):
 def scale_brightness(x):
     lo = 50.0
     hi = 1250.0
-    x2 = np.maximum(lo,x)
+    x2 = np.minimum(hi, np.maximum(lo,x))
     x3 = (np.log(x2)-np.log(lo)) / (np.log(hi) - np.log(lo))
     return x3
 
@@ -163,6 +169,8 @@ def channel_normalize(x, test=False):
     return (x - xavg) / (xvar + 1e-5)**0.5
 
 def shake_camera(img):
+    if not args.shake_camera:
+        return img
     s0,s1,s2,s3 = img.data.shape
     zerobar = Variable(xp.zeros((s0,s1,4,s3),dtype=np.float32))
     img = F.concat([zerobar, img, zerobar],axis=2)
@@ -189,25 +197,25 @@ class Generator(chainer.Chain):
             dc2 = L.Deconvolution2D(256, 128, 4, stride=2, pad=1, wscale=0.02*math.sqrt(4*4*256)),
             dc3 = L.Deconvolution2D(128, 64, 4, stride=2, pad=1, wscale=0.02*math.sqrt(4*4*128)),
             dc4 = L.Deconvolution2D(64, 1, 4, stride=2, pad=1, wscale=0.02*math.sqrt(4*4*64)),
-            #bn0 = L.BatchNormalization(512),
-            #bn1 = L.BatchNormalization(256),
-            #bn2 = L.BatchNormalization(128),
-            #bn3 = L.BatchNormalization(64),
+            bn0 = L.BatchNormalization(512),
+            bn1 = L.BatchNormalization(256),
+            bn2 = L.BatchNormalization(128),
+            bn3 = L.BatchNormalization(64),
         )
         
     def __call__(self, z, z_signal, test=False):
-        h  = F.relu(channel_normalize(self.dc0z(z) + self.dc0s(z_signal), test=test))
-        h = F.relu(channel_normalize(self.dc1(h), test=test))
-        h = F.relu(channel_normalize(self.dc2(h), test=test))
-        h = F.relu(channel_normalize(self.dc3(h), test=test))
-        x = (self.dc4(h))
-        return x
-        # h  = F.relu(self.bn0(self.dc0z(z) + self.dc0s(z_signal), test=test))
-        # h = F.relu(self.bn1(self.dc1(h), test=test))
-        # h = F.relu(self.bn2(self.dc2(h), test=test))
-        # h = F.relu(self.bn3(self.dc3(h), test=test))
+        # h  = F.relu(channel_normalize(self.dc0z(z) + self.dc0s(z_signal), test=test))
+        # h = F.relu(channel_normalize(self.dc1(h), test=test))
+        # h = F.relu(channel_normalize(self.dc2(h), test=test))
+        # h = F.relu(channel_normalize(self.dc3(h), test=test))
         # x = (self.dc4(h))
         # return x
+        h  = F.relu(self.bn0(self.dc0z(z) + self.dc0s(z_signal), test=test))
+        h = F.relu(self.bn1(self.dc1(h), test=test))
+        h = F.relu(self.bn2(self.dc2(h), test=test))
+        h = F.relu(self.bn3(self.dc3(h), test=test))
+        x = (self.dc4(h))
+        return x
 
 class Encoder(chainer.Chain):
     def __init__(self):
@@ -217,18 +225,18 @@ class Encoder(chainer.Chain):
             c2 = L.Convolution2D(128, 256, 4, stride=2, pad=1, wscale=0.02*math.sqrt(4*4*128)),
             c3 = L.Convolution2D(256, 512, 4, stride=2, pad=1, wscale=0.02*math.sqrt(4*4*256)),
             cz = L.Convolution2D(512, nz , 8, stride=args.stride, wscale=0.02*math.sqrt(8*8*512)),
-
-            #bn0 = L.BatchNormalization(64),
-            #bn1 = L.BatchNormalization(128),
-            #bn2 = L.BatchNormalization(256),
-            #bn3 = L.BatchNormalization(512),
+            
+            bn0 = L.BatchNormalization(64),
+            bn1 = L.BatchNormalization(128),
+            bn2 = L.BatchNormalization(256),
+            bn3 = L.BatchNormalization(512),
         )
         
     def __call__(self, x, test=False):
         h = F.relu(self.c0(x))     # no bn because images from generator will katayotteru?
-        h = F.relu(channel_normalize(self.c1(h), test=test))
-        h = F.relu(channel_normalize(self.c2(h), test=test))
-        h = F.relu(channel_normalize(self.c3(h), test=test))
+        h = F.relu(self.bn1(self.c1(h), test=test))
+        h = F.relu(self.bn2(self.c2(h), test=test))
+        h = F.relu(self.bn3(self.c3(h), test=test))
         return self.cz(h)
 
 global coord_image
@@ -245,17 +253,17 @@ x_signal=Variable(cuda.to_gpu(coord_image))
 class Discriminator(chainer.Chain):
     def __init__(self):
         super(Discriminator, self).__init__(
-            c0 = L.Convolution2D(1, 32, 4, stride=2, pad=1, wscale=0.02*math.sqrt(4*4*1)),
-            c0s= L.Convolution2D(1, 32, 4, stride=2, pad=1, wscale=0.02*math.sqrt(4*4*1)),
-            c1 = L.Convolution2D(32, 128, 4, stride=2, pad=1, wscale=0.02*math.sqrt(4*4*32)),
+            c0 = L.Convolution2D(1, 64, 4, stride=2, pad=1, wscale=0.02*math.sqrt(4*4*1)),
+            c0s= L.Convolution2D(1, 64, 4, stride=2, pad=1, wscale=0.02*math.sqrt(4*4*1)),
+            c1 = L.Convolution2D(64, 128, 4, stride=2, pad=1, wscale=0.02*math.sqrt(4*4*32)),
             c2 = L.Convolution2D(128, 256, 4, stride=2, pad=1, wscale=0.02*math.sqrt(4*4*128)),
             c3 = L.Convolution2D(256, 512, 4, stride=2, pad=1, wscale=0.02*math.sqrt(4*4*256)),
             cz = L.Convolution2D(512, 2, 8, stride=args.stride,wscale=0.02*math.sqrt(8*8*512)),
 
-            #bn0 = L.BatchNormalization(32),
-            #bn1 = L.BatchNormalization(128),
-            #bn2 = L.BatchNormalization(256),
-            #bn3 = L.BatchNormalization(512),
+            bn0 = L.BatchNormalization(64),
+            bn1 = L.BatchNormalization(128),
+            bn2 = L.BatchNormalization(256),
+            bn3 = L.BatchNormalization(512),
         )
         
     def __call__(self, x, test=False, compare=None):
@@ -270,12 +278,12 @@ class Discriminator(chainer.Chain):
             return average((h-h2)**2)
 
         h = elu(self.c0(x) + self.c0s(x_signal))     # no bn because images from generator will katayotteru?
-        h = elu(channel_normalize(self.c1(h), test=test))
-        h = elu(channel_normalize(self.c2(F.dropout(h)), test=test))
-        h = elu(channel_normalize(self.c3(F.dropout(h)), test=test))
-        #h = elu(self.bn1(self.c1(h), test=test))
-        #h = elu(self.bn2(self.c2(F.dropout(h,train = args.dropout)), test=test))
-        #h = elu(self.bn3(self.c3(F.dropout(h,train = args.dropout)), test=test))
+        #h = elu(channel_normalize(self.c1(h), test=test))
+        #h = elu(channel_normalize(self.c2(F.dropout(h)), test=test))
+        #h = elu(channel_normalize(self.c3(F.dropout(h)), test=test))
+        h = elu(self.bn1(self.c1(h), test=test))
+        h = elu(self.bn2(self.c2(F.dropout(h,train = args.dropout)), test=test))
+        h = elu(self.bn3(self.c3(F.dropout(h,train = args.dropout)), test=test))
         h=self.cz(F.dropout(h,train = args.dropout))
         l = F.sum(h,axis=(2,3))/(h.data.size / 2)
         return l
@@ -326,9 +334,6 @@ def train_vaegan_labeled(gen, enc, dis, epoch0=0):
     gamma_p = 1.0
     
     for epoch in xrange(epoch0,n_epoch):
-        perm = np.random.permutation(n_train)
-        sum_l_dis = np.float32(0)
-        sum_l_gen = np.float32(0)
         
         for i in xrange(0, n_train, batchsize):
             print (epoch,i),
@@ -352,41 +357,50 @@ def train_vaegan_labeled(gen, enc, dis, epoch0=0):
             z_prior = Variable(cuda.to_gpu(z_prior))
             z_signal = Variable(cuda.to_gpu(z_signal))
 
-            
-            # use encoder
-            z_enc = enc(x_train)
-            x_vae = shake_camera(gen(z_enc,z_signal))
+
             x_creative = shake_camera(gen(z_prior,z_signal))
             x_train = shake_camera(x_train)
 
             yl_train  = dis(x_train)
-            yl_vae    = dis(x_vae)
             yl_prior  = dis(x_creative)
-            yl_dislike = dis(x_vae, compare=x_train)
-            
-            yl_L2like = average((x_vae - x_train)**2)
+
+            if args.Phase != 'gen':
+                # use encoder
+                z_enc = enc(x_train)
+                x_vae = shake_camera(gen(z_enc,z_signal))
+                yl_vae    = dis(x_vae)
+                yl_dislike = dis(x_vae, compare=x_train)            
+                yl_L2like = average((x_vae - x_train)**2)
 
             l_prior0 = average(z_prior**2)
-            l_prior  = average(z_enc**2)
+            if args.Phase != 'gen':
+                l_prior  = average(z_enc**2)
 
-            if float(l_prior.data.get()) < float(l_prior0.data.get()): gamma_p = 0.0
-            if float(l_prior.data.get()) > float(l_prior0.data.get()): gamma_p = 1.0
+                if float(l_prior.data.get()) < float(l_prior0.data.get()): gamma_p = 0.0
+                if float(l_prior.data.get()) > float(l_prior0.data.get()): gamma_p = 1.0
 
             train_is_genuine = F.softmax_cross_entropy(yl_train, Variable(xp.zeros(batchsize, dtype=np.int32)))
-            vae_is_genuine   = F.softmax_cross_entropy(yl_vae, Variable(xp.zeros(batchsize, dtype=np.int32)))
-            prior_is_genuine= F.softmax_cross_entropy(yl_prior, Variable(xp.zeros(batchsize, dtype=np.int32)))
-
             train_is_fake = F.softmax_cross_entropy(yl_train, Variable(xp.ones(batchsize, dtype=np.int32)))
-            vae_is_fake   = F.softmax_cross_entropy(yl_vae, Variable(xp.ones(batchsize, dtype=np.int32)))
+
+            prior_is_genuine= F.softmax_cross_entropy(yl_prior, Variable(xp.zeros(batchsize, dtype=np.int32)))
             prior_is_fake = F.softmax_cross_entropy(yl_prior, Variable(xp.ones(batchsize, dtype=np.int32)))
+
+            if args.Phase != 'gen':
+                vae_is_genuine   = F.softmax_cross_entropy(yl_vae, Variable(xp.zeros(batchsize, dtype=np.int32)))
+                vae_is_fake   = F.softmax_cross_entropy(yl_vae, Variable(xp.ones(batchsize, dtype=np.int32)))
             
             
+            if args.Phase == 'gen':
+                L_gen  = args.creativity_weight * prior_is_genuine 
 
-            L_gen  = args.creativity_weight * prior_is_genuine + vae_is_genuine + args.gamma * yl_dislike
+                L_dis  = train_is_genuine + prior_is_fake
 
-            L_enc  = vae_is_genuine + gamma_p * l_prior + (yl_L2like if args.enc_norm == 'L2' else yl_dislike)
+            else:
+                L_gen  = args.creativity_weight * prior_is_genuine + vae_is_genuine + args.gamma * yl_dislike
 
-            L_dis  = 2*train_is_genuine + vae_is_fake + prior_is_fake
+                L_enc  = vae_is_genuine + gamma_p * l_prior + (yl_L2like if args.enc_norm == 'L2' else yl_dislike)
+
+                L_dis  = 2*train_is_genuine + vae_is_fake + prior_is_fake
             
             for x in ['yl_train', 'yl_vae', 'yl_prior', 'yl_dislike', 'yl_L2like','l_prior','l_prior0','gamma_p','train_is_genuine', 'train_is_fake', 'vae_is_genuine', 'vae_is_fake', 'prior_is_genuine', 'prior_is_fake', 'L_gen', 'L_enc', 'L_dis']:
                 print x+":",
@@ -398,6 +412,8 @@ def train_vaegan_labeled(gen, enc, dis, epoch0=0):
                         print vx,' ',
                 except AttributeError:
                     print eval(x),
+                except:
+                    pass
 
 
             print
@@ -405,35 +421,41 @@ def train_vaegan_labeled(gen, enc, dis, epoch0=0):
             o_gen.zero_grads()
             L_gen.backward()
             o_gen.update()
-            
-            o_enc.zero_grads()
-            L_enc.backward()
-            o_enc.update()
+
+            if args.Phase != 'gen':            
+                o_enc.zero_grads()
+                L_enc.backward()
+                o_enc.update()
             
             o_dis.zero_grads()
             L_dis.backward()
             o_dis.update()
             
             L_gen.unchain_backward()
-            L_enc.unchain_backward()
             L_dis.unchain_backward()
+
+            if args.Phase != 'gen':
+                L_enc.unchain_backward()
             
             #print "backward done"
 
                 
 
             if i%image_save_interval==0:
+                vis_wscale = 2 if args.Phase == 'gen' else 3
+
                 fn0 = '%s/tmp.png'%(out_image_show_dir)
                 fn2 = '%s/latest.png'%(out_image_show_dir)
                 fn1 = '%s/vis_%02d_%06d.png'%(out_image_dir, epoch,i)
 
-                plt.rcParams['figure.figsize'] = (18.0,6.0)
+                plt.rcParams['figure.figsize'] = (6.0 * vis_wscale,6.0)
                 plt.clf()
-                plt.subplot(1,3,1)
+                plt.subplot(1,vis_wscale,1)
                 plt.imshow(variable_to_image(x_train))
-                plt.subplot(1,3,2)
-                plt.imshow(variable_to_image(x_vae))
-                plt.subplot(1,3,3)
+                if args.Phase != 'gen':
+                    plt.subplot(1,vis_wscale,2)
+                    plt.imshow(variable_to_image(x_vae))
+                plt.subplot(1,vis_wscale,vis_wscale)
                 plt.imshow(variable_to_image(x_creative))
                 plt.suptitle(str(args)+' epoch{}-{}'.format(epoch,i))
 
