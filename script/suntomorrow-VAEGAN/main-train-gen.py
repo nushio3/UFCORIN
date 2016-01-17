@@ -33,6 +33,8 @@ import chainer.links as L
 parser = argparse.ArgumentParser()
 parser.add_argument('--gpu', '-g', default=0, type=int,
                     help='GPU ID')
+parser.add_argument('--batchsize', default=2, type=int,
+                    help='how many batches to train simultaneously.')
 parser.add_argument('--gamma', default=1.0,type=float,
                     help='weight of content similarity over style similarity')
 parser.add_argument('--creativity-weight', default=1.0,type=float,
@@ -77,7 +79,6 @@ zw = (img_w/16-8) / args.stride +1 # size of in-vivo z patch
 zh = zw
 
 
-batchsize=1
 n_epoch=10000
 n_train=10000
 image_save_interval = 100
@@ -240,13 +241,13 @@ class Encoder(chainer.Chain):
         return self.cz(h)
 
 global coord_image
-coord_image = np.zeros((1,1,img_h, img_w), dtype=np.float32)
+coord_image = np.zeros((args.batchsize,1,img_h, img_w), dtype=np.float32)
 
 for iy in range(img_h):
     for ix in range(img_w):
         x = 2*float(ix - img_w/2)/img_w
         y = 2*float(iy - img_h/2)/img_h
-        coord_image[0,0,iy,ix] = x**2 + y**2
+        coord_image[:,0,iy,ix] = x**2 + y**2
 x_signal=Variable(cuda.to_gpu(coord_image))
 
 
@@ -291,7 +292,9 @@ class Discriminator(chainer.Chain):
 
 
 def load_image():
-    while True:
+    ret = np.zeros((args.batchsize,1,img_h,img_w),dtype=np.float32)
+    i=0
+    while i<args.batchsize:
         try:
             year  = 2011 + np.random.randint(4)
             month = 1 + np.random.randint(12)
@@ -310,9 +313,11 @@ def load_image():
                 continue
             img = intp.zoom(h[1].data.astype(np.float32),zoom=img_w/4096.0,order=0)
             img = scale_brightness(img  / exptime)
-            return np.reshape(img, (1,1,img_h,img_w))
+            ret[i, :, :, :] = np.reshape(img, (1,1,img_h,img_w))
+            i += 1
         except:
             continue
+    return ret
 
 def position_signal(i,w):
     ww = w/2
@@ -335,7 +340,7 @@ def train_vaegan_labeled(gen, enc, dis, epoch0=0):
     
     for epoch in xrange(epoch0,n_epoch):
         
-        for i in xrange(0, n_train, batchsize):
+        for i in xrange(0, n_train, args.batchsize):
             print (epoch,i),
             # discriminator
             # 0: from dataset
@@ -347,8 +352,8 @@ def train_vaegan_labeled(gen, enc, dis, epoch0=0):
             
 
             # generate prior and signal
-            z_prior = np.random.standard_normal((batchsize, nz, zh, zw)).astype(np.float32)
-            z_signal =np.zeros((batchsize, 2, zh, zw)).astype(np.float32)
+            z_prior = np.random.standard_normal((args.batchsize, nz, zh, zw)).astype(np.float32)
+            z_signal =np.zeros((args.batchsize, 2, zh, zw)).astype(np.float32)
             # embed the position signal in z vector
             for y in range (zh):
                 for x in range (zw):
@@ -379,15 +384,15 @@ def train_vaegan_labeled(gen, enc, dis, epoch0=0):
                 if float(l_prior.data.get()) < float(l_prior0.data.get()): gamma_p = 0.0
                 if float(l_prior.data.get()) > float(l_prior0.data.get()): gamma_p = 1.0
 
-            train_is_genuine = F.softmax_cross_entropy(yl_train, Variable(xp.zeros(batchsize, dtype=np.int32)))
-            train_is_fake = F.softmax_cross_entropy(yl_train, Variable(xp.ones(batchsize, dtype=np.int32)))
+            train_is_genuine = F.softmax_cross_entropy(yl_train, Variable(xp.zeros(args.batchsize, dtype=np.int32)))
+            train_is_fake = F.softmax_cross_entropy(yl_train, Variable(xp.ones(args.batchsize, dtype=np.int32)))
 
-            prior_is_genuine= F.softmax_cross_entropy(yl_prior, Variable(xp.zeros(batchsize, dtype=np.int32)))
-            prior_is_fake = F.softmax_cross_entropy(yl_prior, Variable(xp.ones(batchsize, dtype=np.int32)))
+            prior_is_genuine= F.softmax_cross_entropy(yl_prior, Variable(xp.zeros(args.batchsize, dtype=np.int32)))
+            prior_is_fake = F.softmax_cross_entropy(yl_prior, Variable(xp.ones(args.batchsize, dtype=np.int32)))
 
             if args.Phase != 'gen':
-                vae_is_genuine   = F.softmax_cross_entropy(yl_vae, Variable(xp.zeros(batchsize, dtype=np.int32)))
-                vae_is_fake   = F.softmax_cross_entropy(yl_vae, Variable(xp.ones(batchsize, dtype=np.int32)))
+                vae_is_genuine   = F.softmax_cross_entropy(yl_vae, Variable(xp.zeros(args.batchsize, dtype=np.int32)))
+                vae_is_fake   = F.softmax_cross_entropy(yl_vae, Variable(xp.ones(args.batchsize, dtype=np.int32)))
             
             
             if args.Phase == 'gen':
