@@ -41,6 +41,8 @@ parser.add_argument('--creativity-weight', default=1.0,type=float,
                     help='weight of creativity over emulation')
 parser.add_argument('--stride','-s', default=4,type=int,
                     help='stride size of the final layer')
+parser.add_argument('--final-filter-size', default=8,type=int,
+                    help='size of the final filter')
 parser.add_argument('--nz', default=100,type=int,
                     help='the size of encoding space')
 parser.add_argument('--dropout', action='store_true',
@@ -51,6 +53,8 @@ parser.add_argument('--enc-norm', default = 'dis',
                     help='use (dis/L2) norm to train encoder.')
 parser.add_argument('--normalization', default = 'batch',
                     help='use (batch/channel) normalization.')
+parser.add_argument('--prior-distribution', default = 'gaussian',
+                    help='use (uniform/gaussian) distribution for z prior.')
 parser.add_argument('--Phase', default = 'gen',
                     help='train (gen/enc/evol).')
 
@@ -62,6 +66,7 @@ cuda.get_device(args.gpu).use()
 def foldername(args):
     x = urllib.quote(str(args))
     x = re.sub('%..','_',x)
+    x = re.sub('___','-',x)
     x = re.sub('Namespace_','',x)
     return x
 
@@ -75,7 +80,7 @@ img_w=512 # size of the image
 img_h=512
 nz = args.nz          # # of dim for Z
 n_signal = 2 # # of signal
-zw = (img_w/16-8) / args.stride +1 # size of in-vivo z patch
+zw = (img_w/16-args.final_filter_size) / args.stride +1 # size of in-vivo z patch
 zh = zw
 
 
@@ -192,8 +197,8 @@ def shake_camera(img):
 class Generator(chainer.Chain):
     def __init__(self):
         super(Generator, self).__init__(
-            dc0z = L.Deconvolution2D(nz, 512, 8, stride=args.stride, wscale=0.02*math.sqrt(nz)),
-            dc0s = L.Deconvolution2D(n_signal, 512, 8, stride=args.stride, wscale=0.02*math.sqrt(n_signal)),
+            dc0z = L.Deconvolution2D(nz, 512, args.final_filter_size, stride=args.stride, wscale=0.02*math.sqrt(nz)),
+            dc0s = L.Deconvolution2D(n_signal, 512,  args.final_filter_size, stride=args.stride, wscale=0.02*math.sqrt(n_signal)),
             dc1 = L.Deconvolution2D(512, 256, 4, stride=2, pad=1, wscale=0.02*math.sqrt(4*4*512)),
             dc2 = L.Deconvolution2D(256, 128, 4, stride=2, pad=1, wscale=0.02*math.sqrt(4*4*256)),
             dc3 = L.Deconvolution2D(128, 64, 4, stride=2, pad=1, wscale=0.02*math.sqrt(4*4*128)),
@@ -225,7 +230,7 @@ class Encoder(chainer.Chain):
             c1 = L.Convolution2D(64, 128, 4, stride=2, pad=1, wscale=0.02*math.sqrt(4*4*64)),
             c2 = L.Convolution2D(128, 256, 4, stride=2, pad=1, wscale=0.02*math.sqrt(4*4*128)),
             c3 = L.Convolution2D(256, 512, 4, stride=2, pad=1, wscale=0.02*math.sqrt(4*4*256)),
-            cz = L.Convolution2D(512, nz , 8, stride=args.stride, wscale=0.02*math.sqrt(8*8*512)),
+            cz = L.Convolution2D(512, nz , args.final_filter_size, stride=args.stride, wscale=0.02*math.sqrt(8*8*512)),
             
             bn0 = L.BatchNormalization(64),
             bn1 = L.BatchNormalization(128),
@@ -259,7 +264,7 @@ class Discriminator(chainer.Chain):
             c1 = L.Convolution2D(64, 128, 4, stride=2, pad=1, wscale=0.02*math.sqrt(4*4*32)),
             c2 = L.Convolution2D(128, 256, 4, stride=2, pad=1, wscale=0.02*math.sqrt(4*4*128)),
             c3 = L.Convolution2D(256, 512, 4, stride=2, pad=1, wscale=0.02*math.sqrt(4*4*256)),
-            cz = L.Convolution2D(512, 2, 8, stride=args.stride,wscale=0.02*math.sqrt(8*8*512)),
+            cz = L.Convolution2D(512, 2, args.final_filter_size, stride=args.stride,wscale=0.02*math.sqrt(8*8*512)),
 
             bn0 = L.BatchNormalization(64),
             bn1 = L.BatchNormalization(128),
@@ -352,7 +357,10 @@ def train_vaegan_labeled(gen, enc, dis, epoch0=0):
             
 
             # generate prior and signal
-            z_prior = np.random.standard_normal((args.batchsize, nz, zh, zw)).astype(np.float32)
+            if args.prior_distribution == 'uniform':
+                z_prior = np.random.uniform(-1,1,(args.batchsize, nz, zh, zw)).astype(np.float32)
+            else:
+                z_prior = np.random.standard_normal((args.batchsize, nz, zh, zw)).astype(np.float32)
             z_signal =np.zeros((args.batchsize, 2, zh, zw)).astype(np.float32)
             # embed the position signal in z vector
             for y in range (zh):
@@ -462,7 +470,7 @@ def train_vaegan_labeled(gen, enc, dis, epoch0=0):
                     plt.imshow(variable_to_image(x_vae))
                 plt.subplot(1,vis_wscale,vis_wscale)
                 plt.imshow(variable_to_image(x_creative))
-                plt.suptitle(str(args)+' epoch{}-{}'.format(epoch,i))
+                plt.suptitle(str(args)+"\n"+'epoch{}-{}'.format(epoch,i))
 
                 plt.savefig(fn0)
                 subprocess.call("cp {} {}".format(fn0,fn2), shell=True)
