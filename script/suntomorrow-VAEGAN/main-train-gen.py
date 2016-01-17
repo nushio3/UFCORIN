@@ -422,7 +422,7 @@ def train_vaegan_labeled(gen, enc, dis, epoch0=0):
                     if vx.size==1:
                         print float(vx),
                     else:
-                        print vx,' ',
+                        print vx.flatten(),' ',
                 except AttributeError:
                     print eval(x),
                 except:
