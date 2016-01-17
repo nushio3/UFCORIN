@@ -86,7 +86,7 @@ zh = zw
 
 n_epoch=10000
 n_train=10000
-image_save_interval = 100
+image_save_interval = 200
 
 
 def average(x):
@@ -377,20 +377,19 @@ def train_vaegan_labeled(gen, enc, dis, epoch0=0):
             yl_train  = dis(x_train)
             yl_prior  = dis(x_creative)
 
-            if args.Phase != 'gen':
-                # use encoder
-                z_enc = enc(x_train)
-                x_vae = shake_camera(gen(z_enc,z_signal))
-                yl_vae    = dis(x_vae)
-                yl_dislike = dis(x_vae, compare=x_train)            
-                yl_L2like = average((x_vae - x_train)**2)
+            # use encoder
+            z_enc = enc(x_train)
+            x_vae = shake_camera(gen(z_enc,z_signal))
+            yl_vae    = dis(x_vae)
+            yl_dislike = dis(x_vae, compare=x_train)            
+            yl_L2like = average((x_vae - x_train)**2)
 
             l_prior0 = average(z_prior**2)
-            if args.Phase != 'gen':
-                l_prior  = average(z_enc**2)
+            
+            l_prior  = average(z_enc**2)
 
-                if float(l_prior.data.get()) < float(l_prior0.data.get()): gamma_p = 0.0
-                if float(l_prior.data.get()) > float(l_prior0.data.get()): gamma_p = 1.0
+            if float(l_prior.data.get()) < float(l_prior0.data.get()): gamma_p = 0.0
+            if float(l_prior.data.get()) > float(l_prior0.data.get()): gamma_p = 1.0
 
             train_is_genuine = F.softmax_cross_entropy(yl_train, Variable(xp.zeros(args.batchsize, dtype=np.int32)))
             train_is_fake = F.softmax_cross_entropy(yl_train, Variable(xp.ones(args.batchsize, dtype=np.int32)))
@@ -398,15 +397,16 @@ def train_vaegan_labeled(gen, enc, dis, epoch0=0):
             prior_is_genuine= F.softmax_cross_entropy(yl_prior, Variable(xp.zeros(args.batchsize, dtype=np.int32)))
             prior_is_fake = F.softmax_cross_entropy(yl_prior, Variable(xp.ones(args.batchsize, dtype=np.int32)))
 
-            if args.Phase != 'gen':
-                vae_is_genuine   = F.softmax_cross_entropy(yl_vae, Variable(xp.zeros(args.batchsize, dtype=np.int32)))
-                vae_is_fake   = F.softmax_cross_entropy(yl_vae, Variable(xp.ones(args.batchsize, dtype=np.int32)))
+            vae_is_genuine   = F.softmax_cross_entropy(yl_vae, Variable(xp.zeros(args.batchsize, dtype=np.int32)))
+            vae_is_fake   = F.softmax_cross_entropy(yl_vae, Variable(xp.ones(args.batchsize, dtype=np.int32)))
             
             
             if args.Phase == 'gen':
                 L_gen  = args.creativity_weight * prior_is_genuine 
 
                 L_dis  = train_is_genuine + prior_is_fake
+
+                L_enc  = args.gamma * vae_is_genuine + (yl_L2like if args.enc_norm == 'L2' else yl_dislike)
 
             else:
                 L_gen  = args.creativity_weight * prior_is_genuine + vae_is_genuine + args.gamma * yl_dislike
@@ -455,7 +455,7 @@ def train_vaegan_labeled(gen, enc, dis, epoch0=0):
                 
 
             if i%image_save_interval==0:
-                vis_wscale = 2 if args.Phase == 'gen' else 3
+                vis_wscale = 3
 
                 fn0 = '%s/tmp.png'%(out_image_show_dir)
                 fn2 = '%s/latest.png'%(out_image_show_dir)
@@ -465,11 +465,16 @@ def train_vaegan_labeled(gen, enc, dis, epoch0=0):
                 plt.clf()
                 plt.subplot(1,vis_wscale,1)
                 plt.imshow(variable_to_image(x_train))
-                if args.Phase != 'gen':
-                    plt.subplot(1,vis_wscale,2)
-                    plt.imshow(variable_to_image(x_vae))
+                plt.title('train')
+
+                plt.subplot(1,vis_wscale,2)
+                plt.imshow(variable_to_image(x_vae))
+                plt.title('enc->gen')
+
                 plt.subplot(1,vis_wscale,vis_wscale)
                 plt.imshow(variable_to_image(x_creative))
+                plt.title('z->gen')
+
                 plt.suptitle(str(args)+"\n"+'epoch{}-{}'.format(epoch,i))
 
                 plt.savefig(fn0)
