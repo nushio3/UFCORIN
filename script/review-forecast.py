@@ -29,9 +29,12 @@ for pat in pats:
     proc = subprocess.Popen('ls ' + pat, shell = True, stdout=subprocess.PIPE)
     for fn in proc.stdout:
         with(open(fn.strip(),'r')) as fp:
-            f = pickle.load(fp)
-            ax.plot(f.pred_curve_t, f.pred_curve_y, color=(0,0.7,0), lw=0.1)
-            ax.plot(f.pred_max_t[23][0], f.pred_max_y[23][0], 'mo', markersize=2.0, markeredgecolor='r')
+            try:
+                f = pickle.load(fp)
+                ax.plot(f.pred_curve_t, f.pred_curve_y, color=(0,0.7,0), lw=0.1)
+                ax.plot(f.pred_max_t[23][0], f.pred_max_y[23][0], 'mo', markersize=2.0, markeredgecolor='r')
+            except:
+                continue
 
 goes_curve_max = {}
 for i in range(len(f.goes_curve_t)):

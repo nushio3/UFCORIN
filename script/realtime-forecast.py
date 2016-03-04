@@ -3,7 +3,7 @@
 import argparse, copy, datetime, math, os, pickle, random,sys
 import astropy.time as time
 import chainer
-from chainer import cuda
+# from chainer import cuda
 import chainer.functions as F
 from chainer import optimizers
 import hashlib
@@ -507,6 +507,7 @@ def learn_predict_from_time(timedelta_hours):
         archive_fn  = archive_dir+now.strftime('/%H%M%S.pickle')
         
         # pickle, then read from the file, to best ensure the reproducibility.
+        print "archiving to: ", archive_fn
         if args.realtime != 'quick':
             with open(archive_fn,'w') as fp:
                 pickle.dump(forecast,fp,protocol=-1)
