@@ -11,6 +11,10 @@ import matplotlib.dates as mdates
 
 os.chdir(os.path.dirname(__file__))
 
+def discrete_t(t):
+    dt = t - datetime.datetime(2011,1,1)
+    return int(dt.total_seconds()/720)
+
 class Forecast:
     pass
 
@@ -37,10 +41,11 @@ for t in ts:
         pats.append('archive/{:04}/{:02}/{}*/*'.format(t.year,t.month,d10))
     
 if 'debug' in sys.argv:
-    pats = ['archive/2016/01/1?/*']
+    pats = ['archive/2016/01/0?/*']
 
 goes_curve_max = {}
-goes_curve_prediction = {}
+goes_curve_pred = {}
+goes_curve_obs = {}
 f = None
 for pat in pats:
     print "loading " + pat
@@ -54,7 +59,7 @@ for pat in pats:
                 pred_t = f.pred_max_t[23][0]
                 pred_y = f.pred_max_y[23][0]
                 ax.plot(pred_t, pred_y, 'mo', markersize=2.0, markeredgecolor='r')
-                goes_curve_prediction[pred_t] = pred_y
+                goes_curve_pred[discrete_t(pred_t)] = pred_y
 
             except:
                 continue
@@ -71,7 +76,7 @@ for pat in pats:
                 goes_curve_max[t2] = max(y2, y)
             except:
                 goes_curve_max[t2] = y
-
+            goes_curve_obs[discrete_t(t2)] = goes_curve_max[t2] 
     ax.plot(f.goes_curve_t, f.goes_curve_y, color=(0,0,0.5), lw=1.5)
     ax.plot(f.goes_curve_t, f.goes_curve_y, color=(0.2,0.2,1), lw=1)
 
@@ -85,10 +90,11 @@ for clas in range(-7,-3):
         for o in [False,True] :
             contingency_table[clas][(p,o)] = 0
 
-for t,y_pred in goes_curve_prediction.iteritems():
-    if not t in goes_curve_max:
+
+for t,y_pred in goes_curve_pred.iteritems():
+    if not t in goes_curve_obs:
         continue
-    y_obs = goes_curve_max[t]
+    y_obs = goes_curve_obs[t]
     clas_obs  = int(math.floor(math.log10(y_obs )))
     clas_pred = int(math.floor(math.log10(y_pred)))
     
