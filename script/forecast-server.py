@@ -15,4 +15,7 @@ while True:
         subprocess.call('time ./review-forecast.py',shell=True)
         subprocess.call('cp review-forecast.png  ~/public_html',shell=True)
 
+    
+        subprocess.call('scp review-forecast.png ufcorin@kyoto-76483it5.cloudapp.net:/var/www/html/wordpress/wp-content/uploads/2016/04/review-forecast-1.png', shell=True)
+
     time.sleep(10)
