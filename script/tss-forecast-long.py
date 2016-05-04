@@ -94,14 +94,18 @@ for clas in range(-7,-3):
 for t,y_pred in goes_curve_pred.iteritems():
     if not t in goes_curve_obs:
         continue
-    y_obs = goes_curve_obs[t]
-    clas_obs  = int(math.floor(math.log10(y_obs )))
-    clas_pred = int(math.floor(math.log10(y_pred)))
-    
-    for clas in range(-7,-3):
-        flag_obs = clas_obs >= clas
-        flag_pred= clas_pred>= clas
-        contingency_table[clas][(flag_pred,flag_obs)] += 1
+    try:
+        y_obs = goes_curve_obs[t]
+        clas_obs  = int(math.floor(math.log10(float(y_obs ))))
+        clas_pred = int(math.floor(math.log10(float(y_pred))))
+        
+        for clas in range(-7,-3):
+            flag_obs = clas_obs >= clas
+            flag_pred= clas_pred>= clas
+            contingency_table[clas][(flag_pred,flag_obs)] += 1
+    except:
+        continue
+
 
 for c,tbl in contingency_table.iteritems():
     print c
