@@ -11,6 +11,12 @@ import matplotlib.dates as mdates
 
 os.chdir(os.path.dirname(__file__))
 
+def discrete_t(t):
+    epoch = datetime.datetime(2011,1,1)
+    dt = t - epoch
+    return epoch + datetime.timedelta(seconds = int(dt.total_seconds()/720)*720)
+
+
 class Forecast:
     pass
 
@@ -19,6 +25,7 @@ plt.rcParams['figure.figsize'] = (48.0,8.0)
 
 fig, ax = plt.subplots() # plt.subplots(figsize=mpl.figure.figaspect(0.3))
 ax.set_yscale('log')
+
 
 
 now = time.Time(datetime.datetime.now(),format='datetime',scale='utc').tai.datetime
@@ -45,7 +52,7 @@ for pat in pats:
         with(open(fn.strip(),'r')) as fp:
             try:
                 f = pickle.load(fp)
-                ax.plot(f.pred_curve_t, f.pred_curve_y, color=(0,0.7,0), lw=0.1)
+                #ax.plot(f.pred_curve_t, f.pred_curve_y, color=(0,0.7,0), lw=0.1)
                 ax.plot(f.pred_max_t[23][0], f.pred_max_y[23][0], 'mo', markersize=2.0, markeredgecolor='r')
             except:
                 continue
@@ -56,7 +63,7 @@ for pat in pats:
         t = f.goes_curve_t[i]
         y = f.goes_curve_y[i]
         for j in range(-1,120):
-            t2 = t - datetime.timedelta(seconds=j*720)
+            t2 = discrete_t(t - datetime.timedelta(seconds=j*720))
             try:
                 y2 = goes_curve_max[t2]
                 goes_curve_max[t2] = max(y2, y)
@@ -67,8 +74,7 @@ for pat in pats:
     ax.plot(f.goes_curve_t, f.goes_curve_y, color=(0.2,0.2,1), lw=1)
 
 gmdata = sorted(goes_curve_max.items())
-ax.plot([kv[0] for kv in gmdata], [kv[1] for kv in gmdata], color=(1,0,0), lw=2)
-
+ax.plot([kv[0] for kv in gmdata], [kv[1] for kv in gmdata], color=(1,0.75,0.75), lw=2)
 
 
 months  = mdates.MonthLocator()  
