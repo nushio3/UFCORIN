@@ -11,6 +11,10 @@ import matplotlib.dates as mdates
 
 class Forecast:
     pass
+def discrete_t(t):
+    epoch = datetime.datetime(2011,1,1)
+    dt = t - epoch
+    return epoch + datetime.timedelta(seconds = int(dt.total_seconds()/720)*720)
 
 filename = 'review-forecast.png'
 
@@ -19,11 +23,13 @@ ax.set_yscale('log')
 
 
 now = time.Time(datetime.datetime.now(),format='datetime',scale='utc').tai.datetime
-
+#now = time.Time(datetime.datetime(2016,4,5),format='datetime',scale='utc').tai.datetime
 
 ts = [now-  datetime.timedelta(days=28), now]
 pats = ['archive/{:04}/{:02}/*/*'.format(t.year,t.month) for t in ts]
 #pats = ['archive/2016/01/1?/*']
+goes_curve_max = {}
+f = None
 for pat in pats:
     print "loading " + pat
     proc = subprocess.Popen('ls ' + pat, shell = True, stdout=subprocess.PIPE)
@@ -36,25 +42,26 @@ for pat in pats:
                 ax.plot(f.pred_max_t[23][0], f.pred_max_y[23][0], 'mo', markersize=2.0, markeredgecolor='r', zorder = 300)
             except:
                 continue
+    if f is None: 
+        continue
 
-goes_curve_max = {}
-for i in range(len(f.goes_curve_t)):
-    t = f.goes_curve_t[i]
-    y = f.goes_curve_y[i]
-    for j in range(-1,120):
-        t2 = t - datetime.timedelta(seconds=j*720)
-        try:
-            y2 = goes_curve_max[t2]
-            goes_curve_max[t2] = max(y2, y)
-        except:
-            goes_curve_max[t2] = y
-
+    for i in range(len(f.goes_curve_t)):
+        t = f.goes_curve_t[i]
+        y = f.goes_curve_y[i]
+        for j in range(-1,120):
+            t2 = discrete_t(t - datetime.timedelta(seconds=j*720))
+            try:
+                y2 = goes_curve_max[t2]
+                goes_curve_max[t2] = max(y2, y)
+            except:
+                goes_curve_max[t2] = y
+    
+    ax.plot(f.goes_curve_t, f.goes_curve_y, color=(0.66,0.66,1), lw=1.5, zorder = 200)
+    ax.plot(f.goes_curve_t, f.goes_curve_y, color=(0,0,1), lw=1, zorder = 201)
 
 gmdata = sorted(goes_curve_max.items())
-ax.plot([kv[0] for kv in gmdata], [kv[1] for kv in gmdata], color=(1,0,0), lw=1, zorder = 200)
+ax.plot([kv[0] for kv in gmdata], [kv[1] for kv in gmdata], color=(1,0.75,0.75), lw=2, zorder = 100)
 
-ax.plot(f.goes_curve_t, f.goes_curve_y, color=(0.66,0.66,1), lw=1.5, zorder = 100)
-ax.plot(f.goes_curve_t, f.goes_curve_y, color=(0,0,1), lw=0.5, zorder = 101)
 
 
 days    = mdates.DayLocator()  # every day

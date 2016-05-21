@@ -70,8 +70,8 @@ for pat in pats:
             except:
                 goes_curve_max[t2] = y
 
-    ax.plot(f.goes_curve_t, f.goes_curve_y, color=(0,0,0.5), lw=1.5, zorder = 201)
-    ax.plot(f.goes_curve_t, f.goes_curve_y, color=(0.2,0.2,1), lw=1, zorder = 200)
+    ax.plot(f.goes_curve_t, f.goes_curve_y, color=(0.66,0.66,1), lw=1.5, zorder = 200)
+    ax.plot(f.goes_curve_t, f.goes_curve_y, color=(0,0,1), lw=1, zorder = 201)
 
 gmdata = sorted(goes_curve_max.items())
 ax.plot([kv[0] for kv in gmdata], [kv[1] for kv in gmdata], color=(1,0.75,0.75), lw=2, zorder=100)
