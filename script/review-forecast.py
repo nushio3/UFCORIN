@@ -21,13 +21,23 @@ filename = 'review-forecast.png'
 fig, ax = plt.subplots() # plt.subplots(figsize=mpl.figure.figaspect(0.3))
 ax.set_yscale('log')
 
-
+demo_mode = False
 now = time.Time(datetime.datetime.now(),format='datetime',scale='utc').tai.datetime
-#now = time.Time(datetime.datetime(2016,4,5),format='datetime',scale='utc').tai.datetime
+if demo_mode:
+    now = time.Time(datetime.datetime(2016,5,11),format='datetime',scale='utc').tai.datetime
 
-ts = [now-  datetime.timedelta(days=28), now]
-pats = ['archive/{:04}/{:02}/*/*'.format(t.year,t.month) for t in ts]
-#pats = ['archive/2016/01/1?/*']
+t = now
+ts = [now]
+for i in range(1):
+    t -=  datetime.timedelta(days=28)
+    ts.append(t)
+ts.reverse()
+
+pats = []
+for t in ts:
+    for d10 in range(4):
+        pats.append('archive/{:04}/{:02}/{}*/*'.format(t.year,t.month,d10))
+
 goes_curve_max = {}
 f = None
 for pat in pats:
@@ -75,8 +85,12 @@ fig.autofmt_xdate()
 ax.set_title('GOES Forecast till {}(TAI)'.format(now.strftime('%Y-%m-%d %H:%M:%S')))
 ax.set_xlabel('International Atomic Time')
 ax.set_ylabel(u'GOES Long[1-8Å] Xray Flux')
-ax.set_xlim([now-datetime.timedelta(days=16), now+datetime.timedelta(days=1)])
-ax.set_ylim([5e-8, 1e-3])        
+if demo_mode:
+    ax.set_xlim([now-datetime.timedelta(days=9), now+datetime.timedelta(days=1)])
+    ax.set_ylim([5e-8, 1e-5])        
+else:
+    ax.set_xlim([now-datetime.timedelta(days=16), now+datetime.timedelta(days=1)])
+    ax.set_ylim([5e-8, 1e-3])        
 
 plt.savefig(filename, dpi=200)
 plt.close('all')

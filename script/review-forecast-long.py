@@ -29,12 +29,15 @@ ax.set_yscale('log')
 
 
 now = time.Time(datetime.datetime.now(),format='datetime',scale='utc').tai.datetime
+t_begin = time.Time(datetime.datetime(2015,8,1),format='datetime',scale='utc').tai.datetime
 
 t = now
 ts = [now]
-for i in range(9):
+while True:
     t -=  datetime.timedelta(days=28)
     ts.append(t)
+    if t < t_begin:
+        break
 ts.reverse()
 
 pats = []
