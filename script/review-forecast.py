@@ -33,7 +33,7 @@ for pat in pats:
                 f = pickle.load(fp)
                 # supress daily forecast bar
                 # ax.plot(f.pred_curve_t, f.pred_curve_y, color=(0,0.7,0), lw=0.1)
-                ax.plot(f.pred_max_t[23][0], f.pred_max_y[23][0], 'mo', markersize=2.0, markeredgecolor='r')
+                ax.plot(f.pred_max_t[23][0], f.pred_max_y[23][0], 'mo', markersize=2.0, markeredgecolor='r', zorder = 300)
             except:
                 continue
 
@@ -51,10 +51,10 @@ for i in range(len(f.goes_curve_t)):
 
 
 gmdata = sorted(goes_curve_max.items())
-ax.plot([kv[0] for kv in gmdata], [kv[1] for kv in gmdata], color=(1,0.75,0.75), lw=2)
+ax.plot([kv[0] for kv in gmdata], [kv[1] for kv in gmdata], color=(1,0,0), lw=1, zorder = 200)
 
-ax.plot(f.goes_curve_t, f.goes_curve_y, color=(0,0,0.5), lw=1.5)
-ax.plot(f.goes_curve_t, f.goes_curve_y, color=(0.2,0.2,1), lw=1)
+ax.plot(f.goes_curve_t, f.goes_curve_y, color=(0.66,0.66,1), lw=1.5, zorder = 100)
+ax.plot(f.goes_curve_t, f.goes_curve_y, color=(0,0,1), lw=0.5, zorder = 101)
 
 
 days    = mdates.DayLocator()  # every day
