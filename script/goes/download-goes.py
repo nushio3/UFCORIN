@@ -69,8 +69,8 @@ def write_db(con):
     session.commit()
 
 
-for year in reversed(range(2015,2016)):
-    for month in reversed(range(12,13)):
+for year in reversed(range(2016,2017)):
+    for month in reversed(range(1,3)):
         # if year==2015 and month > 8: continue
         (_, day_end) = calendar.monthrange(year,month)
         url = 'http://satdat.ngdc.noaa.gov/sem/goes/data/new_avg/{year}/{month:02d}/goes15/csv/g15_xrs_1m_{year}{month:02d}{day_begin:02d}_{year}{month:02d}{day_end:02d}.csv'.format(year=year,month=month,day_begin=1,day_end=day_end)
