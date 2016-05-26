@@ -93,13 +93,16 @@ class Forecast:
         time_begin = self.pred_max_t[23][0]
         time_end   = self.pred_max_t[23][1]
 
+        def fmttime(t):
+            return t.strftime("%Y-%m-%dT%H:%MZ")
+
         with open(filename, 'w') as fp:
-            fp.write("Forecasting method: UFCORIN-LSTM-20160526")
-            fp.write("Issue Time: {}".format(now))
-            fp.write("Prediction Window Start Time: {}".format(time_begin))
-            fp.write("Prediction Window End Time: {}".format(time_end))
-            fp.write("Probability Bins: M+")
-            fp.write("Input data: SDO/HMI LOS_Magnetogram, GOES X-ray flux")
+            fp.write("Forecasting method: UFCORIN_1\n")
+            fp.write("Issue Time: {}\n".format(fmttime(now)))
+            fp.write("Prediction Window Start Time: {}\n".format(fmttime(time_begin)))
+            fp.write("Prediction Window End Time: {}\n".format(fmttime(time_end)))
+            fp.write("Probability Bins: M+\n")
+            fp.write("Input data: SDO/HMI LOS_Magnetogram, GOES X-ray flux\n")
 
     def visualize(self, filename):
         now = time.Time(datetime.datetime.now(),format='datetime',scale='utc').tai.datetime
