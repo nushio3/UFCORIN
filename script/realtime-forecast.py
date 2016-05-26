@@ -103,7 +103,8 @@ class Forecast:
             fp.write("Prediction Window End Time: {}\n".format(fmttime(time_end)))
             fp.write("Probability Bins: M+\n")
             fp.write("Input data: SDO/HMI LOS_Magnetogram, GOES X-ray flux\n")
-
+            spacer = "---- ---- ----"
+            fp.write("{:.4f} {} {:.4f} {} {:.4f} {}\n".format(prob_x, spacer, prob_m, spacer,prob_c,spacer))
     def visualize(self, filename):
         now = time.Time(datetime.datetime.now(),format='datetime',scale='utc').tai.datetime
         fig, ax = plt.subplots()
