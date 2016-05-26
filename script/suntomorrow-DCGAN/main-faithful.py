@@ -101,7 +101,7 @@ def load_image():
             day   = 1 + np.random.randint(32)
             hour  = np.random.randint(24)
             minu  = np.random.randint(5)*12
-    
+
             subprocess.call('rm {}/*'.format(work_image_dir),shell=True)
             local_fn =  work_image_dir + '/image.fits'
             cmd = 'aws s3 cp "s3://sdo/aia193/720s/{:04}/{:02}/{:02}/{:02}{:02}.fits" {} --region us-west-2 --quiet'.format(year,month,day,hour,minu, local_fn)
@@ -186,7 +186,7 @@ class Generator(chainer.Chain):
             bn2 = L.BatchNormalization(128),
             bn3 = L.BatchNormalization(64),
         )
-        
+
     def __call__(self, z, test=False):
         h = F.reshape(F.relu(self.bn0l(self.l0z(z), test=test)), (z.data.shape[0], 512, 6, 6))
         h = F.relu(self.bn1(self.dc1(h), test=test))
@@ -210,7 +210,7 @@ class Discriminator(chainer.Chain):
             bn2 = L.BatchNormalization(256),
             bn3 = L.BatchNormalization(512),
         )
-        
+
     def __call__(self, x, test=False):
         h = elu(self.c0(x))     # no bn because images from generator will katayotteru?
         h = elu(self.bn1(self.c1(h), test=test))
@@ -233,12 +233,12 @@ def train_dcgan_labeled(gen, dis, epoch0=0):
     o_dis.add_hook(chainer.optimizer.WeightDecay(0.00001))
 
     zvis = (xp.random.uniform(-1, 1, (100, nz), dtype=np.float32))
-    
+
     for epoch in xrange(epoch0,n_epoch):
         perm = np.random.permutation(n_train)
         sum_l_dis = np.float32(0)
         sum_l_gen = np.float32(0)
-        
+
         for i in xrange(0, n_train, batchsize):
             # discriminator
             # 0: from dataset
@@ -253,33 +253,33 @@ def train_dcgan_labeled(gen, dis, epoch0=0):
 
                 x2[j,0,:,:] = img[rndx:rndx+patch_w,rndy:rndy+patch_h]
             #print "load image done"
-            
+
             # train generator
             z = Variable(xp.random.uniform(-1, 1, (batchsize, nz), dtype=np.float32))
             x = gen(z)
             yl = dis(x)
             L_gen = F.softmax_cross_entropy(yl, Variable(xp.zeros(batchsize, dtype=np.int32)))
             L_dis = F.softmax_cross_entropy(yl, Variable(xp.ones(batchsize, dtype=np.int32)))
-            
+
             # train discriminator
-                    
+
             x2 = Variable(cuda.to_gpu(x2))
             yl2 = dis(x2)
             L_dis += F.softmax_cross_entropy(yl2, Variable(xp.zeros(batchsize, dtype=np.int32)))
-            
+
             #print "forward done"
 
             o_gen.zero_grads()
             L_gen.backward()
             o_gen.update()
-            
+
             o_dis.zero_grads()
             L_dis.backward()
             o_dis.update()
-            
+
             sum_l_gen += L_gen.data.get()
             sum_l_dis += L_dis.data.get()
-            
+
             #print "backward done"
 
             if i%image_save_interval==0:
@@ -298,7 +298,7 @@ def train_dcgan_labeled(gen, dis, epoch0=0):
                     pylab.imshow(tmp)
                     pylab.axis('off')
                 pylab.savefig('%s/vis_%d_%06d.png'%(out_image_dir, epoch,i))
-                print "visualized."                
+                print "visualized."
         serializers.save_hdf5("%s/dcgan_model_dis_%d.h5"%(out_model_dir, epoch),dis)
         serializers.save_hdf5("%s/dcgan_model_gen_%d.h5"%(out_model_dir, epoch),gen)
         serializers.save_hdf5("%s/dcgan_state_dis_%d.h5"%(out_model_dir, epoch),o_dis)
