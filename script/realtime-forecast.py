@@ -103,8 +103,8 @@ class Forecast:
             fp.write("Prediction Window End Time: {}\n".format(fmttime(time_end)))
             fp.write("Probability Bins: M+\n")
             fp.write("Input data: SDO/HMI LOS_Magnetogram, GOES X-ray flux\n")
-            fp.write("#Full Disk Forecast")
-            fp.write("#X_prob   X_CI_Lower  Upper  X_Level     M_prob   M_CI_Lower  Upper  M_Level     C_prob   C_CI_Lower  Upper  C_Level")
+            fp.write("#Full Disk Forecast\n")
+            fp.write("#X_prob   X_CI_Lower  Upper  X_Level     M_prob   M_CI_Lower  Upper  M_Level     C_prob   C_CI_Lower  Upper  C_Level\n")
 
             spacer = "---- ---- ----"
             fp.write("{:.4f} {} {:.4f} {} {:.4f} {}\n".format(prob_x, spacer, prob_m, spacer,prob_c,spacer))
