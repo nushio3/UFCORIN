@@ -70,7 +70,7 @@ except:
     pass
 
 
-@on_timeout(limit=3600, handler = abort_handler, hint='system call')
+@on_timeout(limit=36000, handler = abort_handler, hint='system call')
 def system(cmd):
     global child_proc
     # The os.setsid() is passed in the argument preexec_fn so
@@ -93,8 +93,11 @@ def fits2npz(newfn, npzfn):
     hdulist=fits.open(newfn)
     hdulist.verify('fix')
     img=hdulist[1].data
+    exptime=hdulist[1].header['EXPTIME']
+    if (exptime<=0):
+        raise Exception('non-positive EXPTIME')
     img = np.where( np.isnan(img), 0.0, img)
-    img2=intp.zoom(img,zoom=zoom_ratio)
+    img2=intp.zoom(img,zoom=zoom_ratio)/exptime
 
     if args.series=='hmi':
         for y in range(reso_new):
@@ -139,7 +142,7 @@ elif args.series=='aia':
     series_name = "aia.lev1_euv_12s"    
 
 
-wavelnths='[193]'
+wavelnths='[94,131,171,193,211,304,335]'
 
 
 
@@ -154,23 +157,24 @@ session = Session()
 
 
 if args.carpet:
-    iteration_n = 365
-else:
+    iteration_n = 370*5
+    batch_days=1
+else:    
     iteration_n = 1
 
 for iteration_ctr in range(iteration_n):
     if not watch_state.last_success_time:
-        watch_state.last_success_time = time.Time('2011-01-01 00:00',scale='tai', format='iso')
+        watch_state.last_success_time = time.Time('2014-10-01 00:00',scale='tai', format='iso')
     # Generate query to download the latest NRT FITS image
     if args.carpet:
-        t_begin = time.Time('2011-01-01 00:00',scale='tai', format='iso').datetime +  datetime.timedelta(days=5)   * iteration_ctr
-        t_end = t_begin     + datetime.timedelta(days=5)  
+        t_begin = time.Time('2013-09-24 00:00',scale='tai', format='iso').datetime +  datetime.timedelta(days=batch_days)   * iteration_ctr
+        t_end = t_begin     + datetime.timedelta(days=batch_days)  
     else: # adding 1 second is good idea in ordetr to create new query.
         watch_state.last_cached_time += time.TimeDelta(1, format='sec')
         t_begin = watch_state.last_success_time.datetime + datetime.timedelta(seconds=720)
         t_end   = watch_state.last_cached_time          + datetime.timedelta(days=1)  
     if args.carpet:
-        query = series_name + '[{}/5d@720s]{}'.format(t_begin.strftime('%Y.%m.%d_%H:%M:%S'),wavelnths)
+        query = series_name + '[{}/{}d@720s]{}'.format(t_begin.strftime('%Y.%m.%d_%H:%M:%S'),batch_days,wavelnths)
     else:
         query = series_name + '[{}-{}@720s]{}'.format(t_begin.strftime('%Y.%m.%d_%H:%M:%S'),t_end.strftime('%Y.%m.%d_%H:%M:%S'),wavelnths)
     

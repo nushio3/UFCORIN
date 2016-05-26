@@ -29,12 +29,15 @@ ax.set_yscale('log')
 
 
 now = time.Time(datetime.datetime.now(),format='datetime',scale='utc').tai.datetime
+t_begin = time.Time(datetime.datetime(2015,8,1),format='datetime',scale='utc').tai.datetime
 
 t = now
 ts = [now]
-for i in range(9):
+while True:
     t -=  datetime.timedelta(days=28)
     ts.append(t)
+    if t < t_begin:
+        break
 ts.reverse()
 
 pats = []
@@ -53,7 +56,7 @@ for pat in pats:
             try:
                 f = pickle.load(fp)
                 #ax.plot(f.pred_curve_t, f.pred_curve_y, color=(0,0.7,0), lw=0.1)
-                ax.plot(f.pred_max_t[23][0], f.pred_max_y[23][0], 'mo', markersize=2.0, markeredgecolor='r')
+                ax.plot(f.pred_max_t[23][0], f.pred_max_y[23][0], 'mo', markersize=2.0, markeredgecolor='r', zorder = 300)
             except:
                 continue
 
@@ -70,11 +73,11 @@ for pat in pats:
             except:
                 goes_curve_max[t2] = y
 
-    ax.plot(f.goes_curve_t, f.goes_curve_y, color=(0,0,0.5), lw=1.5)
-    ax.plot(f.goes_curve_t, f.goes_curve_y, color=(0.2,0.2,1), lw=1)
+    ax.plot(f.goes_curve_t, f.goes_curve_y, color=(0.66,0.66,1), lw=1.5, zorder = 200)
+    ax.plot(f.goes_curve_t, f.goes_curve_y, color=(0,0,1), lw=1, zorder = 201)
 
 gmdata = sorted(goes_curve_max.items())
-ax.plot([kv[0] for kv in gmdata], [kv[1] for kv in gmdata], color=(1,0.75,0.75), lw=2)
+ax.plot([kv[0] for kv in gmdata], [kv[1] for kv in gmdata], color=(1,0.75,0.75), lw=2, zorder=100)
 
 
 months  = mdates.MonthLocator()  
