@@ -84,9 +84,15 @@ class Forecast:
 
         ys_log = [math.log10(y[0]) for y in self.pred_max_y]
         pred_mean = ys_log[23]
-        pred_stddev = np.mean([abs(ys_log[i] - pred_mean) for i in [19,20,21,22]])
+        pred_stddev = max([abs(ys_log[i] - pred_mean) for i in [19,20,21,22]])
         def cdf(y):
-            return 0.5 * (1 + math.erf((y-pred_mean)/(math.sqrt(2.0) * pred_stddev)))
+            # cumulative gaussian distribution
+            # return 0.5 * (1 + math.erf((y-pred_mean)/(math.sqrt(2.0) * pred_stddev)))
+            x = (y-pred_mean) / pred_stddev
+            if x > 0:
+                return 0.5*(2-math.exp(-x))
+            else:
+                return 0.5*math.exp(x)
         prob_x = 1 - cdf(-4)
         prob_m = 1 - cdf(-5)
         prob_c = 1 - cdf(-6)
