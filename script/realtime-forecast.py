@@ -57,6 +57,7 @@ workdir='result/' + hashlib.sha256("salt{}{}".format(args,random.random())).hexd
 if args.work_dir != '':
     workdir = args.work_dir
 subprocess.call('mkdir -p ' + workdir ,shell=True)
+subprocess.call('mkdir -p ccmc' ,shell=True)
 os.chdir(workdir)
 
 if args.quiet_log:
@@ -77,13 +78,36 @@ def from_PU(x):
         return x
 
 class Forecast:
+    def generate_ccmc_submission(self):
+        now = datetime.datetime.now()
+        filename = "ccmc/{}.txt".format(now)
+
+        ys_log = [math.log10(y) for y in self.pred_max_y]
+        pred_mean = ys_log[23]
+        pred_stddev = math.sqrt(np.mean([(ys_log[i] - mean)**2 for i in [20,21,22]]))
+        def cdf(y):
+            return 0.5 * (1 + math.erf((y-pred_mean)/(math.sqrt(2.0) * pred_stddev)))
+        prob_x = 1 - cdf(-4)
+        prob_m = 1 - cdf(-5)
+        prob_c = 1 - cdf(-6)
+        time_begin = self.pred_max_t[23][0]
+        time_end   = self.pred_max_t[23][1]
+
+        with open(filename, 'w') as fp:
+            fp.write("Forecasting method: UFCORIN-LSTM-20160526")
+            fp.write("Issue Time: {}".format(now))
+            fp.write("Prediction Window Start Time: {}".format(time_begin))
+            fp.write("Prediction Window End Time: {}".format(time_end))
+            fp.write("Probability Bins: M+")
+            fp.write("Input data: SDO/HMI LOS_Magnetogram, GOES X-ray flux")
+
     def visualize(self, filename):
         now = time.Time(datetime.datetime.now(),format='datetime',scale='utc').tai.datetime
         fig, ax = plt.subplots()
         ax.set_yscale('log')
 
         ax.plot(self.goes_curve_t, self.goes_curve_y, 'b')
-        
+
         ax.plot(self.pred_curve_t, self.pred_curve_y, 'g')
         for i in range(24):
             ax.plot(self.pred_max_t[i], self.pred_max_y[i], 'r')
@@ -102,7 +126,7 @@ class Forecast:
 
         plt.savefig(filename, dpi=200)
         plt.close('all')
-        
+
         with open("prediction-result.md","r") as fp:
             md_template=fp.read()
 
@@ -114,7 +138,7 @@ class Forecast:
         md_new = md_template.replace('{{GOES_FLUX}}','{:0.2}'.format(predicted_goes_flux)).replace('{{FLARE_CLASS}}',predicted_class)
         with open("prediction-result-filled.md","w") as fp:
             fp.write(md_new)
-        subprocess.call('pandoc prediction-result-filled.md -o ~/public_html/prediction-result.html'  , shell=True)        
+        subprocess.call('pandoc prediction-result-filled.md -o ~/public_html/prediction-result.html'  , shell=True)
 
 # Obtain MySQL Password
 with open(os.path.expanduser('~')+'/.mysqlpass','r') as fp:
@@ -366,7 +390,7 @@ def learn_predict_from_time(timedelta_hours):
         learning_stop_time =  last_t - 24*t_per_hour
 
         input_batch = np.array([feature_data[t]], dtype=np.float32)
-        
+
         # erase the data
         if t >= learning_stop_time or noise_switch:
             input_batch *= 0.0
@@ -377,7 +401,7 @@ def learn_predict_from_time(timedelta_hours):
         if t % 400 == 399:
             noise_switch = False
         if t >= learning_stop_time -300:
-            noise_switch = False            
+            noise_switch = False
 
         output_data = []
         for i in range(24):
@@ -419,8 +443,8 @@ def learn_predict_from_time(timedelta_hours):
         _, prediction_smaller, _ = F.split_axis(output_prediction, [24,47], axis=1)
         _, prediction_larger     = F.split_axis(output_prediction, [25], axis=1)
         loss_iter_2 = F.sum(F.relu(prediction_smaller - prediction_larger))
-        
-        accum_loss += loss_iter ## + 1e-4 * loss_iter_2 
+
+        accum_loss += loss_iter ## + 1e-4 * loss_iter_2
 
         # collect prediction statistics
         if not args.realtime and t >= learning_stop_time:
@@ -436,7 +460,7 @@ def learn_predict_from_time(timedelta_hours):
         # learn
         if t >= learning_stop_time:
             accum_loss.unchain_backward()
-        elif (t+1) % n_backprop == 0: 
+        elif (t+1) % n_backprop == 0:
             optimizer.zero_grads()
             accum_loss.backward()
             accum_loss.unchain_backward()
@@ -505,7 +529,7 @@ def learn_predict_from_time(timedelta_hours):
         archive_dir = now.strftime('archive/%Y/%m/%d')
         subprocess.call('mkdir -p ' + archive_dir, shell=True)
         archive_fn  = archive_dir+now.strftime('/%H%M%S.pickle')
-        
+
         # pickle, then read from the file, to best ensure the reproducibility.
         print "archiving to: ", archive_fn
         if args.realtime != 'quick':
@@ -517,8 +541,9 @@ def learn_predict_from_time(timedelta_hours):
 
         pngfn = 'prediction-result.png'
         forecast.visualize(pngfn)
+        forecast.generate_ccmc_submission()
         subprocess.call('cp {} ~/public_html/'.format(pngfn), shell=True)
-        
+
 
         exit(0)
 
@@ -534,5 +559,3 @@ else:
         learn_predict_from_time(delta_hour)
         delta_hour += hour_interval
         sys.stdout.flush()
-
-    
