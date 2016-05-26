@@ -80,7 +80,7 @@ def from_PU(x):
 class Forecast:
     def generate_ccmc_submission(self):
         now = datetime.datetime.now()
-        filename = "ccmc/{}.txt".format(now)
+        filename = "ccmc/UFCORIN_1_{}.txt".format(now.strftime("%Y%m%d_%H%M"))
 
         ys_log = [math.log10(y) for y in self.pred_max_y]
         pred_mean = ys_log[23]
