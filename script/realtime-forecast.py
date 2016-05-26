@@ -540,8 +540,8 @@ def learn_predict_from_time(timedelta_hours):
 
 
         pngfn = 'prediction-result.png'
-        forecast.visualize(pngfn)
         forecast.generate_ccmc_submission()
+        forecast.visualize(pngfn)
         subprocess.call('cp {} ~/public_html/'.format(pngfn), shell=True)
 
 
