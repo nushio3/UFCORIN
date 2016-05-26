@@ -82,7 +82,7 @@ class Forecast:
         now = datetime.datetime.now()
         filename = "ccmc/UFCORIN_1_{}.txt".format(now.strftime("%Y%m%d_%H%M"))
 
-        ys_log = [math.log10(y) for y in self.pred_max_y[0]]
+        ys_log = [math.log10(y[0]) for y in self.pred_max_y]
         pred_mean = ys_log[23]
         pred_stddev = math.sqrt(np.mean([(ys_log[i] - mean)**2 for i in [20,21,22]]))
         def cdf(y):
