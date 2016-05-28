@@ -93,6 +93,10 @@ class Forecast:
                 return 0.5*(2-math.exp(-x))
             else:
                 return 0.5*math.exp(x)
+        # def cdf(y):
+        #     # cumulative gaussian distribution
+        #     # return 0.5 * (1 + math.erf((y-pred_mean)/(math.sqrt(2.0) * pred_stddev)))
+        #     return (1-0.5)**((10.0**y / 10.0**pred_mean) ** (-0.53))
         prob_x = 1 - cdf(-4)
         prob_m = 1 - cdf(-5)
         prob_c = 1 - cdf(-6)
