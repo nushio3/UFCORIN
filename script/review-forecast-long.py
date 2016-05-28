@@ -29,7 +29,7 @@ ax.set_yscale('log')
 
 
 now = time.Time(datetime.datetime.now(),format='datetime',scale='utc').tai.datetime
-t_begin = time.Time(datetime.datetime(2015,8,1),format='datetime',scale='utc').tai.datetime
+t_begin = time.Time(datetime.datetime(2015,8,13),format='datetime',scale='utc').tai.datetime
 
 t = now
 ts = [now]
@@ -92,7 +92,7 @@ fig.autofmt_xdate()
 ax.set_title('GOES Forecast till {}(TAI)'.format(now.strftime('%Y-%m-%d %H:%M:%S')))
 ax.set_xlabel('International Atomic Time')
 ax.set_ylabel(u'GOES Long[1-8Å] Xray Flux')
-ax.set_xlim([now-datetime.timedelta(days=225), now+datetime.timedelta(days=1)])
+ax.set_xlim([t_begin, now+datetime.timedelta(days=1)])
 ax.set_ylim([0.5e-7, 1e-3])        
 
 plt.savefig(filename, dpi=100)

@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-import argparse, copy, datetime, math, os, pickle, random,sys
+import argparse, copy, datetime, math, os, pickle, random, sys
 import astropy.time as time
 import chainer
 # from chainer import cuda
