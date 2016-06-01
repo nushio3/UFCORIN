@@ -1,5 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
+from ftplib import FTP
+import StringIO
 import argparse, copy, datetime, math, os, pickle, random, sys
 import astropy.time as time
 import chainer
@@ -80,19 +82,19 @@ def from_PU(x):
 class Forecast:
     def generate_ccmc_submission(self):
         now = datetime.datetime.now()
-        filename = "ccmc/UFCORIN_1_{}.txt".format(now.strftime("%Y%m%d_%H%M"))
+        filename = "UFCORIN_1_{}.txt".format(now.strftime("%Y%m%d_%H%M"))
 
         ys_log = [math.log10(y[0]) for y in self.pred_max_y]
         pred_mean = ys_log[23]
         pred_stddev = max([abs(ys_log[i] - pred_mean) for i in [19,20,21,22]])
         def cdf(y):
             # cumulative gaussian distribution
-            # return 0.5 * (1 + math.erf((y-pred_mean)/(math.sqrt(2.0) * pred_stddev)))
-            x = (y-pred_mean) / pred_stddev
-            if x > 0:
-                return 0.5*(2-math.exp(-x))
-            else:
-                return 0.5*math.exp(x)
+            return 0.5 * (1 + math.erf((y-pred_mean)/(math.sqrt(2.0) * pred_stddev)))
+            # x = (y-pred_mean) / pred_stddev
+            # if x > 0:
+            #     return 0.5*(2-math.exp(-x))
+            # else:
+            #     return 0.5*math.exp(x)
         # def cdf(y):
         #     # cumulative gaussian distribution
         #     # return 0.5 * (1 + math.erf((y-pred_mean)/(math.sqrt(2.0) * pred_stddev)))
@@ -106,18 +108,26 @@ class Forecast:
         def fmttime(t):
             return t.strftime("%Y-%m-%dT%H:%MZ")
 
-        with open(filename, 'w') as fp:
-            fp.write("Forecasting method: UFCORIN_1\n")
-            fp.write("Issue Time: {}\n".format(fmttime(now)))
-            fp.write("Prediction Window Start Time: {}\n".format(fmttime(time_begin)))
-            fp.write("Prediction Window End Time: {}\n".format(fmttime(time_end)))
-            fp.write("Probability Bins: M+\n")
-            fp.write("Input data: SDO/HMI LOS_Magnetogram, GOES X-ray flux\n")
-            fp.write("#Full Disk Forecast\n")
-            fp.write("#X_prob   X_CI_Lower  Upper  X_Level     M_prob   M_CI_Lower  Upper  M_Level     C_prob   C_CI_Lower  Upper  C_Level\n")
+        fp = StringIO.StringIO()
+        fp.write("Forecasting method: UFCORIN_1\n")
+        fp.write("Issue Time: {}\n".format(fmttime(now)))
+        fp.write("Prediction Window Start Time: {}\n".format(fmttime(time_begin)))
+        fp.write("Prediction Window End Time: {}\n".format(fmttime(time_end)))
+        fp.write("Probability Bins: M+\n")
+        fp.write("Input data: SDO/HMI LOS_Magnetogram, GOES X-ray flux\n")
+        fp.write("#Full Disk Forecast\n")
+        fp.write("#X_prob   X_CI_Lower  Upper  X_Level     M_prob   M_CI_Lower  Upper  M_Level     C_prob   C_CI_Lower  Upper  C_Level\n")
 
-            spacer = "---- ---- ----"
-            fp.write("{:.4f} {} {:.4f} {} {:.4f} {}\n".format(prob_x, spacer, prob_m, spacer,prob_c,spacer))
+        spacer = "---- ---- ----"
+        fp.write("{:.4f} {} {:.4f} {} {:.4f} {}\n".format(prob_x, spacer, prob_m, spacer,prob_c,spacer))
+
+        ftp = FTP('hanna.ccmc.gsfc.nasa.gov')     # connect to host, default port
+        ftp.login()                     # user anonymous, passwd anonymous@
+        ftp.cwd('pub/FlareScoreboard/in/UFCORIN_1')               # change into "debian" directory
+        str_file = StringIO.StringIO(fp.getvalue())
+        ftp.storlines('STOR ' + filename, str_file)
+        ftp.quit()
+
     def visualize(self, filename):
         now = time.Time(datetime.datetime.now(),format='datetime',scale='utc').tai.datetime
         fig, ax = plt.subplots()

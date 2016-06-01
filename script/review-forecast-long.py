@@ -21,7 +21,7 @@ class Forecast:
     pass
 
 filename = 'review-forecast-long.png'
-plt.rcParams['figure.figsize'] = (48.0,8.0)
+plt.rcParams['figure.figsize'] = (48.0,16.0)
 
 fig, ax = plt.subplots() # plt.subplots(figsize=mpl.figure.figaspect(0.3))
 ax.set_yscale('log')
@@ -44,7 +44,9 @@ pats = []
 for t in ts:
     for d10 in range(4):
         pats.append('archive/{:04}/{:02}/{}*/*'.format(t.year,t.month,d10))
-    
+
+# for test purpose
+#pats = pats[0:2]    
 #pats = ['archive/2016/01/1?/*']
 goes_curve_max = {}
 f = None
@@ -84,6 +86,8 @@ months  = mdates.MonthLocator()
 days    = mdates.DayLocator()  # every day
 daysFmt = mdates.DateFormatter('%Y-%m-%d')
 hours   = mdates.HourLocator()
+
+mpl.rcParams.update({'font.size': 48})
 ax.xaxis.set_major_locator(months)
 ax.xaxis.set_major_formatter(daysFmt)
 ax.xaxis.set_minor_locator(days)
@@ -91,10 +95,12 @@ ax.grid()
 fig.autofmt_xdate()
 ax.set_title('GOES Forecast till {}(TAI)'.format(now.strftime('%Y-%m-%d %H:%M:%S')))
 ax.set_xlabel('International Atomic Time')
-ax.set_ylabel(u'GOES Long[1-8Å] Xray Flux')
+ax.set_ylabel(u'Xray Flux [1-8Å]')
 ax.set_xlim([t_begin, now+datetime.timedelta(days=1)])
 ax.set_ylim([0.5e-7, 1e-3])        
 
+
+plt.subplots_adjust(bottom=0.4,top=0.8)
 plt.savefig(filename, dpi=100)
 plt.close('all')
 
