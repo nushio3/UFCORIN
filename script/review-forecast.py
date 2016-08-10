@@ -84,13 +84,16 @@ ax.grid()
 fig.autofmt_xdate()
 ax.set_title('GOES Forecast till {}(TAI)'.format(now.strftime('%Y-%m-%d %H:%M:%S')))
 ax.set_xlabel('International Atomic Time')
-ax.set_ylabel(u'GOES Long[1-8Å] Xray Flux')
+ax.set_ylabel(u'GOES Long[1-8Å] Xray Flux (W/m²)')
 if demo_mode:
     ax.set_xlim([now-datetime.timedelta(days=9), now+datetime.timedelta(days=1)])
     ax.set_ylim([5e-8, 1e-5])        
 else:
     ax.set_xlim([now-datetime.timedelta(days=16), now+datetime.timedelta(days=1)])
     ax.set_ylim([5e-8, 1e-3])        
+    plt.text(now+datetime.timedelta(days=1), 5e-4, 'X-class', rotation=90)
+    plt.text(now+datetime.timedelta(days=1), 5e-5, 'M-class', rotation=90)
+    plt.text(now+datetime.timedelta(days=1), 5e-6, 'C-class', rotation=90)
 
 plt.savefig(filename, dpi=200)
 plt.close('all')
