@@ -110,3 +110,12 @@ for t,y_pred in goes_curve_pred.iteritems():
 for c,tbl in contingency_table.iteritems():
     print c
     print tbl
+    tp = float(tbl[(True,True)])
+    fp = float(tbl[(True,False)])
+    fn = float(tbl[(False,True)])
+    tn = float(tbl[(False, False)])
+
+    tss = tp/(tp+fn) - fp/(fp+tn)
+    print tss
+
+    
