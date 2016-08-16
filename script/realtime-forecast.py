@@ -153,6 +153,7 @@ class Forecast:
         plt.text(now+datetime.timedelta(days=1), 5e-4, 'X-class', rotation=90)
         plt.text(now+datetime.timedelta(days=1), 5e-5, 'M-class', rotation=90)
         plt.text(now+datetime.timedelta(days=1), 5e-6, 'C-class', rotation=90)
+        plt.text(now+datetime.timedelta(days=1), 5e-7, 'B-class', rotation=90)
 
         plt.savefig(filename, dpi=200)
         plt.close('all')
