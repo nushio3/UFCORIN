@@ -13,10 +13,14 @@ import matplotlib.colors as colors
 import matplotlib.pyplot as plt
 import sunpy.map
 
-import observational_data
+from observational_data import *
 
-img = get_aia_image(193, datetime.datetime(2011,1,1,0,0))
+t = datetime.datetime(2010,5,1,0,0)
 
-img.plot()
-plt.colorbar()
-plt.savefig('test.png')
+while t < datetime.datetime.now():
+    print t
+    img = get_hmi_image(t)
+    img = get_aia_image(94, t)
+    img = get_aia_image(193, t)
+    t += datetime.timedelta(minutes=12)
+

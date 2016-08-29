@@ -16,32 +16,28 @@ data_path = os.environ['ufcorin_bigdata_path']
 # SDO衛星が撮影した元データは http://sdo.gsfc.nasa.gov/data/ にあります。
 def get_hmi_image(t):
     global data_path
-    if data_path is not None:
-        fn = data_path + t.strftime('/hmi/%Y/%m/%d/%H%M.npz').replace('/',os.sep)
+    cache_fn = data_path + t.strftime('/hmi/%Y/%m/%d/%H%M.fits').replace('/',os.sep)
+    if os.path.exists(cache_fn):
         try:
-            return np.load(fn)['img']
+            return sunpy.map.Map(cache_fn)
         except:
             return None
 
 
-    try:
-        url2 = 'http://jsoc2.stanford.edu/data/hmi/fits/{:04}/{:02}/{:02}/hmi.M_720s_nrt.{:04}{:02}{:02}_{:02}{:02}00_TAI.fits'.format(t.year, t.month, t.day, t.year, t.month, t.day, t.hour, t.minute)
-        url = 'http://jsoc2.stanford.edu/data/hmi/fits/{:04}/{:02}/{:02}/hmi.M_720s.{:04}{:02}{:02}_{:02}{:02}00_TAI.fits'.format(t.year, t.month, t.day, t.year, t.month, t.day, t.hour, t.minute)
+    url2 = 'http://jsoc2.stanford.edu/data/hmi/fits/{:04}/{:02}/{:02}/hmi.M_720s_nrt.{:04}{:02}{:02}_{:02}{:02}00_TAI.fits'.format(t.year, t.month, t.day, t.year, t.month, t.day, t.hour, t.minute)
+    url = 'http://jsoc2.stanford.edu/data/hmi/fits/{:04}/{:02}/{:02}/hmi.M_720s.{:04}{:02}{:02}_{:02}{:02}00_TAI.fits'.format(t.year, t.month, t.day, t.year, t.month, t.day, t.hour, t.minute)
 
-        resp = requests.get(url)
+    resp = requests.get(url)
+    if resp.status_code != 200:
+        resp = requests.get(url2)
         if resp.status_code != 200:
-            resp = requests.get(url2)
-        strio = StringIO.StringIO(resp.content)
-
-        hdulist=fits.open(strio)
-        hdulist.verify('fix')
-        img=hdulist[1].data
-        img = np.where( np.isnan(img), 0.0, img)
-
-        return img
-    except Exception as e:
-        sys.stderr.write(str(e.message))
-        return None
+            stderr.write("no file found: {} {}".format(url, url2))
+            return None
+    strio = StringIO.StringIO(resp.content)
+    subprocess.call(['mkdir','-p',os.path.dirname(cache_fn)])
+    with open(cache_fn,'w') as fp:
+        fp.write(strio.read())
+    return sunpy.map.Map(cache_fn)
 
 
 # 時刻tにおける、波長wavelengthの太陽画像を取得します
@@ -49,7 +45,7 @@ def get_hmi_image(t):
 # SDO衛星が撮影した元データは http://sdo.gsfc.nasa.gov/data/ にあります。
 def get_aia_image(wavelength,t):
     global data_path
-    cache_fn = data_path + t.strftime('/aia/%Y/%m/%d/%H%M.fits').replace('/',os.sep)
+    cache_fn = data_path + '/aia{:04}/'.format(wavelength) + t.strftime('%Y/%m/%d/%H%M.fits').replace('/',os.sep)
     if os.path.exists(cache_fn):
         try:
             return sunpy.map.Map(cache_fn)
