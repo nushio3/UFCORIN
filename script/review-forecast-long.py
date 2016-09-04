@@ -46,7 +46,7 @@ for t in ts:
         pats.append('archive/{:04}/{:02}/{}*/*'.format(t.year,t.month,d10))
 
 # for test purpose
-#pats = pats[0:2]    
+#pats = pats[0:2]
 #pats = ['archive/2016/01/1?/*']
 goes_curve_max = {}
 f = None
@@ -82,7 +82,7 @@ gmdata = sorted(goes_curve_max.items())
 ax.plot([kv[0] for kv in gmdata], [kv[1] for kv in gmdata], color=(1,0.75,0.75), lw=2, zorder=100)
 
 
-months  = mdates.MonthLocator()  
+months  = mdates.MonthLocator()
 days    = mdates.DayLocator()  # every day
 daysFmt = mdates.DateFormatter('%Y-%m-%d')
 hours   = mdates.HourLocator()
@@ -97,7 +97,7 @@ ax.set_title('GOES Forecast till {}(TAI)'.format(now.strftime('%Y-%m-%d %H:%M:%S
 ax.set_xlabel('International Atomic Time')
 ax.set_ylabel(u'Xray Flux [1-8Å]')
 ax.set_xlim([t_begin, now+datetime.timedelta(days=1)])
-ax.set_ylim([0.5e-7, 1e-3])        
+ax.set_ylim([0.5e-7, 1e-3])
 
 plt.text(now+datetime.timedelta(days=1), 5e-4, 'X', rotation=90)
 plt.text(now+datetime.timedelta(days=1), 5e-5, 'M', rotation=90)
