@@ -29,7 +29,7 @@ now = time.Time(datetime.datetime.now(),format='datetime',scale='utc').tai.datet
 
 t = now
 ts = [now]
-for i in range(9):
+for i in range(19):
     t -=  datetime.timedelta(days=28)
     ts.append(t)
 ts.reverse()
