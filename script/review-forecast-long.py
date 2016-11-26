@@ -21,7 +21,7 @@ class Forecast:
     pass
 
 filename = 'review-forecast-long.png'
-plt.rcParams['figure.figsize'] = (48.0,8.0)
+plt.rcParams['figure.figsize'] = (48.0,16.0)
 
 fig, ax = plt.subplots() # plt.subplots(figsize=mpl.figure.figaspect(0.3))
 ax.set_yscale('log')
@@ -29,19 +29,24 @@ ax.set_yscale('log')
 
 
 now = time.Time(datetime.datetime.now(),format='datetime',scale='utc').tai.datetime
+t_begin = time.Time(datetime.datetime(2015,8,13),format='datetime',scale='utc').tai.datetime
 
 t = now
 ts = [now]
-for i in range(9):
+while True:
     t -=  datetime.timedelta(days=28)
     ts.append(t)
+    if t < t_begin:
+        break
 ts.reverse()
 
 pats = []
 for t in ts:
     for d10 in range(4):
         pats.append('archive/{:04}/{:02}/{}*/*'.format(t.year,t.month,d10))
-    
+
+# for test purpose
+#pats = pats[0:2]
 #pats = ['archive/2016/01/1?/*']
 goes_curve_max = {}
 f = None
@@ -53,7 +58,7 @@ for pat in pats:
             try:
                 f = pickle.load(fp)
                 #ax.plot(f.pred_curve_t, f.pred_curve_y, color=(0,0.7,0), lw=0.1)
-                ax.plot(f.pred_max_t[23][0], f.pred_max_y[23][0], 'mo', markersize=2.0, markeredgecolor='r')
+                ax.plot(f.pred_max_t[23][0], f.pred_max_y[23][0], 'mo', markersize=2.0, markeredgecolor='r', zorder = 300)
             except:
                 continue
 
@@ -70,17 +75,19 @@ for pat in pats:
             except:
                 goes_curve_max[t2] = y
 
-    ax.plot(f.goes_curve_t, f.goes_curve_y, color=(0,0,0.5), lw=1.5)
-    ax.plot(f.goes_curve_t, f.goes_curve_y, color=(0.2,0.2,1), lw=1)
+    ax.plot(f.goes_curve_t, f.goes_curve_y, color=(0.66,0.66,1), lw=1.5, zorder = 200)
+    ax.plot(f.goes_curve_t, f.goes_curve_y, color=(0,0,1), lw=1, zorder = 201)
 
 gmdata = sorted(goes_curve_max.items())
-ax.plot([kv[0] for kv in gmdata], [kv[1] for kv in gmdata], color=(1,0.75,0.75), lw=2)
+ax.plot([kv[0] for kv in gmdata], [kv[1] for kv in gmdata], color=(1,0.75,0.75), lw=2, zorder=100)
 
 
-months  = mdates.MonthLocator()  
+months  = mdates.MonthLocator()
 days    = mdates.DayLocator()  # every day
 daysFmt = mdates.DateFormatter('%Y-%m-%d')
 hours   = mdates.HourLocator()
+
+mpl.rcParams.update({'font.size': 48})
 ax.xaxis.set_major_locator(months)
 ax.xaxis.set_major_formatter(daysFmt)
 ax.xaxis.set_minor_locator(days)
@@ -88,10 +95,16 @@ ax.grid()
 fig.autofmt_xdate()
 ax.set_title('GOES Forecast till {}(TAI)'.format(now.strftime('%Y-%m-%d %H:%M:%S')))
 ax.set_xlabel('International Atomic Time')
-ax.set_ylabel(u'GOES Long[1-8Å] Xray Flux')
-ax.set_xlim([now-datetime.timedelta(days=225), now+datetime.timedelta(days=1)])
-ax.set_ylim([0.5e-7, 1e-3])        
+ax.set_ylabel(u'Xray Flux [1-8Å]')
+ax.set_xlim([t_begin, now+datetime.timedelta(days=1)])
+ax.set_ylim([0.5e-7, 1e-3])
 
+plt.text(now+datetime.timedelta(days=1), 5e-4, 'X', rotation=90)
+plt.text(now+datetime.timedelta(days=1), 5e-5, 'M', rotation=90)
+plt.text(now+datetime.timedelta(days=1), 5e-6, 'C', rotation=90)
+plt.text(now+datetime.timedelta(days=1), 5e-7, 'B', rotation=90)
+
+plt.subplots_adjust(bottom=0.4,top=0.8)
 plt.savefig(filename, dpi=100)
 plt.close('all')
 
