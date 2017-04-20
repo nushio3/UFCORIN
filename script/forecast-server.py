@@ -45,7 +45,11 @@ while True:
     diff = int((now-epoch).total_seconds())//(60*12)
     if last_diff < diff:
         last_diff=diff
-        realtime_forecast()
+        try:
+            realtime_forecast()
+        except Exception as e:
+            print e.message
+            pass
         subprocess.call('time ./review-forecast.py',shell=True)
         subprocess.call('cp review-forecast.png  ~/public_html',shell=True)
 

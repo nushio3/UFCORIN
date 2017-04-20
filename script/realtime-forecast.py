@@ -150,7 +150,7 @@ class Forecast:
         ax.set_title('GOES Forecast at {}(TAI)'.format(now.strftime('%Y-%m-%d %H:%M:%S')))
         ax.set_xlabel('International Atomic Time')
         ax.set_ylabel(u'GOES Long[1-8Å] Xray Flux (W/m²)')
-        plt.text(now+datetime.timedelta(days=1), 5e-4, 'X-class', rotation=90)
+        #plt.text(now+datetime.timedelta(days=1), 5e-4, 'X-class', rotation=90)
         plt.text(now+datetime.timedelta(days=1), 5e-5, 'M-class', rotation=90)
         plt.text(now+datetime.timedelta(days=1), 5e-6, 'C-class', rotation=90)
         plt.text(now+datetime.timedelta(days=1), 5e-7, 'B-class', rotation=90)
@@ -162,7 +162,7 @@ class Forecast:
             md_template=fp.read()
 
         predicted_goes_flux = self.pred_max_y[-1][-1]
-        predicted_class = "Quiet"
+        predicted_class = "B Class"
         if predicted_goes_flux >= 1e-6: predicted_class = "C Class"
         if predicted_goes_flux >= 1e-5: predicted_class = "M Class"
         if predicted_goes_flux >= 1e-4: predicted_class = "X Class"

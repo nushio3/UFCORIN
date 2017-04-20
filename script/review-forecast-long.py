@@ -99,9 +99,10 @@ ax.set_ylabel(u'Xray Flux [1-8Å]')
 ax.set_xlim([t_begin, now+datetime.timedelta(days=1)])
 ax.set_ylim([0.5e-7, 1e-3])
 
-plt.text(now+datetime.timedelta(days=1), 5e-4, 'X-class', rotation=90)
-plt.text(now+datetime.timedelta(days=1), 5e-5, 'M-class', rotation=90)
-plt.text(now+datetime.timedelta(days=1), 5e-6, 'C-class', rotation=90)
+plt.text(now+datetime.timedelta(days=1), 5e-4, 'X', rotation=90)
+plt.text(now+datetime.timedelta(days=1), 5e-5, 'M', rotation=90)
+plt.text(now+datetime.timedelta(days=1), 5e-6, 'C', rotation=90)
+plt.text(now+datetime.timedelta(days=1), 5e-7, 'B', rotation=90)
 
 plt.subplots_adjust(bottom=0.4,top=0.8)
 plt.savefig(filename, dpi=100)
