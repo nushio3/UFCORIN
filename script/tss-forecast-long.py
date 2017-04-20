@@ -29,7 +29,7 @@ now = time.Time(datetime.datetime.now(),format='datetime',scale='utc').tai.datet
 
 t = now
 ts = [now]
-for i in range(19):
+while t > datetime.datetime(2015,8,1):
     t -=  datetime.timedelta(days=28)
     ts.append(t)
 ts.reverse()
@@ -62,6 +62,7 @@ for pat in pats:
                 goes_curve_pred[discrete_t(pred_t)] = pred_y
 
             except:
+                print "unpickleable", fn
                 continue
 
     if f is None :
@@ -115,7 +116,7 @@ for c,tbl in contingency_table.iteritems():
     fn = float(tbl[(False,True)])
     tn = float(tbl[(False, False)])
 
-    tss = tp/(tp+fn) - fp/(fp+tn)
+    tss = tp/(tp+fn+1e-30) - fp/(fp+tn+1e-30)
     print tss
 
     

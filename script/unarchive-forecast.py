@@ -1,4 +1,5 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
 import astropy.time as time
 import datetime, os,math,sys
 import pickle
@@ -12,7 +13,7 @@ import matplotlib.dates as mdates
 class Forecast:
     pass
 
-for fn in sys.argv:
-    with open(fn,"rb") as fp:
+for fn in sys.argv[1:]:
+    with open(fn,"r") as fp:
         forecast = pickle.load(fp)
     print(dir(forecast))
